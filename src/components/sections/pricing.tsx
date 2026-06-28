@@ -21,7 +21,7 @@ const plans = [
       "Community Support",
     ],
     cta: "Start Free",
-    href: "#",
+    href: "/register",
     featured: false,
   },
   {
@@ -38,7 +38,7 @@ const plans = [
       "Economic Intelligence",
     ],
     cta: "Go Professional",
-    href: "#",
+    href: "/register",
     featured: true,
   },
   {

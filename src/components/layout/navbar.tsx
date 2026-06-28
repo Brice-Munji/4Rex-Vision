@@ -62,10 +62,10 @@ export function Navbar() {
           <div className="hidden items-center gap-2 md:flex">
             <ThemeToggle />
             <Button variant="ghost" size="sm" asChild>
-              <Link href="#">Login</Link>
+              <Link href="/login">Login</Link>
             </Button>
             <Button size="sm" asChild>
-              <Link href="#pricing">Get Started</Link>
+              <Link href="/register">Get Started</Link>
             </Button>
           </div>
 
@@ -103,12 +103,12 @@ export function Navbar() {
               ))}
               <div className="my-1 h-px bg-border" />
               <Button variant="secondary" asChild>
-                <Link href="#" onClick={() => setOpen(false)}>
+                <Link href="/login" onClick={() => setOpen(false)}>
                   Login
                 </Link>
               </Button>
               <Button asChild>
-                <Link href="#pricing" onClick={() => setOpen(false)}>
+                <Link href="/register" onClick={() => setOpen(false)}>
                   Get Started
                 </Link>
               </Button>
