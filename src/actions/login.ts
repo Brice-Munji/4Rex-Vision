@@ -35,5 +35,8 @@ export async function loginUser(values: unknown): Promise<ActionState> {
 }
 
 export async function logoutUser() {
-  await signOut({ redirectTo: "/login" });
+  // Clear the session only — the client handles navigation so we never emit a
+  // server-side redirect that could resolve to an internal localhost origin
+  // behind a proxy.
+  await signOut({ redirect: false });
 }
