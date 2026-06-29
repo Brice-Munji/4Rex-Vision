@@ -18,6 +18,13 @@ export const PLAN_LABELS: Record<Plan, string> = {
   ENTERPRISE: "Enterprise",
 };
 
+/** Friendlier in-app plan names used inside the dashboard command center. */
+export const PLAN_DISPLAY_NAMES: Record<Plan, string> = {
+  FREE: "Explorer",
+  PROFESSIONAL: "Professional",
+  ENTERPRISE: "Enterprise",
+};
+
 export const EXPERIENCE_OPTIONS: {
   value: ExperienceLevel;
   label: string;

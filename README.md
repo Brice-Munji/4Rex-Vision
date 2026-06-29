@@ -4,10 +4,33 @@
 
 A premium marketing website and reusable UI system for 4RexVision AI — a fintech product that transforms trading chart screenshots into intelligent, AI-powered market analysis.
 
-> This codebase now includes the public marketing site **and** a complete
-> authentication + onboarding + profile system. The trading dashboard and AI
-> analysis features are intentionally still out of scope (the Free-plan
-> usage logic is prepared but no AI runs yet).
+> This codebase now includes the public marketing site, a complete
+> authentication + onboarding + profile system, **and** the authenticated
+> **AI Trading Command Center** dashboard. Actual AI analysis and live market
+> data are intentionally still out of scope — the dashboard is a polished,
+> reusable interface wired with realistic placeholder data, ready for the AI
+> engine to plug in.
+
+## Trading Command Center (Dashboard)
+
+A premium authenticated experience under the `(app)` route group:
+
+- **Responsive app shell** (`src/components/dashboard/shell/`): collapsible
+  desktop sidebar (persisted), sticky top nav with time-aware greeting, live
+  date, global search, notifications menu, theme toggle and user dropdown;
+  mobile sidebar drawer + bottom navigation; animated page transitions.
+- **Command center** (`/dashboard`): welcome hero with remaining-analyses
+  widget, market-overview cards (sentiment, high-impact events, active session,
+  AI status), quick actions, the **AI Workspace** (drag-&-drop upload with a
+  premium 7-step analysis sequence — interface only), recent analyses, a
+  rotating **AI insights** panel, notification cards and a journal preview.
+- **Section pages**: `/analyze`, `/journal`, `/history`, `/market`, `/help`
+  built from the same reusable components, with elegant empty/coming-soon
+  states. All dashboard data lives in `src/lib/dashboard-data.ts` for easy
+  replacement with real queries later.
+
+No existing components, pages, branding, colors or animations were redesigned —
+the dashboard purely extends the app.
 
 ## Tech Stack
 

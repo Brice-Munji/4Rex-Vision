@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/current-user";
-import { AppHeader } from "@/components/app/app-header";
-import { VerifyBanner } from "@/components/app/verify-banner";
+import { DashboardShell } from "@/components/dashboard/shell/dashboard-shell";
 
 export default async function AppLayout({
   children,
@@ -13,12 +12,17 @@ export default async function AppLayout({
   if (!user.onboardingComplete) redirect("/onboarding");
 
   return (
-    <div className="min-h-screen bg-background">
-      {!user.emailVerified && <VerifyBanner />}
-      <AppHeader user={user} />
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {children}
-      </main>
-    </div>
+    <DashboardShell
+      user={{
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        avatar: user.avatar,
+        plan: user.plan,
+      }}
+      showVerifyBanner={!user.emailVerified}
+    >
+      {children}
+    </DashboardShell>
   );
 }

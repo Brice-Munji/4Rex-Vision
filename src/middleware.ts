@@ -5,7 +5,18 @@ import { authConfig } from "@/auth.config";
 // Edge-safe auth instance (no Prisma) for route protection.
 const { auth } = NextAuth(authConfig);
 
-const PROTECTED_PREFIXES = ["/dashboard", "/profile", "/onboarding", "/billing", "/settings"];
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/profile",
+  "/onboarding",
+  "/billing",
+  "/settings",
+  "/analyze",
+  "/journal",
+  "/history",
+  "/market",
+  "/help",
+];
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password"];
 
 export default auth((req) => {
