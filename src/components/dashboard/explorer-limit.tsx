@@ -1,0 +1,83 @@
+"use client";
+
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { Zap, Infinity as InfinityIcon, ArrowUpRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface ExplorerLimitProps {
+  used: number;
+  limit: number;
+  unlimited: boolean;
+  /** compact omits the heading/upgrade link (for inline placement). */
+  compact?: boolean;
+}
+
+export function ExplorerLimit({
+  used,
+  limit,
+  unlimited,
+  compact,
+}: ExplorerLimitProps) {
+  const remaining = unlimited ? Infinity : Math.max(0, limit - used);
+
+  if (unlimited) {
+    return (
+      <div className={cn("rounded-2xl glass p-5", compact && "p-4")}>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Zap className="h-4 w-4 text-sky-500" />
+          Daily Analyses
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <InfinityIcon className="h-6 w-6 text-sky-400" />
+          <span className="text-xl font-bold">Unlimited</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("rounded-2xl glass p-5", compact && "p-4")}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Zap className="h-4 w-4 text-sky-500" />
+          Daily Analyses
+        </div>
+        <span className="text-sm font-semibold">
+          {remaining} <span className="text-muted-foreground">available</span>
+        </span>
+      </div>
+
+      {/* segmented ■■■□□ indicator */}
+      <div className="mt-4 flex gap-2" role="img" aria-label={`${remaining} of ${limit} analyses remaining`}>
+        {Array.from({ length: limit }).map((_, i) => {
+          const filled = i < remaining;
+          return (
+            <motion.div
+              key={i}
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: i * 0.08, type: "spring", stiffness: 300, damping: 20 }}
+              className={cn(
+                "h-2.5 flex-1 rounded-full",
+                filled
+                  ? "bg-gradient-to-r from-sky-500 to-cyan-400"
+                  : "bg-secondary"
+              )}
+            />
+          );
+        })}
+      </div>
+
+      {!compact && (
+        <Link
+          href="/billing"
+          className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-sky-500 transition-colors hover:text-sky-400"
+        >
+          Upgrade for unlimited
+          <ArrowUpRight className="h-3.5 w-3.5" />
+        </Link>
+      )}
+    </div>
+  );
+}

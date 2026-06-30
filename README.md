@@ -32,6 +32,43 @@ A premium authenticated experience under the `(app)` route group:
 No existing components, pages, branding, colors or animations were redesigned —
 the dashboard purely extends the app.
 
+## Subscription, Billing & Growth
+
+The experience of unlocking a professional AI trading partner — Stripe-ready,
+running in simulated mode until keys are configured.
+
+- **Plans** (`src/lib/plans.ts`): Explorer (Free), Vision Pro, Vision Elite
+  (Coming Soon) — a single source of truth for names, pricing, features,
+  comparison matrix and premium/locked features.
+- **Public pricing page** (`/pricing`): monthly/yearly toggle with animated
+  savings badge, Most Popular badge, animated feature comparison table,
+  testimonials, enterprise contact and FAQ.
+- **Billing dashboard** (`/billing`): current plan & status, renewal date,
+  upgrade/downgrade, cancel & reactivate (with confirmation), payment method,
+  billing address, invoices/billing history and billing activity.
+- **AI Growth** (`/growth`): usage analytics, AI-growth progress rings,
+  trading-discipline score (strengths / needs-work), and professional
+  achievement badges.
+- **Explorer daily limit**: an animated segmented indicator (■■■□□) that updates
+  live. On the third analysis the user sees a premium **End-of-Day Trading
+  Summary** (animated stat cards, AI recap, progress-vs-yesterday and a
+  "Continue Your Momentum" upgrade) instead of a hard paywall.
+- **Vision Pro activation**: a celebratory success animation listing everything
+  unlocked.
+- **Locked feature cards**: aspirational premium teasers throughout the
+  dashboard.
+- **Data layer**: `User` gains Stripe-ready fields (`billingCycle`,
+  `currentPeriodEnd`, `cancelAtPeriodEnd`, `stripeCustomerId`,
+  `stripeSubscriptionId`). Server actions in `src/actions/subscription.ts`
+  handle upgrade/downgrade/cancel/reactivate and per-day usage. A Stripe
+  scaffold (`src/lib/stripe.ts`, server-only) and webhook route
+  (`/api/stripe/webhook`) are prepared — no secret keys are exposed.
+
+Reusable building blocks: `PlanBadge`, `PricingCard`/`PricingPlans`,
+`BillingCycleToggle`, `FeatureComparison`, `StatCard`, `ProgressRing`/`ProgressBar`,
+`LockedFeatureCard`, `ExplorerLimit`, `BillingManager`, billing/usage/achievement
+cards. Payments still run in simulated mode (no live charges).
+
 ## Tech Stack
 
 - **Next.js 15** (App Router)

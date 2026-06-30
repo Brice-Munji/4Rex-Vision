@@ -1,0 +1,58 @@
+import {
+  Activity,
+  CalendarDays,
+  CalendarRange,
+  CalendarClock,
+  Gauge,
+  BookOpen,
+  Clock,
+  Clock4,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  LineChart,
+  ScanSearch,
+  Target,
+  CheckCheck,
+  Flame,
+  ShieldCheck,
+  Rewind,
+  Radar,
+  Infinity as InfinityIcon,
+  Zap,
+  BrainCircuit,
+  GraduationCap,
+  HelpCircle,
+  type LucideIcon,
+} from "lucide-react";
+
+/** Resolve a data-driven icon name to a Lucide component. */
+export const ICONS: Record<string, LucideIcon> = {
+  Activity,
+  CalendarDays,
+  CalendarRange,
+  CalendarClock,
+  Gauge,
+  BookOpen,
+  Clock,
+  Clock4,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  LineChart,
+  ScanSearch,
+  Target,
+  CheckCheck,
+  Flame,
+  ShieldCheck,
+  Rewind,
+  Radar,
+  Infinity: InfinityIcon,
+  Zap,
+  BrainCircuit,
+  GraduationCap,
+};
+
+export function getIcon(name: string): LucideIcon {
+  return ICONS[name] ?? HelpCircle;
+}

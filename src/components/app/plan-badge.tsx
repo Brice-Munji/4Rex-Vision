@@ -1,6 +1,6 @@
 import { Crown, Sparkles, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PLAN_LABELS } from "@/lib/constants";
+import { PLAN_DISPLAY_NAMES } from "@/lib/constants";
 import type { Plan } from "@prisma/client";
 
 const styles: Record<Plan, { className: string; icon: React.ElementType }> = {
@@ -40,7 +40,7 @@ export function PlanBadge({
       )}
     >
       {showIcon && <Icon className="h-3 w-3" />}
-      {PLAN_LABELS[plan]}
+      {PLAN_DISPLAY_NAMES[plan]}
     </span>
   );
 }

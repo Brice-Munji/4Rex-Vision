@@ -24,6 +24,11 @@ enum SubscriptionStatus {
   INACTIVE
 }
 
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
 enum ExperienceLevel {
   BEGINNER
   INTERMEDIATE
@@ -55,6 +60,13 @@ model User {
   // Plan & subscription
   plan               Plan               @default(FREE)
   subscriptionStatus SubscriptionStatus @default(INACTIVE)
+
+  // Subscription billing (prepared for Stripe — no live payments yet)
+  billingCycle         BillingCycle?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean       @default(false)
+  stripeCustomerId     String?       @unique
+  stripeSubscriptionId String?
 
   // Free plan usage logic (prepared, not consumed by AI yet)
   dailyAnalysisCount Int      @default(0)

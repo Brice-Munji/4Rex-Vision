@@ -18,11 +18,11 @@ export const PLAN_LABELS: Record<Plan, string> = {
   ENTERPRISE: "Enterprise",
 };
 
-/** Friendlier in-app plan names used inside the dashboard command center. */
+/** Product plan names used across the dashboard, billing and pricing surfaces. */
 export const PLAN_DISPLAY_NAMES: Record<Plan, string> = {
   FREE: "Explorer",
-  PROFESSIONAL: "Professional",
-  ENTERPRISE: "Enterprise",
+  PROFESSIONAL: "Vision Pro",
+  ENTERPRISE: "Vision Elite",
 };
 
 export const EXPERIENCE_OPTIONS: {

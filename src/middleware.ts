@@ -15,6 +15,7 @@ const PROTECTED_PREFIXES = [
   "/journal",
   "/history",
   "/market",
+  "/growth",
   "/help",
 ];
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password"];

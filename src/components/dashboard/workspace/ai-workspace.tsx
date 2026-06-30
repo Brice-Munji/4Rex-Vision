@@ -20,15 +20,35 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ACCEPTED_UPLOAD_FORMATS } from "@/lib/dashboard-data";
 import { AnalysisLoader } from "./analysis-loader";
+import {
+  recordAnalysis,
+  type RecordAnalysisResult,
+} from "@/actions/subscription";
 
 type Stage = "idle" | "ready" | "analyzing" | "complete";
 
-export function AiWorkspace() {
+interface AiWorkspaceProps {
+  /** When true, each completed analysis is counted against the daily allowance. */
+  trackUsage?: boolean;
+  /** Fired with the usage result after a tracked analysis completes. */
+  onUsageRecorded?: (result: RecordAnalysisResult) => void;
+}
+
+export function AiWorkspace({ trackUsage, onUsageRecorded }: AiWorkspaceProps = {}) {
   const [stage, setStage] = React.useState<Stage>("idle");
   const [dragging, setDragging] = React.useState(false);
   const [fileName, setFileName] = React.useState<string | null>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+
+  function handleAnalysisComplete() {
+    setStage("complete");
+    if (trackUsage) {
+      recordAnalysis().then((res) => {
+        if (res.ok) onUsageRecorded?.(res);
+      });
+    }
+  }
 
   function handleFiles(files: FileList | null) {
     const file = files?.[0];
@@ -195,7 +215,7 @@ export function AiWorkspace() {
               exit={{ opacity: 0 }}
               className="py-4"
             >
-              <AnalysisLoader onComplete={() => setStage("complete")} />
+              <AnalysisLoader onComplete={handleAnalysisComplete} />
             </motion.div>
           )}
 
