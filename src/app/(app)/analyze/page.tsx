@@ -1,29 +1,36 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { ScanSearch } from "lucide-react";
+import { getCurrentUser } from "@/lib/current-user";
+import { getUsageSummary } from "@/lib/usage";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { AiWorkspace } from "@/components/dashboard/workspace/ai-workspace";
-import { AiInsightsPanel } from "@/components/dashboard/ai-insights-panel";
+import { RexAnalyzer } from "@/components/rex/rex-analyzer";
 
 export const metadata: Metadata = {
   title: "Analyze Chart · 4RexVision AI",
 };
 
-export default function AnalyzePage() {
+export default async function AnalyzePage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const usage = await getUsageSummary(user);
+
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8">
       <PageHeader
         icon={<ScanSearch className="h-5 w-5" />}
         title="Analyze Chart"
-        description="Upload a screenshot and receive an institutional-grade AI breakdown."
+        description="Upload a chart and let Rex prepare a professional market report."
       />
-      <div className="grid gap-8 xl:grid-cols-3">
-        <div className="xl:col-span-2">
-          <AiWorkspace />
-        </div>
-        <aside>
-          <AiInsightsPanel />
-        </aside>
-      </div>
+      <RexAnalyzer
+        usage={{
+          plan: user.plan,
+          used: usage.used,
+          limit: usage.unlimited ? 0 : usage.limit,
+          unlimited: usage.unlimited,
+        }}
+      />
     </div>
   );
 }

@@ -69,6 +69,38 @@ Reusable building blocks: `PlanBadge`, `PricingCard`/`PricingPlans`,
 `LockedFeatureCard`, `ExplorerLimit`, `BillingManager`, billing/usage/achievement
 cards. Payments still run in simulated mode (no live charges).
 
+## Rex Intelligence Engine
+
+The "brain" of the platform — a complete, modular analysis pipeline and report
+experience. **No AI model is connected yet**: a deterministic mock produces data
+in the exact shape real engines will, so each module is independently
+replaceable without touching the UI.
+
+Pipeline (`src/lib/rex/`, interfaces in `engines.ts`, mock in `mock-pipeline.ts`):
+
+    Vision → Market Structure → Economic Intelligence → Probability
+           → Plain English Translator → Report Generator
+
+- **Upload experience** (`/analyze`, `RexAnalyzer`): "Upload Your Forex Chart"
+  with drag-&-drop, plus real client-side **upload validation** (resolution,
+  aspect ratio, chart visibility, image quality) that warns when reliability may
+  be reduced.
+- **Rex thinking sequence**: a 12-stage animated reasoning flow instead of a
+  spinner.
+- **Progressive report** (`RexReport`) with ten reusable sections: Overall Trend,
+  Market Bias, Confidence Breakdown, Economic Context, Key Price Levels (visual
+  ladder), Why Rex Thinks This (evidence), **Plain English Translator**,
+  Educational Insight, Analysis Reliability, and Rex's Closing Note.
+- **Explain This**: an optional action on technical concepts opens a
+  beginner-friendly glossary explanation (`src/lib/rex/glossary.ts`).
+- Philosophy is encoded throughout: Rex never implies certainty — every
+  conclusion carries a confidence and is backed by evidence.
+
+Reusable Rex components live in `src/components/rex/`. The dashboard's original
+quick `AiWorkspace` is preserved and untouched; the full Rex experience powers
+the dedicated Analyze Chart page. Explorer usage limits and the End-of-Day
+Summary integrate with the analyzer.
+
 ## Tech Stack
 
 - **Next.js 15** (App Router)
