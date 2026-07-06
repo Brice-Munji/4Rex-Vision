@@ -64,14 +64,19 @@ export function classifyChart(metrics: ImageMetrics): ChartClassification {
   const reasons: string[] = [];
 
   const candle = metrics.greenRatio + metrics.redRatio;
-  // Candlestick presence: some green + red, but not a whole red/green photo.
+  const bothColors = metrics.greenRatio > 0.0006 && metrics.redRatio > 0.0006;
+  // Candlestick presence. A valid chart can be dominated by one colour (a strong
+  // trend), so we don't require BOTH green and red — but a frame that's almost
+  // entirely candle-coloured is a red/green photo, not a chart (capped low).
   const candleSignal =
-    candle > 0.0025 && candle < 0.16 && metrics.greenRatio > 0 && metrics.redRatio > 0
-      ? Math.min(1, candle / 0.03)
-      : candle >= 0.16
-        ? 0.15
-        : 0;
-  if (candleSignal > 0.3) reasons.push("Bullish and bearish candles detected");
+    candle >= 0.16 ? 0.18 : candle > 0.0025 ? Math.min(1, candle / 0.03) : 0;
+  if (candleSignal > 0.3) {
+    reasons.push(
+      bothColors
+        ? "Bullish and bearish candles detected"
+        : "Candlestick bodies detected"
+    );
+  }
 
   const structureSignal = Math.min(1, metrics.neutralRatio / 0.45); // chart bg + grid
   if (metrics.neutralRatio > 0.35) reasons.push("Chart-style background and gridlines present");
@@ -95,7 +100,8 @@ export function classifyChart(metrics: ImageMetrics): ChartClassification {
     photoPenalty;
 
   const confidence = clamp(score * 100);
-  const isChart = confidence >= 52 && candleSignal > 0.15;
+  // Require genuine candle presence (either colour) plus a chart-like frame.
+  const isChart = confidence >= 52 && candle > 0.004 && candleSignal > 0.12;
 
   if (!isChart) {
     reasons.length = 0;
