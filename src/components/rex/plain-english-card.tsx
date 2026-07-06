@@ -15,7 +15,7 @@ export function PlainEnglishCard({
 }) {
   return (
     <RexSection
-      sectionNo={7}
+      sectionNo={8}
       title="Plain English Translator"
       subtitle="Every technical conclusion, in language anyone can act on."
       icon={<Languages className="h-5 w-5" />}

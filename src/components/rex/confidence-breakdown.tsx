@@ -63,7 +63,7 @@ export function ConfidenceBreakdown({
 
   return (
     <RexSection
-      sectionNo={3}
+      sectionNo={4}
       title="Confidence Breakdown"
       subtitle="Every score is backed by what Rex actually observed."
       icon={<Gauge className="h-5 w-5" />}

@@ -14,7 +14,7 @@ export function EconomicContextCard({
 }) {
   return (
     <RexSection
-      sectionNo={4}
+      sectionNo={5}
       title="Economic Context"
       subtitle="Upcoming events that could move your pair."
       icon={<CalendarClock className="h-5 w-5" />}

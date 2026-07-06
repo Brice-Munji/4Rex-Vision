@@ -44,7 +44,7 @@ export function WhyRexThinks({
 }) {
   return (
     <RexSection
-      sectionNo={6}
+      sectionNo={7}
       title="Why Rex Thinks This"
       subtitle="Evidence only — every observation is explained."
       icon={<Lightbulb className="h-5 w-5" />}

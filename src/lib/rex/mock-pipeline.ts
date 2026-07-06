@@ -221,6 +221,20 @@ class MockReportGenerator implements ReportGenerator {
       timeframe: vision.timeframe,
       generatedAtLabel: "Just now",
       headline: this.scenario.headline,
+      aiPowered: false,
+      chartSource: "Unknown",
+      currentPrice: null,
+      visionConfidence: {
+        metrics: [
+          { key: "recognition", label: "Image Recognition", score: 88 },
+          { key: "classification", label: "Chart Classification", score: 90 },
+          { key: "pair", label: "Currency Pair Detection", score: 84 },
+          { key: "timeframe", label: "Timeframe Detection", score: 82 },
+        ],
+        overall: 86,
+        chartSource: "Unknown",
+        reduced: false,
+      },
       trend: structure.trend,
       bias: probability.bias,
       confidence: probability.confidence,
@@ -231,6 +245,7 @@ class MockReportGenerator implements ReportGenerator {
       plainEnglish,
       insight: this.scenario.insight,
       reliability: buildReliability(vision.validation, this.scenario),
+      whatCouldChange: this.scenario.whatCouldChange,
       closingNote: CLOSING_NOTE,
     };
   }

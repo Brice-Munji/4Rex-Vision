@@ -101,6 +101,39 @@ quick `AiWorkspace` is preserved and untouched; the full Rex experience powers
 the dedicated Analyze Chart page. Explorer usage limits and the End-of-Day
 Summary integrate with the analyzer.
 
+### Working chart analysis (Rex Vision Engine)
+
+The pipeline now performs **real analysis** on uploaded screenshots, not a mock:
+
+- **Real image analysis** (`src/lib/rex/image-analysis.ts`, `sharp`): measures
+  resolution, aspect ratio, clarity/blur, colour distribution, candlestick
+  presence and grid structure directly from the pixels — no AI required.
+- **Image validation** (Step 1) and **chart classification** (Step 2): genuine
+  checks reject unsupported files and non-charts (e.g. a photo) gracefully with
+  a friendly guidance screen — verified end-to-end (charts accepted, photos
+  rejected).
+- **Vision confidence** (Step 3): image-recognition, chart-classification,
+  pair-detection and timeframe-detection scores derived from the measurements
+  (pair/timeframe confidence comes from the live model).
+- **Live model** (`src/lib/rex/anthropic-engine.ts`): when `ANTHROPIC_API_KEY`
+  is set, Rex reads the chart with **Claude Opus 4.8** vision and returns a
+  structured, evidence-backed report. The model is instructed to **never invent**
+  anything it cannot confidently see. Server-side only — the key is never
+  exposed to the client.
+- **Transparent fallback**: with no key configured, the real validation /
+  classification / vision-confidence still run, and the market read is shown as a
+  clearly-labeled *sample* (not a reading of the user's chart).
+- **Modular engines**: Vision, Market Structure, Economic Intelligence
+  (`src/lib/rex/economic.ts`, provider-agnostic — ready for Forex Factory /
+  TradingEconomics), Probability, Plain-English Translator and Report Generator
+  are each independently replaceable.
+- New report sections: **Vision Confidence** and **What Could Change My Mind?**,
+  plus a live-AI-vs-sample badge and chart-source label.
+
+Set `ANTHROPIC_API_KEY` in `.env` to switch from transparent fallback mode to
+live AI analysis. Chart screenshots are sent to the server action as base64
+(`serverActions.bodySizeLimit` is raised in `next.config.mjs`).
+
 ## Tech Stack
 
 - **Next.js 15** (App Router)

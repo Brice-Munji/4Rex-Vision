@@ -114,6 +114,36 @@ export interface ReliabilitySection {
   note?: string;
 }
 
+/* --------------------------- Vision confidence --------------------------- */
+
+export type ChartSource =
+  | "TradingView"
+  | "MetaTrader 4"
+  | "MetaTrader 5"
+  | "cTrader"
+  | "Unknown";
+
+export interface VisionConfidenceMetric {
+  key: string;
+  label: string;
+  score: number; // 0-100
+  note?: string;
+}
+
+export interface VisionConfidence {
+  metrics: VisionConfidenceMetric[];
+  overall: number; // 0-100
+  chartSource: ChartSource;
+  reduced: boolean;
+  note?: string;
+}
+
+/** Section 11 — what would invalidate the current read. */
+export interface WhatCouldChangeItem {
+  label: string;
+  detail: string;
+}
+
 /* -------------------------------- Report --------------------------------- */
 
 export interface RexReport {
@@ -123,17 +153,26 @@ export interface RexReport {
   generatedAtLabel: string;
   headline: string;
 
+  /** True when produced by the live Anthropic vision model. */
+  aiPowered: boolean;
+  /** Transparency notice shown when running in fallback / sample mode. */
+  notice?: string;
+  chartSource: ChartSource;
+  currentPrice?: string | null;
+
+  visionConfidence: VisionConfidence; // Step 3
   trend: TrendSection; // Section 1
   bias: BiasSection; // Section 2
-  confidence: ConfidenceMetric[]; // Section 3
+  confidence: ConfidenceMetric[]; // Section 4 (Confidence Breakdown)
   overallConfidence: number;
-  economic: EconomicEventItem[]; // Section 4
-  priceLevels: PriceLevel[]; // Section 5
-  evidence: EvidenceItem[]; // Section 6
-  plainEnglish: PlainEnglishItem[]; // Section 7
-  insight: EducationalInsight; // Section 8
-  reliability: ReliabilitySection; // Section 9
-  closingNote: string; // Section 10
+  economic: EconomicEventItem[]; // Section 5
+  priceLevels: PriceLevel[]; // Section 6
+  evidence: EvidenceItem[]; // Section 7
+  plainEnglish: PlainEnglishItem[]; // Section 8
+  insight: EducationalInsight; // Section 9
+  reliability: ReliabilitySection; // Section 10
+  whatCouldChange: WhatCouldChangeItem[]; // Section 11
+  closingNote: string; // Section 12
 }
 
 /* ------------------------------ Upload flow ------------------------------ */

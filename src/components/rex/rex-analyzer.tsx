@@ -10,8 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { RexThinking } from "./rex-thinking";
 import { RexReport } from "./rex-report";
 import { UploadValidationSummary } from "./upload-validation";
+import { UnsupportedChart } from "./unsupported-chart";
 import { rex } from "@/lib/rex/mock-pipeline";
 import type { RexReport as RexReportType, UploadMeta, UploadValidation } from "@/lib/rex/types";
+import { analyzeChart, type AnalyzeResult } from "@/actions/analyze";
+import type { ChartClassification } from "@/lib/rex/vision";
 import { recordAnalysis, type RecordAnalysisResult } from "@/actions/subscription";
 import { ExplorerLimit } from "@/components/dashboard/explorer-limit";
 import { EndOfDaySummary } from "@/components/dashboard/end-of-day-summary";
@@ -19,10 +22,22 @@ import type { Plan } from "@prisma/client";
 
 const ACCEPTED = ["PNG", "JPG", "JPEG", "High Resolution"];
 
-type Stage = "idle" | "ready" | "thinking" | "report";
+type Stage = "idle" | "ready" | "thinking" | "report" | "unsupported";
 
 interface RexAnalyzerProps {
   usage?: { plan: Plan; used: number; limit: number; unlimited: boolean };
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = reader.result as string;
+      resolve(res.split(",")[1] ?? "");
+    };
+    reader.onerror = () => reject(new Error("read failed"));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function RexAnalyzer({ usage }: RexAnalyzerProps) {
@@ -32,10 +47,12 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
   const [meta, setMeta] = React.useState<UploadMeta | null>(null);
   const [validation, setValidation] = React.useState<UploadValidation | null>(null);
   const [report, setReport] = React.useState<RexReportType | null>(null);
+  const [classification, setClassification] = React.useState<ChartClassification | undefined>();
   const [usedState, setUsedState] = React.useState(usage?.used ?? 0);
   const [summaryOpen, setSummaryOpen] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const reportPromise = React.useRef<Promise<RexReportType> | null>(null);
+  const fileRef = React.useRef<File | null>(null);
+  const resultRef = React.useRef<Promise<AnalyzeResult> | null>(null);
 
   const trackUsage = !!usage && !usage.unlimited;
 
@@ -45,7 +62,9 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
     setMeta(null);
     setValidation(null);
     setReport(null);
-    reportPromise.current = null;
+    setClassification(undefined);
+    fileRef.current = null;
+    resultRef.current = null;
     setStage("idle");
     if (inputRef.current) inputRef.current.value = "";
   }
@@ -66,6 +85,7 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
         height: img.naturalHeight,
         sizeBytes: file.size,
       };
+      fileRef.current = file;
       setMeta(m);
       setValidation(rex.validateUpload(m));
       setPreview(url);
@@ -79,16 +99,48 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
   }
 
   function startAnalysis() {
-    if (!meta) return;
-    reportPromise.current = rex.analyze(meta);
+    if (!meta || !fileRef.current) return;
+    const file = fileRef.current;
+    resultRef.current = (async () => {
+      const base64 = await fileToBase64(file);
+      return analyzeChart({
+        base64,
+        fileName: meta.fileName,
+        sizeBytes: meta.sizeBytes,
+      });
+    })();
     setStage("thinking");
   }
 
   async function handleThinkingComplete() {
-    const result = (await reportPromise.current) ?? null;
-    setReport(result);
-    setStage("report");
+    let result: AnalyzeResult | null = null;
+    try {
+      result = (await resultRef.current) ?? null;
+    } catch {
+      result = null;
+    }
 
+    if (!result) {
+      toast.error("Rex couldn't complete the analysis. Please try again.");
+      reset();
+      return;
+    }
+
+    if (result.status === "invalid") {
+      toast.error(result.reason);
+      setStage("ready");
+      return;
+    }
+
+    if (result.status === "unsupported") {
+      setClassification(result.classification);
+      setStage("unsupported");
+      return;
+    }
+
+    // status === "ok"
+    setReport(result.report);
+    setStage("report");
     if (trackUsage) {
       recordAnalysis().then((res: RecordAnalysisResult) => {
         if (res.ok) {
@@ -175,7 +227,7 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
             <input
               ref={inputRef}
               type="file"
-              accept="image/png,image/jpeg"
+              accept="image/png,image/jpeg,image/webp"
               className="hidden"
               onChange={(e) => handleFiles(e.target.files)}
             />
@@ -239,6 +291,18 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
             exit={{ opacity: 0 }}
           >
             <RexThinking onComplete={handleThinkingComplete} />
+          </motion.div>
+        )}
+
+        {/* UNSUPPORTED */}
+        {stage === "unsupported" && (
+          <motion.div
+            key="unsupported"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <UnsupportedChart classification={classification} onRetry={reset} />
           </motion.div>
         )}
 

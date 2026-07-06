@@ -22,7 +22,7 @@ export function AnalysisReliabilityCard({
 
   return (
     <RexSection
-      sectionNo={9}
+      sectionNo={10}
       title="Analysis Reliability"
       subtitle="How much to trust this report — Rex never pretends certainty."
       icon={<ShieldCheck className="h-5 w-5" />}

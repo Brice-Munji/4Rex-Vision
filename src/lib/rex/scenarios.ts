@@ -7,6 +7,7 @@ import type {
   EvidenceItem,
   PlainEnglishItem,
   EducationalInsight,
+  WhatCouldChangeItem,
   Timeframe,
 } from "./types";
 
@@ -23,6 +24,7 @@ export interface Scenario {
   evidence: EvidenceItem[];
   plainEnglish: PlainEnglishItem[];
   insight: EducationalInsight;
+  whatCouldChange: WhatCouldChangeItem[];
 }
 
 export const CLOSING_NOTE =
@@ -119,6 +121,12 @@ const BULLISH: Scenario = {
     body:
       "A confirmation candle is the market showing you follow-through before you commit. Waiting for one close beyond a level filters out fakeouts — you trade a little later, but with far better odds.",
   },
+  whatCouldChange: [
+    { label: "A break below support", detail: "A close under 1.0840 would break the sequence of higher lows and flip the read." },
+    { label: "Unexpected CPI data", detail: "A hot or cold USD CPI print could overwhelm the technical picture entirely." },
+    { label: "Rejection at resistance", detail: "Repeated failures at 1.0920 without a break would weaken the bullish case." },
+    { label: "Loss of bullish momentum", detail: "Shrinking up-candles and deeper pullbacks would signal buyers losing control." },
+  ],
 };
 
 const BEARISH: Scenario = {
@@ -212,6 +220,12 @@ const BEARISH: Scenario = {
     body:
       "Trends persist because participants pile into the prevailing direction and defend it. Until structure clearly breaks, betting on continuation is usually higher-probability than calling the top or bottom.",
   },
+  whatCouldChange: [
+    { label: "A close above resistance", detail: "A break above 1.2665 would end the lower-high sequence and invalidate the bearish read." },
+    { label: "Unexpected NFP data", detail: "A soft USD jobs print could spark a sharp counter-trend rally against the setup." },
+    { label: "Trendline reclaim", detail: "Price reclaiming the broken support as support again would flip the bias." },
+    { label: "Momentum divergence", detail: "Lower lows on price with rising momentum would warn the downtrend is tiring." },
+  ],
 };
 
 const NEUTRAL: Scenario = {
@@ -287,6 +301,12 @@ const NEUTRAL: Scenario = {
     body:
       "Big releases surprise the market with new information, forcing many traders to reposition at once. That surge of orders widens spreads and creates fast, unpredictable moves — which is why technicals get less reliable around the news.",
   },
+  whatCouldChange: [
+    { label: "A decisive range break", detail: "A daily close beyond 2,395 or 2,330 would end the balance and set direction." },
+    { label: "FOMC surprise", detail: "An unexpected policy tone could break the range violently in either direction." },
+    { label: "Volatility expansion", detail: "A sudden pickup in range size would signal the consolidation is resolving." },
+    { label: "A failed edge test", detail: "A sharp rejection from a range edge would favor a fade back to the middle." },
+  ],
 };
 
 export const SCENARIOS: Scenario[] = [BULLISH, BEARISH, NEUTRAL];

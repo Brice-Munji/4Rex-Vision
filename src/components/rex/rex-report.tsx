@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sparkles, RotateCcw, AlertTriangle, Download } from "lucide-react";
+import { Sparkles, RotateCcw, AlertTriangle, Download, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PairBadge, TimeframeBadge, BiasPill } from "./rex-visuals";
+import { VisionConfidenceCard } from "./vision-confidence";
 import { TrendCard } from "./trend-card";
 import { BiasCard } from "./bias-card";
 import { ConfidenceBreakdown } from "./confidence-breakdown";
@@ -13,6 +14,7 @@ import { WhyRexThinks } from "./why-rex-thinks";
 import { PlainEnglishCard } from "./plain-english-card";
 import { EducationalInsightCard } from "./educational-insight-card";
 import { AnalysisReliabilityCard } from "./analysis-reliability-card";
+import { WhatCouldChange } from "./what-could-change";
 import { ClosingNote } from "./closing-note";
 import type { RexReport as RexReportType } from "@/lib/rex/types";
 
@@ -38,10 +40,19 @@ export function RexReport({
 
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-xs font-medium text-sky-600 dark:text-sky-300">
                 <Sparkles className="h-3.5 w-3.5" />
                 Rex&apos;s Report
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                  report.aiPowered
+                    ? "bg-emerald-500/10 text-emerald-500"
+                    : "bg-amber-500/10 text-amber-500"
+                }`}
+              >
+                {report.aiPowered ? "Live AI" : "Sample"}
               </span>
               <span className="text-xs text-muted-foreground">
                 {report.generatedAtLabel}
@@ -51,6 +62,16 @@ export function RexReport({
               <PairBadge pair={report.pair} />
               <TimeframeBadge timeframe={report.timeframe} />
               <BiasPill bias={report.bias.bias} />
+              {report.chartSource !== "Unknown" && (
+                <span className="rounded-lg border border-border bg-card/40 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  {report.chartSource}
+                </span>
+              )}
+              {report.currentPrice && (
+                <span className="rounded-lg border border-border bg-card/40 px-2 py-0.5 text-xs font-medium">
+                  @ {report.currentPrice}
+                </span>
+              )}
             </div>
             <p className="mt-4 max-w-xl text-lg font-medium text-foreground/90">
               {report.headline}
@@ -71,6 +92,13 @@ export function RexReport({
           </div>
         </div>
 
+        {report.notice && (
+          <div className="mt-5 flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-600 dark:text-amber-400">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>{report.notice}</p>
+          </div>
+        )}
+
         {report.reliability.reduced && (
           <div className="mt-5 flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-600 dark:text-amber-400">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -82,6 +110,9 @@ export function RexReport({
           </div>
         )}
       </motion.div>
+
+      {/* Step 3 — vision confidence */}
+      <VisionConfidenceCard vision={report.visionConfidence} />
 
       {/* Progressive report sections */}
       <TrendCard trend={report.trend} />
@@ -96,6 +127,7 @@ export function RexReport({
       <PlainEnglishCard items={report.plainEnglish} />
       <EducationalInsightCard insight={report.insight} />
       <AnalysisReliabilityCard reliability={report.reliability} />
+      <WhatCouldChange items={report.whatCouldChange} />
       <ClosingNote note={report.closingNote} />
     </div>
   );

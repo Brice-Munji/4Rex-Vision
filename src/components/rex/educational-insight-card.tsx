@@ -13,7 +13,7 @@ export function EducationalInsightCard({
 }) {
   return (
     <RexSection
-      sectionNo={8}
+      sectionNo={9}
       title="Educational Insight"
       subtitle="One practical lesson from today's chart."
       icon={<GraduationCap className="h-5 w-5" />}

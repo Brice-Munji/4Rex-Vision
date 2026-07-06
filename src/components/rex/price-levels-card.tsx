@@ -29,7 +29,7 @@ export function PriceLevelsCard({
 
   return (
     <RexSection
-      sectionNo={5}
+      sectionNo={6}
       title="Key Price Levels"
       subtitle="Where the plan lives — and where it's wrong."
       icon={<Layers className="h-5 w-5" />}
