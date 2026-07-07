@@ -11,8 +11,16 @@ import { RexThinking } from "./rex-thinking";
 import { RexReport } from "./rex-report";
 import { UploadValidationSummary } from "./upload-validation";
 import { UnsupportedChart } from "./unsupported-chart";
+import { ChartReading } from "./chart-reading";
+import { MetadataSummaryCard } from "./metadata-summary-card";
+import { MetadataFailure } from "./metadata-failure";
 import { rex } from "@/lib/rex/mock-pipeline";
-import type { RexReport as RexReportType, UploadMeta, UploadValidation } from "@/lib/rex/types";
+import type {
+  RexReport as RexReportType,
+  UploadMeta,
+  UploadValidation,
+  ChartMetadata,
+} from "@/lib/rex/types";
 import { analyzeChart, type AnalyzeResult } from "@/actions/analyze";
 import type { ChartClassification } from "@/lib/rex/vision";
 import { recordAnalysis, type RecordAnalysisResult } from "@/actions/subscription";
@@ -22,7 +30,15 @@ import type { Plan } from "@prisma/client";
 
 const ACCEPTED = ["PNG", "JPG", "JPEG", "High Resolution"];
 
-type Stage = "idle" | "ready" | "thinking" | "report" | "unsupported";
+type Stage =
+  | "idle"
+  | "ready"
+  | "reading"
+  | "metadata"
+  | "metadata-failure"
+  | "thinking"
+  | "report"
+  | "unsupported";
 
 interface RexAnalyzerProps {
   usage?: { plan: Plan; used: number; limit: number; unlimited: boolean };
@@ -47,6 +63,7 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
   const [meta, setMeta] = React.useState<UploadMeta | null>(null);
   const [validation, setValidation] = React.useState<UploadValidation | null>(null);
   const [report, setReport] = React.useState<RexReportType | null>(null);
+  const [metadata, setMetadata] = React.useState<ChartMetadata | null>(null);
   const [classification, setClassification] = React.useState<ChartClassification | undefined>();
   const [usedState, setUsedState] = React.useState(usage?.used ?? 0);
   const [summaryOpen, setSummaryOpen] = React.useState(false);
@@ -62,6 +79,7 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
     setMeta(null);
     setValidation(null);
     setReport(null);
+    setMetadata(null);
     setClassification(undefined);
     fileRef.current = null;
     resultRef.current = null;
@@ -101,6 +119,8 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
   function startAnalysis() {
     if (!meta || !fileRef.current) return;
     const file = fileRef.current;
+    // The Chart Reader runs first: kick off the pipeline while the reading
+    // sequence animates.
     resultRef.current = (async () => {
       const base64 = await fileToBase64(file);
       return analyzeChart({
@@ -109,10 +129,12 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
         sizeBytes: meta.sizeBytes,
       });
     })();
-    setStage("thinking");
+    setStage("reading");
   }
 
-  async function handleThinkingComplete() {
+  // Chart Reader finished → decide whether to show the metadata card,
+  // the failure screen, or stop for an unsupported/invalid upload.
+  async function handleReadingComplete() {
     let result: AnalyzeResult | null = null;
     try {
       result = (await resultRef.current) ?? null;
@@ -121,7 +143,7 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
     }
 
     if (!result) {
-      toast.error("Rex couldn't complete the analysis. Please try again.");
+      toast.error("Rex couldn't read that chart. Please try again.");
       reset();
       return;
     }
@@ -138,8 +160,26 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
       return;
     }
 
-    // status === "ok"
+    // status === "ok" — store the (already computed) report + metadata.
     setReport(result.report);
+    setMetadata(result.metadata);
+
+    // Never guess: if the live model couldn't identify the instrument, stop
+    // before analysis and show guidance (Step 9).
+    if (result.metadata.aiPowered && !result.metadata.instrument) {
+      setStage("metadata-failure");
+      return;
+    }
+    setStage("metadata");
+  }
+
+  // User confirmed the metadata → run the analysis thinking sequence.
+  function proceedToAnalysis() {
+    setStage("thinking");
+  }
+
+  // Thinking sequence finished → reveal the report and record usage.
+  function finishAnalysis() {
     setStage("report");
     if (trackUsage) {
       recordAnalysis().then((res: RecordAnalysisResult) => {
@@ -282,7 +322,47 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
           </motion.div>
         )}
 
-        {/* THINKING */}
+        {/* READING — Chart Reader extracts metadata first */}
+        {stage === "reading" && (
+          <motion.div
+            key="reading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <ChartReading onComplete={handleReadingComplete} />
+          </motion.div>
+        )}
+
+        {/* METADATA SUMMARY — shown before the analysis thinking animation */}
+        {stage === "metadata" && metadata && (
+          <motion.div
+            key="metadata"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <MetadataSummaryCard
+              metadata={metadata}
+              onContinue={proceedToAnalysis}
+              onReset={reset}
+            />
+          </motion.div>
+        )}
+
+        {/* METADATA FAILURE — instrument not identified (never guess) */}
+        {stage === "metadata-failure" && (
+          <motion.div
+            key="metadata-failure"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <MetadataFailure metadata={metadata ?? undefined} onRetry={reset} />
+          </motion.div>
+        )}
+
+        {/* THINKING — full analysis sequence (after metadata confirmed) */}
         {stage === "thinking" && (
           <motion.div
             key="thinking"
@@ -290,7 +370,7 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <RexThinking onComplete={handleThinkingComplete} />
+            <RexThinking onComplete={finishAnalysis} />
           </motion.div>
         )}
 

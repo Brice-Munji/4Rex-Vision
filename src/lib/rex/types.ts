@@ -22,6 +22,59 @@ export type SuggestedDirection =
 export type ImpactLevel = "High" | "Medium" | "Low";
 export type MarketSession = "Sydney" | "Tokyo" | "London" | "New York";
 
+/* --------------------------- Chart Reader (6.1) -------------------------- */
+
+export type TradingPlatform =
+  | "TradingView"
+  | "MetaTrader 4"
+  | "MetaTrader 5"
+  | "cTrader"
+  | "Unknown Trading Platform";
+
+/** Full set of timeframes the Chart Reader can recognize (superset of Timeframe). */
+export type ReadTimeframe =
+  | "M1"
+  | "M5"
+  | "M15"
+  | "M30"
+  | "H1"
+  | "H4"
+  | "Daily"
+  | "Weekly"
+  | "Monthly";
+
+export type ImageQualityLabel = "Excellent" | "Good" | "Fair" | "Poor";
+
+export interface ImageQuality {
+  score: number; // 0-100
+  label: ImageQualityLabel;
+  issues: string[];
+}
+
+/**
+ * Structured chart metadata extracted before analysis. Consumed by the metadata
+ * summary card and, in future sprints, by the Market Structure / Technical /
+ * Economic / Probability / Report engines.
+ */
+export interface ChartMetadata {
+  platform: TradingPlatform;
+  platformConfidence: number; // 0-100
+  instrument: string | null; // normalized, e.g. "EUR/USD", "XAU/USD"
+  symbol: string | null; // raw ticker, e.g. "EURUSD", "NAS100"
+  instrumentConfidence: number;
+  instrumentSupported: boolean; // forex or gold — analysis allowed
+  timeframe: ReadTimeframe | null;
+  timeframeConfidence: number;
+  currentPrice: string | null;
+  priceConfidence: number;
+  bidAsk: string | null;
+  chartTitle: string | null;
+  imageQuality: ImageQuality;
+  overallConfidence: number; // 0-100
+  aiPowered: boolean; // true when a live vision model read the metadata
+  notes: string[];
+}
+
 /** Concept keys understood by the Plain-English glossary / "Explain This". */
 export type ConceptKey =
   | "Support"

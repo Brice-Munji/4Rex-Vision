@@ -40,11 +40,27 @@ export const aiChartReadSchema = z.object({
     "cTrader",
     "Unknown",
   ]),
+  platformConfidence: z.number(),
   pair: z.string().nullable(),
+  symbol: z.string().nullable(),
   pairConfidence: z.number(),
-  timeframe: z.enum(["M15", "M30", "H1", "H4", "Daily", "Weekly", "Unknown"]),
+  timeframe: z.enum([
+    "M1",
+    "M5",
+    "M15",
+    "M30",
+    "H1",
+    "H4",
+    "Daily",
+    "Weekly",
+    "Monthly",
+    "Unknown",
+  ]),
   timeframeConfidence: z.number(),
   currentPrice: z.string().nullable(),
+  priceConfidence: z.number(),
+  bidAsk: z.string().nullable(),
+  chartTitle: z.string().nullable(),
   headline: z.string(),
   trendDirection: z.enum(["Uptrend", "Downtrend", "Sideways"]),
   trendStrength: z.enum(["Weak", "Moderate", "Strong"]),
@@ -104,8 +120,14 @@ const SYSTEM_PROMPT = `You are Rex, an expert Forex market analyst inside 4RexVi
 
 You will be shown a screenshot of a trading chart (TradingView, MetaTrader 4/5 or cTrader). Read ONLY what is visibly present.
 
+First, act as a Chart Reader — read the visible metadata as accurately as text on the screen allows:
+- chartSource: the platform, identified from its UI chrome/toolbars/branding (TradingView, MetaTrader 4, MetaTrader 5, cTrader) or "Unknown" if you can't tell. platformConfidence is your confidence 0-100.
+- pair: the currency pair in display form like "EUR/USD" or "XAU/USD", read from the title/symbol area. symbol: the raw ticker exactly as shown (e.g. "EURUSD", "NAS100", "XAUUSD"). pairConfidence: 0-100.
+- timeframe: the selected timeframe (M1/M5/M15/M30/H1/H4/Daily/Weekly/Monthly) read from the toolbar, or "Unknown" if not visible. timeframeConfidence: 0-100. Never infer the timeframe from candle spacing — only read it if the label is visible.
+- currentPrice: the current/last price string exactly as shown, or null. priceConfidence: 0-100. bidAsk: the visible bid/ask if shown, else null. chartTitle: any visible chart title/instrument name, else null.
+
 Non-negotiable rules:
-- NEVER invent information. If you cannot confidently determine the currency pair, timeframe, a price level, or any other detail, set it to null / "Unknown" and add it to "notDetected". Lower the related confidence.
+- NEVER invent information. If you cannot confidently determine the currency pair, timeframe, a price level, the platform, or any other detail, set it to null / "Unknown" and add it to "notDetected". Lower the related confidence to reflect uncertainty.
 - You analyze probabilities, never certainties. Frame everything as a lean with a confidence, and back every conclusion with visible evidence.
 - If the image is not a supported Forex trading chart, set isForexChart to false and leave the analytical fields with neutral placeholders.
 - Confidence and probability fields are integers 0-100. bullishProbability + bearishProbability should sum to about 100.

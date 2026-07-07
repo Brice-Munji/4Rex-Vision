@@ -6,10 +6,71 @@ import type {
   ReliabilityCheck,
   VisionConfidence,
   ChartSource,
+  ImageQuality,
+  ImageQualityLabel,
 } from "./types";
 
 function clamp(n: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, Math.round(n)));
+}
+
+/* ----------------- STEP 6: real image quality inspection ----------------- */
+
+/**
+ * Evaluate genuine image quality from measured pixel statistics — resolution,
+ * blur, brightness, contrast and cropping. No AI required; entirely real.
+ */
+export function computeImageQuality(metrics: ImageMetrics): ImageQuality {
+  const issues: string[] = [];
+
+  // Resolution (≈1.6MP = full marks).
+  const resolutionScore = clamp((metrics.megapixels / 1.6) * 100);
+  if (metrics.megapixels < 0.4)
+    issues.push("Low resolution — small text and price labels may be hard to read.");
+
+  // Blur / sharpness.
+  const sharpnessScore = clamp(metrics.sharpness * 125);
+  if (metrics.sharpness < 0.28)
+    issues.push("Image looks soft or blurry, which can hide candle detail.");
+
+  // Brightness (too dark or blown out).
+  let brightnessScore = 100;
+  if (metrics.brightness < 0.06) {
+    brightnessScore = 45;
+    issues.push("Image is very dark — some labels may be unreadable.");
+  } else if (metrics.brightness > 0.97) {
+    brightnessScore = 55;
+    issues.push("Image is overexposed — faint gridlines may be lost.");
+  }
+
+  // Contrast.
+  const contrastScore = clamp(metrics.contrast * 170);
+  if (metrics.contrast < 0.08)
+    issues.push("Low contrast — candles and background are hard to separate.");
+
+  // Cropping (unusual aspect ratio suggests a partial screenshot).
+  const idealAspect = metrics.aspectRatio >= 1.2 && metrics.aspectRatio <= 2.6;
+  const cropScore = idealAspect
+    ? 96
+    : clamp(70 - Math.abs(1.7 - metrics.aspectRatio) * 26);
+  if (!idealAspect)
+    issues.push("Unusual crop — part of the chart or its labels may be cut off.");
+
+  const score = clamp(
+    resolutionScore * 0.25 +
+      sharpnessScore * 0.3 +
+      brightnessScore * 0.15 +
+      contrastScore * 0.15 +
+      cropScore * 0.15
+  );
+
+  let label: ImageQualityLabel;
+  if (score >= 85) label = "Excellent";
+  else if (score >= 70) label = "Good";
+  else if (score >= 50) label = "Fair";
+  else label = "Poor";
+
+  return { score, label, issues };
 }
 
 /* ------------------------------ STEP 1: validate ------------------------- */

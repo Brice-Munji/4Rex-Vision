@@ -221,3 +221,30 @@ src/
 5. Pricing — Free / Professional (Most Popular) / Enterprise
 6. FAQ — 10 professional questions
 7. Footer — Company, Resources, Legal, social links, newsletter
+
+### Rex Chart Reader (Sprint 6.1)
+
+Before any technical analysis, Rex runs a dedicated **Chart Reader** that extracts
+and confirms the chart's metadata — so users see that Rex truly understood their
+chart first.
+
+- **Platform detection** — TradingView / MetaTrader 4 / MetaTrader 5 / cTrader, or
+  "Unknown Trading Platform".
+- **OCR & metadata extraction** — currency pair, raw symbol, timeframe, current
+  price, bid/ask, chart title (via the live vision model). Nothing is guessed: an
+  unreadable field shows "Unable to determine from the uploaded image."
+- **Instrument validation** (`src/lib/rex/instruments.ts`) — Forex pairs and Gold
+  supported; silver, indices and unknown tickers clearly flagged.
+- **Timeframe detection** — M1–Monthly when visible; "Timeframe not visible."
+  otherwise (never inferred).
+- **Real image-quality inspection** (`computeImageQuality`, `sharp`) — resolution,
+  blur, brightness, contrast, cropping → Excellent / Good / Fair / Poor with
+  specific issue notes. Works for real even without a model.
+- **Metadata summary card** shown *before* the thinking animation, with per-field
+  recognition confidence and an overall metadata-confidence score. If the
+  instrument can't be identified, analysis is blocked with an "Upload Another
+  Chart" guidance screen (Step 9).
+- **Reusable `ChartMetadata`** object returned from `analyzeChart`, ready for the
+  Market Structure / Technical / Economic / Probability / Report engines.
+- UX: OCR-style reading sequence with skeleton loaders, animated metadata cards,
+  platform/pair/timeframe/quality icons, honest success/error states.

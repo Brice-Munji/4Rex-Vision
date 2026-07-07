@@ -6,10 +6,12 @@ import {
   validateImage,
   classifyChart,
   computeVisionConfidence,
+  computeImageQuality,
   type ChartClassification,
 } from "@/lib/rex/vision";
 import { readChartWithAI, isAiConfigured } from "@/lib/rex/anthropic-engine";
 import { getEconomicContext } from "@/lib/rex/economic";
+import { normalizeInstrument, unsupportedReason } from "@/lib/rex/instruments";
 import { rex } from "@/lib/rex/mock-pipeline";
 import { CLOSING_NOTE } from "@/lib/rex/scenarios";
 import type {
@@ -20,7 +22,11 @@ import type {
   Timeframe,
   PriceLevelType,
   ConceptKey,
+  ChartMetadata,
+  TradingPlatform,
+  ReadTimeframe,
 } from "@/lib/rex/types";
+import type { ImageMetrics } from "@/lib/rex/image-analysis";
 import type { AiChartRead } from "@/lib/rex/anthropic-engine";
 
 export type AnalyzeInput = {
@@ -36,7 +42,7 @@ export type AnalyzeResult =
       classification: ChartClassification;
       visionConfidence: VisionConfidence;
     }
-  | { status: "ok"; report: RexReport };
+  | { status: "ok"; report: RexReport; metadata: ChartMetadata };
 
 const POSITION_BY_TYPE: Record<PriceLevelType, number> = {
   "Take Profit": 90,
@@ -54,6 +60,85 @@ function mediaTypeFor(format: string): "image/png" | "image/jpeg" | "image/webp"
   if (format === "jpeg" || format === "jpg") return "image/jpeg";
   if (format === "webp") return "image/webp";
   return "image/png";
+}
+
+function mapPlatform(source: AiChartRead["chartSource"]): TradingPlatform {
+  return source === "Unknown" ? "Unknown Trading Platform" : source;
+}
+
+/** Build the structured Chart Reader metadata (Steps 1-8). */
+function buildMetadata(
+  ai: AiChartRead | null,
+  metrics: ImageMetrics
+): ChartMetadata {
+  const imageQuality = computeImageQuality(metrics);
+
+  if (!ai) {
+    // No live vision model — image quality is real, text can't be read. Be honest.
+    return {
+      platform: "Unknown Trading Platform",
+      platformConfidence: 0,
+      instrument: null,
+      symbol: null,
+      instrumentConfidence: 0,
+      instrumentSupported: false,
+      timeframe: null,
+      timeframeConfidence: 0,
+      currentPrice: null,
+      priceConfidence: 0,
+      bidAsk: null,
+      chartTitle: null,
+      imageQuality,
+      overallConfidence: 0,
+      aiPowered: false,
+      notes: [
+        "Rex's live vision model isn't connected in this environment, so on-chart text (platform, pair, timeframe, price) can't be read. Image quality below is measured for real.",
+      ],
+    };
+  }
+
+  const normalized = normalizeInstrument(ai.symbol ?? ai.pair);
+  const instrument = normalized?.instrument ?? ai.pair ?? null;
+  const symbol = normalized?.symbol ?? ai.symbol ?? null;
+  const instrumentSupported = normalized?.supported ?? false;
+  const timeframe: ReadTimeframe | null =
+    ai.timeframe === "Unknown" ? null : (ai.timeframe as ReadTimeframe);
+
+  const notes: string[] = [];
+  if (!instrument) notes.push("Currency pair: Unable to determine from the uploaded image.");
+  if (!timeframe) notes.push("Timeframe not visible.");
+  if (!ai.currentPrice) notes.push("Current price: Unable to determine from the uploaded image.");
+  if (instrument && normalized && !instrumentSupported)
+    notes.push(unsupportedReason(normalized));
+
+  // Overall metadata confidence = average across the fields Rex actually detected.
+  const detected: number[] = [];
+  if (ai.chartSource !== "Unknown") detected.push(clamp(ai.platformConfidence));
+  if (instrument) detected.push(clamp(ai.pairConfidence));
+  if (timeframe) detected.push(clamp(ai.timeframeConfidence));
+  if (ai.currentPrice) detected.push(clamp(ai.priceConfidence));
+  const overallConfidence = detected.length
+    ? clamp(detected.reduce((s, n) => s + n, 0) / detected.length)
+    : 0;
+
+  return {
+    platform: mapPlatform(ai.chartSource),
+    platformConfidence: clamp(ai.platformConfidence),
+    instrument,
+    symbol,
+    instrumentConfidence: instrument ? clamp(ai.pairConfidence) : 0,
+    instrumentSupported,
+    timeframe,
+    timeframeConfidence: timeframe ? clamp(ai.timeframeConfidence) : 0,
+    currentPrice: ai.currentPrice,
+    priceConfidence: ai.currentPrice ? clamp(ai.priceConfidence) : 0,
+    bidAsk: ai.bidAsk,
+    chartTitle: ai.chartTitle,
+    imageQuality,
+    overallConfidence,
+    aiPowered: true,
+    notes,
+  };
 }
 
 function buildReliability(
@@ -236,6 +321,7 @@ export async function analyzeChart(
     return {
       status: "ok",
       report: buildReportFromAI(ai, validation, visionConfidence, economic),
+      metadata: buildMetadata(ai, metrics),
     };
   }
 
@@ -254,5 +340,5 @@ export async function analyzeChart(
   report.notice = isAiConfigured()
     ? "Rex's live vision model was unavailable for this upload, so this is a representative sample analysis — not a reading of your specific chart. Please try again."
     : "Rex's live vision model isn't connected in this environment, so this is a representative sample analysis — not a reading of your specific chart. Set ANTHROPIC_API_KEY to enable live analysis of your uploads.";
-  return { status: "ok", report };
+  return { status: "ok", report, metadata: buildMetadata(null, metrics) };
 }
