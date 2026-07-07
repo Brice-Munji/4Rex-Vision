@@ -7,6 +7,8 @@ import {
   Clock,
   DollarSign,
   Tag,
+  LineChart,
+  Layers,
   ImageIcon,
   ArrowRight,
   RotateCcw,
@@ -60,10 +62,12 @@ export function MetadataSummaryCard({
 }) {
   const {
     platform,
+    marketType,
     instrument,
     timeframe,
     currentPrice,
     imageQuality,
+    visibleIndicators,
     aiPowered,
     instrumentSupported,
     notes,
@@ -92,6 +96,14 @@ export function MetadataSummaryCard({
       label: "Instrument",
       value: instrument,
       accent: "bg-sky-500/10 text-sky-500",
+    });
+  }
+  if (marketType) {
+    fields.push({
+      icon: <LineChart className="h-3.5 w-3.5" />,
+      label: "Market",
+      value: marketType,
+      accent: "bg-violet-500/10 text-violet-400",
     });
   }
   fields.push({
@@ -174,6 +186,28 @@ export function MetadataSummaryCard({
           <Field key={f.label} index={i} icon={f.icon} label={f.label} value={f.value} accent={f.accent} />
         ))}
       </div>
+
+      {/* visible indicators */}
+      {visibleIndicators.length > 0 && (
+        <div className="mt-4 flex items-start gap-2 rounded-2xl border border-border/60 bg-card/40 p-4">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-fuchsia-500/10 text-fuchsia-400">
+            <Layers className="h-3.5 w-3.5" />
+          </span>
+          <div>
+            <p className="text-xs text-muted-foreground">Visible Indicators</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {visibleIndicators.map((ind) => (
+                <span
+                  key={ind}
+                  className="rounded-full border border-border/60 bg-secondary/60 px-2.5 py-0.5 text-xs font-medium"
+                >
+                  {ind}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* recognition confidence */}
       <div className="mt-5 rounded-2xl border border-border/60 bg-card/40 p-5">

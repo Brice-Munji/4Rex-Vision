@@ -59,10 +59,12 @@ export interface ImageQuality {
 export interface ChartMetadata {
   platform: TradingPlatform;
   platformConfidence: number; // 0-100
+  marketType: string | null; // "Forex" | "Crypto" | "Commodities" | ...
   instrument: string | null; // normalized, e.g. "EUR/USD", "XAU/USD"
   symbol: string | null; // raw ticker, e.g. "EURUSD", "NAS100"
   instrumentConfidence: number;
   instrumentSupported: boolean; // forex or gold — analysis allowed
+  visibleIndicators: string[]; // e.g. ["EMA 200", "RSI"]
   timeframe: ReadTimeframe | null;
   timeframeConfidence: number;
   currentPrice: string | null;

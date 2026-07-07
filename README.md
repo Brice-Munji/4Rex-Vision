@@ -115,14 +115,27 @@ The pipeline now performs **real analysis** on uploaded screenshots, not a mock:
 - **Vision confidence** (Step 3): image-recognition, chart-classification,
   pair-detection and timeframe-detection scores derived from the measurements
   (pair/timeframe confidence comes from the live model).
-- **Live model** (`src/lib/rex/anthropic-engine.ts`): when `ANTHROPIC_API_KEY`
-  is set, Rex reads the chart with **Claude Opus 4.8** vision and returns a
-  structured, evidence-backed report. The model is instructed to **never invent**
-  anything it cannot confidently see. Server-side only — the key is never
-  exposed to the client.
-- **Transparent fallback**: with no key configured, the real validation /
-  classification / vision-confidence still run, and the market read is shown as a
-  clearly-labeled *sample* (not a reading of the user's chart).
+- **Real multimodal Vision** (`src/lib/rex/vision-providers/`): a provider-
+  agnostic layer that sends the screenshot to a real Vision model and returns a
+  single structured `VisionChartRead` (metadata **and** analysis). Providers are
+  tried in priority order — **OpenAI GPT-4o/4.1** → **Google Gemini 2.5 Flash**
+  → **Anthropic Claude** — via the first one whose key is present, falling
+  through to the next on failure. Every call is routed through the backend
+  (`src/app/api/vision/analyze` + the `analyzeChart` server action); **API keys
+  live in server env vars only and are never exposed to the client**.
+- **Structured recognition**: the model reports `isTradingChart`, `platform`
+  (TradingView / MT4 / MT5 / cTrader), `marketType`, `instrument`, `timeframe`,
+  `currentPrice`, `imageQuality`, `confidence`, `visibleIndicators` and
+  support/resistance levels. It is instructed to **never invent** — any field it
+  can't read confidently comes back `null` instead of failing the whole read, so
+  a chart is never rejected because one field was missing.
+- **Graceful outcomes**: if `isTradingChart` is `false`, the existing
+  unsupported-image screen is shown; if a provider is configured but the request
+  fails, the UI shows *“Vision service temporarily unavailable.”* — it never
+  falsely reports that a valid chart isn't a chart.
+- **Transparent fallback**: with **no** provider key configured, the real
+  validation / classification / vision-confidence still run, and the market read
+  is shown as a clearly-labeled *sample* (not a reading of the user's chart).
 - **Modular engines**: Vision, Market Structure, Economic Intelligence
   (`src/lib/rex/economic.ts`, provider-agnostic — ready for Forex Factory /
   TradingEconomics), Probability, Plain-English Translator and Report Generator
@@ -130,8 +143,10 @@ The pipeline now performs **real analysis** on uploaded screenshots, not a mock:
 - New report sections: **Vision Confidence** and **What Could Change My Mind?**,
   plus a live-AI-vs-sample badge and chart-source label.
 
-Set `ANTHROPIC_API_KEY` in `.env` to switch from transparent fallback mode to
-live AI analysis. Chart screenshots are sent to the server action as base64
+Set at least one of `OPENAI_API_KEY`, `GEMINI_API_KEY` or `ANTHROPIC_API_KEY` in
+`.env` to switch from transparent fallback mode to live Vision analysis (model
+overrides: `OPENAI_VISION_MODEL`, `GEMINI_VISION_MODEL`, `REX_VISION_MODEL`).
+Chart screenshots are sent to the server as base64
 (`serverActions.bodySizeLimit` is raised in `next.config.mjs`).
 
 ## Tech Stack

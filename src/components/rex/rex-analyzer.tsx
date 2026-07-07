@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, X, Sparkles, ImageIcon, FileCheck2 } from "lucide-react";
+import { UploadCloud, X, Sparkles, ImageIcon, FileCheck2, CloudOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,8 @@ type Stage =
   | "metadata-failure"
   | "thinking"
   | "report"
-  | "unsupported";
+  | "unsupported"
+  | "unavailable";
 
 interface RexAnalyzerProps {
   usage?: { plan: Plan; used: number; limit: number; unlimited: boolean };
@@ -157,6 +158,13 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
     if (result.status === "unsupported") {
       setClassification(result.classification);
       setStage("unsupported");
+      return;
+    }
+
+    // Vision providers configured but the request failed. Show a soft error —
+    // never claim the upload isn't a chart.
+    if (result.status === "unavailable") {
+      setStage("unavailable");
       return;
     }
 
@@ -383,6 +391,38 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
             exit={{ opacity: 0 }}
           >
             <UnsupportedChart classification={classification} onRetry={reset} />
+          </motion.div>
+        )}
+
+        {/* UNAVAILABLE — vision provider configured but request failed */}
+        {stage === "unavailable" && (
+          <motion.div
+            key="unavailable"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="rounded-3xl glass p-6 text-center sm:p-8"
+          >
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
+              <CloudOff className="h-8 w-8" />
+            </div>
+            <h2 className="mt-5 text-xl font-bold tracking-tight">
+              Vision service temporarily unavailable.
+            </h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+              Rex couldn&apos;t reach the vision model just now. Your chart looks
+              fine — this is a temporary service issue. Please try again in a
+              moment.
+            </p>
+            <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
+              <Button size="lg" onClick={startAnalysis}>
+                <Sparkles className="h-4 w-4" />
+                Try again
+              </Button>
+              <Button size="lg" variant="secondary" onClick={reset}>
+                Upload a different chart
+              </Button>
+            </div>
           </motion.div>
         )}
 

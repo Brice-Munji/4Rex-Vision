@@ -9,7 +9,11 @@ import {
   computeImageQuality,
   type ChartClassification,
 } from "@/lib/rex/vision";
-import { readChartWithAI, isAiConfigured } from "@/lib/rex/anthropic-engine";
+import {
+  analyzeChartImage,
+  isVisionConfigured,
+  type VisionChartRead,
+} from "@/lib/rex/vision-providers";
 import { getEconomicContext } from "@/lib/rex/economic";
 import { normalizeInstrument, unsupportedReason } from "@/lib/rex/instruments";
 import { rex } from "@/lib/rex/mock-pipeline";
@@ -27,7 +31,6 @@ import type {
   ReadTimeframe,
 } from "@/lib/rex/types";
 import type { ImageMetrics } from "@/lib/rex/image-analysis";
-import type { AiChartRead } from "@/lib/rex/anthropic-engine";
 
 export type AnalyzeInput = {
   base64: string; // raw base64 (no data: prefix)
@@ -42,6 +45,8 @@ export type AnalyzeResult =
       classification: ChartClassification;
       visionConfidence: VisionConfidence;
     }
+  /** Vision providers are configured but the request failed — show a soft error. */
+  | { status: "unavailable"; message: string }
   | { status: "ok"; report: RexReport; metadata: ChartMetadata };
 
 const POSITION_BY_TYPE: Record<PriceLevelType, number> = {
@@ -62,26 +67,34 @@ function mediaTypeFor(format: string): "image/png" | "image/jpeg" | "image/webp"
   return "image/png";
 }
 
-function mapPlatform(source: AiChartRead["chartSource"]): TradingPlatform {
-  return source === "Unknown" ? "Unknown Trading Platform" : source;
+/** Map the vision model's platform enum to the UI's TradingPlatform enum. */
+function mapPlatform(platform: VisionChartRead["platform"]): TradingPlatform {
+  return platform === "Unknown" ? "Unknown Trading Platform" : platform;
 }
 
-/** Build the structured Chart Reader metadata (Steps 1-8). */
+/**
+ * Build the structured Chart Reader metadata from the real multimodal vision
+ * read. Missing fields stay `null`/empty — a chart is never rejected because one
+ * field couldn't be detected.
+ */
 function buildMetadata(
-  ai: AiChartRead | null,
+  ai: VisionChartRead | null,
   metrics: ImageMetrics
 ): ChartMetadata {
   const imageQuality = computeImageQuality(metrics);
 
   if (!ai) {
-    // No live vision model — image quality is real, text can't be read. Be honest.
+    // No live vision provider — image quality is real, on-chart text can't be
+    // read. Be honest rather than guess.
     return {
       platform: "Unknown Trading Platform",
       platformConfidence: 0,
+      marketType: null,
       instrument: null,
       symbol: null,
       instrumentConfidence: 0,
       instrumentSupported: false,
+      visibleIndicators: [],
       timeframe: null,
       timeframeConfidence: 0,
       currentPrice: null,
@@ -97,8 +110,8 @@ function buildMetadata(
     };
   }
 
-  const normalized = normalizeInstrument(ai.symbol ?? ai.pair);
-  const instrument = normalized?.instrument ?? ai.pair ?? null;
+  const normalized = normalizeInstrument(ai.symbol ?? ai.instrument);
+  const instrument = normalized?.instrument ?? ai.instrument ?? null;
   const symbol = normalized?.symbol ?? ai.symbol ?? null;
   const instrumentSupported = normalized?.supported ?? false;
   const timeframe: ReadTimeframe | null =
@@ -113,8 +126,8 @@ function buildMetadata(
 
   // Overall metadata confidence = average across the fields Rex actually detected.
   const detected: number[] = [];
-  if (ai.chartSource !== "Unknown") detected.push(clamp(ai.platformConfidence));
-  if (instrument) detected.push(clamp(ai.pairConfidence));
+  if (ai.platform !== "Unknown") detected.push(clamp(ai.platformConfidence));
+  if (instrument) detected.push(clamp(ai.instrumentConfidence));
   if (timeframe) detected.push(clamp(ai.timeframeConfidence));
   if (ai.currentPrice) detected.push(clamp(ai.priceConfidence));
   const overallConfidence = detected.length
@@ -122,12 +135,14 @@ function buildMetadata(
     : 0;
 
   return {
-    platform: mapPlatform(ai.chartSource),
-    platformConfidence: clamp(ai.platformConfidence),
+    platform: mapPlatform(ai.platform),
+    platformConfidence: ai.platform === "Unknown" ? 0 : clamp(ai.platformConfidence),
+    marketType: ai.marketType,
     instrument,
     symbol,
-    instrumentConfidence: instrument ? clamp(ai.pairConfidence) : 0,
+    instrumentConfidence: instrument ? clamp(ai.instrumentConfidence) : 0,
     instrumentSupported,
+    visibleIndicators: ai.visibleIndicators,
     timeframe,
     timeframeConfidence: timeframe ? clamp(ai.timeframeConfidence) : 0,
     currentPrice: ai.currentPrice,
@@ -172,8 +187,9 @@ function slug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 }
 
+/** Build the full Rex report from the multimodal vision analysis payload. */
 function buildReportFromAI(
-  ai: AiChartRead,
+  ai: VisionChartRead,
   validation: UploadValidation,
   visionConfidence: VisionConfidence,
   economic: RexReport["economic"]
@@ -183,21 +199,22 @@ function buildReportFromAI(
       ? ai.confidence.reduce((s, c) => s + c.score, 0) / ai.confidence.length
       : ai.biasConfidence
   );
+  const timeframe: Timeframe = (ai.timeframe === "Unknown" ? "H1" : ai.timeframe) as Timeframe;
 
   return {
-    id: `rex_${slug(ai.pair ?? "chart")}_${Date.now().toString(36)}`,
-    pair: ai.pair ?? "Unknown pair",
-    timeframe: (ai.timeframe === "Unknown" ? "H1" : ai.timeframe) as Timeframe,
+    id: `rex_${slug(ai.instrument ?? "chart")}_${Date.now().toString(36)}`,
+    pair: ai.instrument ?? "Unknown pair",
+    timeframe,
     generatedAtLabel: "Just now",
     headline: ai.headline,
     aiPowered: true,
-    chartSource: ai.chartSource,
+    chartSource: ai.platform,
     currentPrice: ai.currentPrice,
     visionConfidence,
     trend: {
       direction: ai.trendDirection,
       strength: ai.trendStrength,
-      timeframe: (ai.timeframe === "Unknown" ? "H1" : ai.timeframe) as Timeframe,
+      timeframe,
       summary: ai.trendSummary,
     },
     bias: {
@@ -283,7 +300,7 @@ export async function analyzeChart(
     };
   }
 
-  // STEP 2 — chart classification (reject non-charts gracefully)
+  // STEP 2 — cheap local classification (reject obvious non-charts / photos)
   const classification = classifyChart(metrics);
   if (!classification.isChart) {
     return {
@@ -293,19 +310,30 @@ export async function analyzeChart(
     };
   }
 
-  // STEPS 3-11 — live model if configured, otherwise transparent fallback
+  // STEPS 3-11 — real multimodal Vision (OpenAI → Gemini → Anthropic), with a
+  // transparent sample fallback when no provider is configured.
   const mediaType = mediaTypeFor(metrics.format);
-  const ai = isAiConfigured()
-    ? await readChartWithAI(input.base64, mediaType)
-    : null;
+  const vision = await analyzeChartImage(input.base64, mediaType);
 
-  if (ai && !ai.isForexChart) {
+  // Providers are configured but the request failed. Per spec: show a soft
+  // "temporarily unavailable" message — never claim the upload isn't a chart.
+  if (vision.status === "unavailable") {
+    return {
+      status: "unavailable",
+      message: "Vision service temporarily unavailable.",
+    };
+  }
+
+  const ai = vision.status === "ok" ? vision.data : null;
+
+  // The vision model is authoritative on whether this is a trading chart.
+  if (ai && !ai.isTradingChart) {
     return {
       status: "unsupported",
       classification: {
         ...classification,
         isChart: false,
-        reasons: ["The live vision model did not recognize a supported Forex chart."],
+        reasons: ["The live vision model did not recognize a supported trading chart."],
       },
       visionConfidence: computeVisionConfidence(metrics, classification),
     };
@@ -313,11 +341,11 @@ export async function analyzeChart(
 
   if (ai) {
     const visionConfidence = computeVisionConfidence(metrics, classification, {
-      pairConfidence: clamp(ai.pairConfidence),
+      pairConfidence: clamp(ai.instrumentConfidence),
       timeframeConfidence: clamp(ai.timeframeConfidence),
-      source: ai.chartSource,
+      source: ai.platform,
     });
-    const economic = await getEconomicContext(ai.pair);
+    const economic = await getEconomicContext(ai.instrument);
     return {
       status: "ok",
       report: buildReportFromAI(ai, validation, visionConfidence, economic),
@@ -325,7 +353,7 @@ export async function analyzeChart(
     };
   }
 
-  // Fallback: transparent sample analysis (no live model configured).
+  // Fallback: transparent sample analysis (no vision provider configured).
   const meta = {
     fileName: input.fileName,
     width: metrics.width,
@@ -337,8 +365,8 @@ export async function analyzeChart(
   report.chartSource = classification.source;
   report.visionConfidence = computeVisionConfidence(metrics, classification);
   report.reliability = buildReliability(validation, report.trend.strength);
-  report.notice = isAiConfigured()
+  report.notice = isVisionConfigured()
     ? "Rex's live vision model was unavailable for this upload, so this is a representative sample analysis — not a reading of your specific chart. Please try again."
-    : "Rex's live vision model isn't connected in this environment, so this is a representative sample analysis — not a reading of your specific chart. Set ANTHROPIC_API_KEY to enable live analysis of your uploads.";
+    : "Rex's live vision model isn't connected in this environment, so this is a representative sample analysis — not a reading of your specific chart. Set OPENAI_API_KEY (or GEMINI_API_KEY / ANTHROPIC_API_KEY) to enable live analysis of your uploads.";
   return { status: "ok", report, metadata: buildMetadata(null, metrics) };
 }
