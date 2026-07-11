@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/current-user";
 import { DashboardShell } from "@/components/dashboard/shell/dashboard-shell";
+import { CheckoutProvider } from "@/components/billing/checkout-provider";
 
 export default async function AppLayout({
   children,
@@ -22,7 +23,7 @@ export default async function AppLayout({
       }}
       showVerifyBanner={!user.emailVerified}
     >
-      {children}
+      <CheckoutProvider>{children}</CheckoutProvider>
     </DashboardShell>
   );
 }

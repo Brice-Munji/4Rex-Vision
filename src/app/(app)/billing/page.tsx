@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
 import { CreditCard } from "lucide-react";
 import { getCurrentUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
@@ -13,7 +12,6 @@ import {
   type TransactionRow,
 } from "@/components/billing/subscription-history";
 import { BillingActivity } from "@/components/billing/billing-activity";
-import { CheckoutReturn } from "@/components/billing/checkout-return";
 import type { PaymentMethodId } from "@/lib/payments/types";
 
 export const metadata: Metadata = {
@@ -83,11 +81,6 @@ export default async function BillingPage() {
         <SubscriptionHistory items={history} />
         <BillingActivity />
       </div>
-
-      {/* Resumes checkout when a provider redirects back with ?ref= */}
-      <Suspense fallback={null}>
-        <CheckoutReturn />
-      </Suspense>
     </div>
   );
 }

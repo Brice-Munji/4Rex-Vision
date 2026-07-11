@@ -4,11 +4,11 @@ import * as React from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { RexProCheckout } from "./rex-pro-checkout";
+import { useCheckout } from "./checkout-provider";
 
 /**
- * Primary "Unlock Rex Pro" call-to-action. Owns the checkout modal so it can be
- * dropped anywhere (billing page, dashboard, usage limit prompts).
+ * Primary "Unlock Rex Pro" call-to-action. Opens the app-wide checkout overlay
+ * (owned by CheckoutProvider) so progress survives navigation + minimize.
  */
 export function UnlockRexProButton({
   label = "Unlock Rex Pro",
@@ -23,19 +23,16 @@ export function UnlockRexProButton({
   size?: React.ComponentProps<typeof Button>["size"];
   fullWidth?: boolean;
 }) {
-  const [open, setOpen] = React.useState(false);
+  const { open } = useCheckout();
   return (
-    <>
-      <Button
-        variant={variant}
-        size={size}
-        className={cn(fullWidth && "w-full", className)}
-        onClick={() => setOpen(true)}
-      >
-        <Sparkles className="h-4 w-4" />
-        {label}
-      </Button>
-      <RexProCheckout open={open} onOpenChange={setOpen} />
-    </>
+    <Button
+      variant={variant}
+      size={size}
+      className={cn(fullWidth && "w-full", className)}
+      onClick={open}
+    >
+      <Sparkles className="h-4 w-4" />
+      {label}
+    </Button>
   );
 }
