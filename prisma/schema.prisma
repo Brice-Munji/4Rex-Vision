@@ -29,6 +29,12 @@ enum BillingCycle {
   YEARLY
 }
 
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
 enum ExperienceLevel {
   BEGINNER
   INTERMEDIATE
@@ -61,12 +67,17 @@ model User {
   plan               Plan               @default(FREE)
   subscriptionStatus SubscriptionStatus @default(INACTIVE)
 
-  // Subscription billing (prepared for Stripe — no live payments yet)
+  // Subscription billing
   billingCycle         BillingCycle?
-  currentPeriodEnd     DateTime?
+  subscriptionStart    DateTime?
+  currentPeriodEnd     DateTime? // subscription_end
   cancelAtPeriodEnd    Boolean       @default(false)
   stripeCustomerId     String?       @unique
   stripeSubscriptionId String?
+
+  // Active payment record (provider-agnostic — MTN/Orange/Flutterwave/Card/…)
+  paymentProvider      String?
+  transactionReference String?
 
   // Free plan usage logic (prepared, not consumed by AI yet)
   dailyAnalysisCount Int      @default(0)
@@ -86,6 +97,33 @@ model User {
   sessions            Session[]
   verificationTokens  VerificationToken[]
   passwordResetTokens PasswordResetToken[]
+  transactions        Transaction[]
+}
+
+/// Provider-agnostic payment record. One row per checkout attempt; the
+/// subscription is only activated after a row reaches SUCCESS (verified
+/// server-side). Powers the subscription history + audit trail.
+model Transaction {
+  id                String        @id @default(cuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  provider          String        // "flutterwave" | "demo" | future providers
+  method            String        // "mtn_momo" | "orange_money" | "flutterwave" | "card"
+  reference         String        @unique // our idempotent tx_ref
+  providerReference String?       // id returned by the provider
+  status            PaymentStatus @default(PENDING)
+
+  plan              Plan
+  amount            Int           // minor units (e.g. cents)
+  currency          String        @default("USD")
+  description       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
 }
 
 model Account {

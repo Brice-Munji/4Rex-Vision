@@ -12,6 +12,7 @@ import {
   Loader2,
   ArrowDownCircle,
   ShieldCheck,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -26,12 +27,10 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
-import { PricingPlans } from "./pricing-plans";
-import { VisionProActivation } from "./vision-pro-activation";
-import { PLAN_BY_ID, type PlanConfig } from "@/lib/plans";
-import type { Cycle } from "./billing-cycle-toggle";
+import { UnlockRexProButton } from "./unlock-rex-pro";
+import { REX_PRO, PAYMENT_METHOD_LABELS } from "@/lib/payments/catalog";
+import { PLAN_BY_ID } from "@/lib/plans";
 import {
-  upgradePlan,
   downgradeToExplorer,
   cancelSubscription,
   reactivateSubscription,
@@ -43,8 +42,10 @@ interface BillingManagerProps {
   plan: Plan;
   subscriptionStatus: SubscriptionStatus;
   billingCycle: BillingCycle | null;
+  subscriptionStart: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  paymentMethod: string | null;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -55,59 +56,43 @@ const STATUS_STYLES: Record<string, string> = {
   INACTIVE: "bg-secondary text-muted-foreground",
 };
 
+function fmtDate(iso: string | null): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export function BillingManager({
   plan,
   subscriptionStatus,
   billingCycle,
+  subscriptionStart,
   currentPeriodEnd,
   cancelAtPeriodEnd,
+  paymentMethod,
 }: BillingManagerProps) {
   const router = useRouter();
   const { update } = useSession();
   const [pending, startTransition] = React.useTransition();
-  const [pendingPlanId, setPendingPlanId] = React.useState<Plan | null>(null);
-  const [showActivation, setShowActivation] = React.useState(false);
 
   const isFree = plan === "FREE";
   const config = PLAN_BY_ID[plan];
-
-  const renewalDate = currentPeriodEnd
-    ? new Date(currentPeriodEnd).toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+  const renewalDate = fmtDate(currentPeriodEnd);
+  const startDate = fmtDate(subscriptionStart);
+  const methodLabel = paymentMethod
+    ? PAYMENT_METHOD_LABELS[paymentMethod as keyof typeof PAYMENT_METHOD_LABELS] ??
+      paymentMethod
     : null;
-
-  function refresh(newPlan: Plan) {
-    update({ plan: newPlan }).then(() => router.refresh());
-  }
-
-  function handleUpgrade(selected: PlanConfig, cycle: Cycle) {
-    if (selected.comingSoon || selected.id === "FREE" || selected.id === plan) return;
-    setPendingPlanId(selected.id);
-    startTransition(async () => {
-      const res = await upgradePlan(
-        selected.id as Exclude<Plan, "FREE">,
-        cycle as BillingCycle
-      );
-      setPendingPlanId(null);
-      if (res.ok) {
-        if (selected.id === "PROFESSIONAL") setShowActivation(true);
-        else toast.success(res.message ?? "Subscription updated.");
-        refresh(selected.id);
-      } else {
-        toast.error(res.message ?? "Something went wrong.");
-      }
-    });
-  }
 
   function handleDowngrade() {
     startTransition(async () => {
       const res = await downgradeToExplorer();
       if (res.ok) {
         toast.success(res.message ?? "Downgraded to Explorer.");
-        refresh("FREE");
+        update({ plan: "FREE" }).then(() => router.refresh());
       } else toast.error(res.message ?? "Something went wrong.");
     });
   }
@@ -134,11 +119,6 @@ export function BillingManager({
 
   return (
     <div className="space-y-6">
-      <VisionProActivation
-        open={showActivation}
-        onClose={() => setShowActivation(false)}
-      />
-
       {/* Current plan card */}
       <motion.div
         initial={{ opacity: 0, y: 14 }}
@@ -163,11 +143,17 @@ export function BillingManager({
                 )}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                {subscriptionStatus.charAt(0) + subscriptionStatus.slice(1).toLowerCase().replace("_", " ")}
+                {subscriptionStatus.charAt(0) +
+                  subscriptionStatus.slice(1).toLowerCase().replace("_", " ")}
               </span>
               {billingCycle && (
                 <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                   {billingCycle === "YEARLY" ? "Yearly billing" : "Monthly billing"}
+                </span>
+              )}
+              {methodLabel && (
+                <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                  via {methodLabel}
                 </span>
               )}
             </div>
@@ -177,27 +163,47 @@ export function BillingManager({
             <div className="flex items-center gap-2">
               {cancelAtPeriodEnd ? (
                 <Button onClick={handleReactivate} disabled={pending}>
-                  {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  {pending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
                   Reactivate
                 </Button>
               ) : (
-                <CancelDialog onConfirm={handleCancel} pending={pending} renewalDate={renewalDate} />
+                <CancelDialog
+                  onConfirm={handleCancel}
+                  pending={pending}
+                  renewalDate={renewalDate}
+                />
               )}
             </div>
           )}
         </div>
 
-        {!isFree && renewalDate && (
-          <div className="mt-6 flex items-center gap-2 rounded-2xl border border-border/60 bg-card/40 px-4 py-3 text-sm">
-            <Calendar className="h-4 w-4 text-sky-500" />
-            {cancelAtPeriodEnd ? (
-              <span className="text-amber-600 dark:text-amber-400">
-                Access ends on <span className="font-medium">{renewalDate}</span>
-              </span>
-            ) : (
-              <span className="text-muted-foreground">
-                Renews on <span className="font-medium text-foreground">{renewalDate}</span>
-              </span>
+        {!isFree && (
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {startDate && (
+              <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-card/40 px-4 py-3 text-sm">
+                <Calendar className="h-4 w-4 text-sky-500" />
+                <span className="text-muted-foreground">
+                  Started <span className="font-medium text-foreground">{startDate}</span>
+                </span>
+              </div>
+            )}
+            {renewalDate && (
+              <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-card/40 px-4 py-3 text-sm">
+                <RefreshCw className="h-4 w-4 text-sky-500" />
+                {cancelAtPeriodEnd ? (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    Access ends <span className="font-medium">{renewalDate}</span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    Renews <span className="font-medium text-foreground">{renewalDate}</span>
+                  </span>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -205,26 +211,37 @@ export function BillingManager({
         {cancelAtPeriodEnd && (
           <div className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            Your subscription is set to cancel. Reactivate anytime before it ends to keep Vision Pro.
+            Your subscription is set to cancel. Reactivate anytime before it ends to
+            keep {REX_PRO.name}.
           </div>
         )}
       </motion.div>
 
       {/* Upgrade (free) or manage (paid) */}
       {isFree ? (
-        <div className="rounded-3xl glass p-6 sm:p-8">
-          <div className="mb-2 flex items-center gap-2">
+        <div className="relative overflow-hidden rounded-3xl glass p-6 sm:p-8">
+          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-sky-500/10 blur-[70px]" />
+          <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-sky-500" />
-            <h3 className="text-lg font-semibold">Choose your plan</h3>
+            <h3 className="text-lg font-semibold">Upgrade to {REX_PRO.name}</h3>
           </div>
-          <p className="mb-6 text-sm text-muted-foreground">
-            Upgrade to unlock unlimited analyses and your full AI trading suite.
+          <p className="mt-1 text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{REX_PRO.priceLabel}</span>
+            /month — unlock your full AI trading suite.
           </p>
-          <PricingPlans
-            currentPlan={plan}
-            pendingPlanId={pendingPlanId}
-            onSelect={handleUpgrade}
-          />
+
+          <ul className="mt-5 grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
+            {REX_PRO.features.map((f) => (
+              <li key={f} className="flex items-center gap-2 text-sm">
+                <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" strokeWidth={3} />
+                <span className="text-foreground/90">{f}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-6">
+            <UnlockRexProButton fullWidth />
+          </div>
         </div>
       ) : (
         <div className="rounded-3xl glass p-6 sm:p-8">
@@ -233,19 +250,20 @@ export function BillingManager({
             <h3 className="text-lg font-semibold">Manage subscription</h3>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            You have access to every Vision Pro feature.
+            You have access to every {REX_PRO.name} feature.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
-            <Button variant="secondary" disabled>
-              <Sparkles className="h-4 w-4" />
-              {billingCycle === "YEARLY" ? "Switch to monthly" : "Switch to yearly"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleDowngrade}
-              disabled={pending}
-            >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownCircle className="h-4 w-4" />}
+            <UnlockRexProButton
+              label="Change Payment Method"
+              variant="secondary"
+              size="default"
+            />
+            <Button variant="outline" onClick={handleDowngrade} disabled={pending}>
+              {pending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowDownCircle className="h-4 w-4" />
+              )}
               Downgrade to Explorer
             </Button>
           </div>
@@ -267,22 +285,24 @@ function CancelDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">Cancel subscription</Button>
+        <Button variant="outline">Cancel Subscription</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Cancel Vision Pro?</DialogTitle>
+          <DialogTitle>Cancel {REX_PRO.name}?</DialogTitle>
           <DialogDescription>
-            You&apos;ll keep full access{renewalDate ? ` until ${renewalDate}` : " until your period ends"}, then return to the Explorer plan. You can reactivate anytime before then.
+            You&apos;ll keep full access
+            {renewalDate ? ` until ${renewalDate}` : " until your period ends"}, then
+            return to the Explorer plan. You can reactivate anytime before then.
           </DialogDescription>
         </DialogHeader>
         <div className="mt-2 rounded-2xl border border-border/60 bg-card/40 p-4 text-sm text-muted-foreground">
-          You&apos;ll lose: unlimited analyses, AI Coach, AI Replay, Market
-          Monitoring, Economic Intelligence and priority processing.
+          You&apos;ll lose: unlimited analyses, unlimited AI chat, advanced market
+          intelligence, PDF reports and priority processing.
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="secondary">Keep Vision Pro</Button>
+            <Button variant="secondary">Keep {REX_PRO.name}</Button>
           </DialogClose>
           <DialogClose asChild>
             <Button
@@ -291,7 +311,7 @@ function CancelDialog({
               className="bg-rose-500 text-white hover:bg-rose-600"
             >
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Cancel subscription
+              Cancel Subscription
             </Button>
           </DialogClose>
         </DialogFooter>

@@ -21,7 +21,7 @@ export const PLAN_LABELS: Record<Plan, string> = {
 /** Product plan names used across the dashboard, billing and pricing surfaces. */
 export const PLAN_DISPLAY_NAMES: Record<Plan, string> = {
   FREE: "Explorer",
-  PROFESSIONAL: "Vision Pro",
+  PROFESSIONAL: "Rex Pro",
   ENTERPRISE: "Vision Elite",
 };
 

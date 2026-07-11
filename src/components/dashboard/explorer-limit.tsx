@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
-import { Zap, Infinity as InfinityIcon, ArrowUpRight } from "lucide-react";
+import { Zap, Infinity as InfinityIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { UnlockRexProButton } from "@/components/billing/unlock-rex-pro";
 
 interface ExplorerLimitProps {
   used: number;
@@ -70,13 +70,14 @@ export function ExplorerLimit({
       </div>
 
       {!compact && (
-        <Link
-          href="/billing"
-          className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-sky-500 transition-colors hover:text-sky-400"
-        >
-          Upgrade for unlimited
-          <ArrowUpRight className="h-3.5 w-3.5" />
-        </Link>
+        <div className="mt-4">
+          <UnlockRexProButton
+            label="Unlock Rex Pro"
+            variant="ghost"
+            size="sm"
+            className="h-auto px-0 text-xs font-medium text-sky-500 hover:bg-transparent hover:text-sky-400"
+          />
+        </div>
       )}
     </div>
   );
