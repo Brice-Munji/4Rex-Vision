@@ -23,9 +23,8 @@ import type {
 } from "@/lib/rex/types";
 import { analyzeChart, type AnalyzeResult } from "@/actions/analyze";
 import type { ChartClassification } from "@/lib/rex/vision";
-import { recordAnalysis, type RecordAnalysisResult } from "@/actions/subscription";
 import { ExplorerLimit } from "@/components/dashboard/explorer-limit";
-import { EndOfDaySummary } from "@/components/dashboard/end-of-day-summary";
+import { WhatsNext } from "./whats-next";
 import type { Plan } from "@prisma/client";
 
 const ACCEPTED = ["PNG", "JPG", "JPEG", "High Resolution"];
@@ -67,12 +66,22 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
   const [metadata, setMetadata] = React.useState<ChartMetadata | null>(null);
   const [classification, setClassification] = React.useState<ChartClassification | undefined>();
   const [usedState, setUsedState] = React.useState(usage?.used ?? 0);
-  const [summaryOpen, setSummaryOpen] = React.useState(false);
+  const [whatsNextOpen, setWhatsNextOpen] = React.useState(false);
+  const [resetAt, setResetAt] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const fileRef = React.useRef<File | null>(null);
   const resultRef = React.useRef<Promise<AnalyzeResult> | null>(null);
 
   const trackUsage = !!usage && !usage.unlimited;
+  // Client-side hint only — the backend remains the source of truth and will
+  // block a 4th analysis regardless of what the UI thinks.
+  const limitReached =
+    trackUsage && !!usage && usage.limit > 0 && usedState >= usage.limit;
+
+  function openWhatsNext(nextResetAt?: string | null) {
+    if (nextResetAt) setResetAt(nextResetAt);
+    setWhatsNextOpen(true);
+  }
 
   function reset() {
     if (preview) URL.revokeObjectURL(preview);
@@ -89,6 +98,11 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
   }
 
   function handleFiles(files: FileList | null) {
+    // Limit reached → never send the image for analysis; open What's Next.
+    if (limitReached) {
+      openWhatsNext();
+      return;
+    }
     const file = files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -168,7 +182,16 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
       return;
     }
 
-    // status === "ok" — store the (already computed) report + metadata.
+    // Backend blocked this before any AI ran (daily limit). Open What's Next.
+    if (result.status === "limit_reached") {
+      if (usage) setUsedState(usage.limit);
+      reset();
+      openWhatsNext(result.resetAt);
+      return;
+    }
+
+    // status === "ok" — the analysis ran; sync the consumed credit.
+    if (result.usage) setUsedState(result.usage.used);
     setReport(result.report);
     setMetadata(result.metadata);
 
@@ -186,17 +209,11 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
     setStage("thinking");
   }
 
-  // Thinking sequence finished → reveal the report and record usage.
+  // Thinking sequence finished → reveal the report. The credit was already
+  // consumed server-side during analysis (single source of truth), so there's
+  // nothing to record here.
   function finishAnalysis() {
     setStage("report");
-    if (trackUsage) {
-      recordAnalysis().then((res: RecordAnalysisResult) => {
-        if (res.ok) {
-          setUsedState(res.used);
-          if (!res.unlimited && res.reachedLimit) setSummaryOpen(true);
-        }
-      });
-    }
   }
 
   React.useEffect(() => {
@@ -234,7 +251,10 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
 
             <button
               type="button"
-              onClick={() => inputRef.current?.click()}
+              onClick={() => {
+                if (limitReached) openWhatsNext();
+                else inputRef.current?.click();
+              }}
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragging(true);
@@ -439,7 +459,11 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
         )}
       </AnimatePresence>
 
-      <EndOfDaySummary open={summaryOpen} onClose={() => setSummaryOpen(false)} />
+      <WhatsNext
+        open={whatsNextOpen}
+        onClose={() => setWhatsNextOpen(false)}
+        resetAt={resetAt}
+      />
     </div>
   );
 }

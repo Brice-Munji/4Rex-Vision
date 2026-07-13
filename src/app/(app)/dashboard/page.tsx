@@ -10,6 +10,7 @@ import { ExplorerWorkspace } from "@/components/dashboard/explorer-workspace";
 import { RecentAnalyses } from "@/components/dashboard/recent-analyses";
 import { JournalPreview } from "@/components/dashboard/journal-preview";
 import { AiInsightsPanel } from "@/components/dashboard/ai-insights-panel";
+import { SubscriptionStatus } from "@/components/dashboard/subscription-status";
 import { NotificationsCard } from "@/components/dashboard/notifications-card";
 import { ContinueMomentum } from "@/components/dashboard/continue-momentum";
 import { LockedFeatureGrid } from "@/components/dashboard/locked-feature-card";
@@ -53,6 +54,12 @@ export default async function DashboardPage() {
         </div>
 
         <aside className="space-y-6">
+          <SubscriptionStatus
+            plan={user.plan}
+            used={usage.used}
+            limit={usage.unlimited ? 0 : usage.limit}
+            unlimited={usage.unlimited}
+          />
           <AiInsightsPanel />
           <NotificationsCard />
           <JournalPreview />

@@ -1,6 +1,12 @@
 "use server";
 
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import {
+  evaluateAnalysisGate,
+  consumeAnalysis,
+  type UsageSummary,
+} from "@/lib/usage";
 import { analyzeImage } from "@/lib/rex/image-analysis";
 import {
   validateImage,
@@ -47,7 +53,14 @@ export type AnalyzeResult =
     }
   /** Vision providers are configured but the request failed — show a soft error. */
   | { status: "unavailable"; message: string }
-  | { status: "ok"; report: RexReport; metadata: ChartMetadata };
+  /** Explorer daily limit reached — blocked BEFORE any AI processing. */
+  | { status: "limit_reached"; usage: UsageSummary; resetAt: string }
+  | {
+      status: "ok";
+      report: RexReport;
+      metadata: ChartMetadata;
+      usage?: UsageSummary;
+    };
 
 const POSITION_BY_TYPE: Record<PriceLevelType, number> = {
   "Take Profit": 90,
@@ -267,6 +280,40 @@ export async function analyzeChart(
     };
   }
 
+  // ── SUBSCRIPTION GATE ─────────────────────────────────────────────────────
+  // The backend is the single source of truth. Enforce the Explorer daily limit
+  // BEFORE any AI processing — no Vision call, no RAE, no tokens spent once the
+  // allowance is exhausted. Rex Pro / unlimited plans skip this entirely.
+  const gateUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      plan: true,
+      dailyAnalysisCount: true,
+      analysisCountDate: true,
+    },
+  });
+  if (!gateUser) {
+    return {
+      status: "invalid",
+      reason: "You need to be signed in to analyze charts.",
+      validation: { checks: [], overall: 0, reliable: false },
+    };
+  }
+  const gate = await evaluateAnalysisGate(gateUser);
+  if (!gate.allowed) {
+    return {
+      status: "limit_reached",
+      usage: {
+        used: gate.used,
+        limit: gate.limit,
+        remaining: gate.remaining,
+        unlimited: gate.unlimited,
+      },
+      resetAt: gate.resetAt,
+    };
+  }
+
   let buffer: Buffer;
   try {
     buffer = Buffer.from(input.base64, "base64");
@@ -346,10 +393,13 @@ export async function analyzeChart(
       source: ai.platform,
     });
     const economic = await getEconomicContext(ai.instrument);
+    // Analysis succeeded → consume one credit (after AI, never before).
+    const usage = await consumeAnalysis(gateUser.id);
     return {
       status: "ok",
       report: buildReportFromAI(ai, validation, visionConfidence, economic),
       metadata: buildMetadata(ai, metrics),
+      usage,
     };
   }
 
@@ -368,5 +418,7 @@ export async function analyzeChart(
   report.notice = isVisionConfigured()
     ? "Rex's live vision model was unavailable for this upload, so this is a representative sample analysis — not a reading of your specific chart. Please try again."
     : "Rex's live vision model isn't connected in this environment, so this is a representative sample analysis — not a reading of your specific chart. Set OPENAI_API_KEY (or GEMINI_API_KEY / ANTHROPIC_API_KEY) to enable live analysis of your uploads.";
-  return { status: "ok", report, metadata: buildMetadata(null, metrics) };
+  // Analysis succeeded (sample fallback) → consume one credit.
+  const usage = await consumeAnalysis(gateUser.id);
+  return { status: "ok", report, metadata: buildMetadata(null, metrics), usage };
 }

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { AiWorkspace } from "./workspace/ai-workspace";
 import { ExplorerLimit } from "./explorer-limit";
-import { EndOfDaySummary } from "./end-of-day-summary";
+import { WhatsNext } from "@/components/rex/whats-next";
 import type { RecordAnalysisResult } from "@/actions/subscription";
 import type { Plan } from "@prisma/client";
 
@@ -15,20 +15,17 @@ interface ExplorerWorkspaceProps {
 }
 
 export function ExplorerWorkspace({
-  plan,
   used,
   limit,
   unlimited,
 }: ExplorerWorkspaceProps) {
   const [usedState, setUsedState] = React.useState(used);
-  const [summaryOpen, setSummaryOpen] = React.useState(false);
+  const [whatsNextOpen, setWhatsNextOpen] = React.useState(false);
+
+  const reached = !unlimited && limit > 0 && usedState >= limit;
 
   function handleUsage(res: RecordAnalysisResult) {
     setUsedState(res.used);
-    if (!res.unlimited && res.reachedLimit) {
-      // Premium end-of-day experience instead of a hard paywall.
-      setSummaryOpen(true);
-    }
   }
 
   return (
@@ -36,8 +33,13 @@ export function ExplorerWorkspace({
       {!unlimited && (
         <ExplorerLimit used={usedState} limit={limit} unlimited={unlimited} />
       )}
-      <AiWorkspace trackUsage onUsageRecorded={handleUsage} />
-      <EndOfDaySummary open={summaryOpen} onClose={() => setSummaryOpen(false)} />
+      <AiWorkspace
+        trackUsage
+        blocked={reached}
+        onBlocked={() => setWhatsNextOpen(true)}
+        onUsageRecorded={handleUsage}
+      />
+      <WhatsNext open={whatsNextOpen} onClose={() => setWhatsNextOpen(false)} />
     </div>
   );
 }

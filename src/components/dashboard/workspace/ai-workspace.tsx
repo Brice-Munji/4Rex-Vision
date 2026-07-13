@@ -32,9 +32,18 @@ interface AiWorkspaceProps {
   trackUsage?: boolean;
   /** Fired with the usage result after a tracked analysis completes. */
   onUsageRecorded?: (result: RecordAnalysisResult) => void;
+  /** When true, the daily limit is reached — new analyses are blocked. */
+  blocked?: boolean;
+  /** Fired instead of analyzing when blocked (opens the What's Next experience). */
+  onBlocked?: () => void;
 }
 
-export function AiWorkspace({ trackUsage, onUsageRecorded }: AiWorkspaceProps = {}) {
+export function AiWorkspace({
+  trackUsage,
+  onUsageRecorded,
+  blocked,
+  onBlocked,
+}: AiWorkspaceProps = {}) {
   const [stage, setStage] = React.useState<Stage>("idle");
   const [dragging, setDragging] = React.useState(false);
   const [fileName, setFileName] = React.useState<string | null>(null);
@@ -51,6 +60,10 @@ export function AiWorkspace({ trackUsage, onUsageRecorded }: AiWorkspaceProps = 
   }
 
   function handleFiles(files: FileList | null) {
+    if (blocked) {
+      onBlocked?.();
+      return;
+    }
     const file = files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -111,7 +124,10 @@ export function AiWorkspace({ trackUsage, onUsageRecorded }: AiWorkspaceProps = 
             >
               <button
                 type="button"
-                onClick={() => inputRef.current?.click()}
+                onClick={() => {
+                  if (blocked) onBlocked?.();
+                  else inputRef.current?.click();
+                }}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragging(true);
@@ -198,7 +214,13 @@ export function AiWorkspace({ trackUsage, onUsageRecorded }: AiWorkspaceProps = 
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   The AI will detect structure, patterns, news and probability.
                 </p>
-                <Button className="mt-4" onClick={() => setStage("analyzing")}>
+                <Button
+                  className="mt-4"
+                  onClick={() => {
+                    if (blocked) onBlocked?.();
+                    else setStage("analyzing");
+                  }}
+                >
                   <Sparkles className="h-4 w-4" />
                   Analyze with AI
                 </Button>
