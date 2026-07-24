@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { REX_PRO } from "@/lib/payments/catalog";
 import { resolveProvider } from "@/lib/payments/registry";
+import { getPaymentDestination } from "@/lib/payments/recipients";
 import { settleByReference } from "@/lib/payments/settle";
 import type { PaymentMethodId } from "@/lib/payments/types";
 
@@ -69,6 +70,11 @@ export async function startRexProCheckout(
     return { ok: false, message: "That payment method isn't available right now." };
   }
 
+  // Resolve the receiving account for this rail from backend config only. The
+  // frontend never sends or sees this — the payment is routed to the configured
+  // recipient here on the server.
+  const destination = getPaymentDestination(method) ?? undefined;
+
   // Idempotent reference. In demo mode, a test number ending in 0000 forces the
   // failure path so the failed-payment UI can be exercised.
   const isDemo = provider.id === "demo";
@@ -86,6 +92,9 @@ export async function startRexProCheckout(
       amount: REX_PRO.amount,
       currency: REX_PRO.currency,
       description: `${REX_PRO.name} — monthly subscription`,
+      // Record where this payment is routed (audit trail).
+      recipient: destination?.account ?? null,
+      recipientName: destination?.configured ? destination.ownerName : null,
     },
   });
 
@@ -103,6 +112,7 @@ export async function startRexProCheckout(
       name: [user.firstName, user.lastName].filter(Boolean).join(" ") || null,
       phone: phone ?? null,
     },
+    destination,
   });
 
   if (!result.ok) {

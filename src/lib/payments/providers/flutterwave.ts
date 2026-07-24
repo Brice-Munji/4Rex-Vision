@@ -73,6 +73,16 @@ export class FlutterwaveProvider implements PaymentProvider {
             title: "Rex Pro",
             description: params.description,
           },
+          // Route to the backend-configured recipient for this rail. Attached as
+          // metadata so it's recorded with the transaction and available to a
+          // direct mobile-money payout integration without any interface change.
+          meta: params.destination?.configured
+            ? {
+                recipient_method: params.destination.method,
+                recipient_account: params.destination.account,
+                recipient_name: params.destination.ownerName,
+              }
+            : undefined,
         }),
         signal: AbortSignal.timeout(30_000),
       });

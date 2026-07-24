@@ -114,6 +114,11 @@ model Transaction {
   providerReference String?       // id returned by the provider
   status            PaymentStatus @default(PENDING)
 
+  // Where the payment was routed (from backend recipient config, never the
+  // frontend). Null for rails that settle to a provider merchant account.
+  recipient         String?       // receiving account, e.g. MoMo/Orange number
+  recipientName     String?       // configured account owner at payment time
+
   plan              Plan
   amount            Int           // minor units (e.g. cents)
   currency          String        @default("USD")

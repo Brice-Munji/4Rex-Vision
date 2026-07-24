@@ -17,6 +17,28 @@ export interface PaymentCustomer {
   phone?: string | null;
 }
 
+/**
+ * Where a payment is routed — the business's receiving account for a rail
+ * (e.g. an MTN MoMo / Orange Money number). Values come exclusively from
+ * backend configuration (see `recipients.ts`); the raw account number is never
+ * sent to the client. This is a plain type, so sharing it here leaks nothing.
+ */
+export interface PaymentDestination {
+  method: PaymentMethodId;
+  /** Human label for the rail (e.g. "MTN Mobile Money"). */
+  label: string;
+  /** Configured account owner (backend config, shared across rails). */
+  ownerName: string;
+  /** Recipient account identifier — a mobile-money number, merchant id, … */
+  account: string | null;
+  /** ISO country the rail settles in (mobile money = Cameroon). */
+  country?: string;
+  /** Settlement currency for the rail (mobile money = XAF). */
+  currency?: string;
+  /** True only when a recipient account is actually configured. */
+  configured: boolean;
+}
+
 export interface InitiatePaymentParams {
   /** Our own idempotent transaction reference. */
   reference: string;
@@ -28,6 +50,13 @@ export interface InitiatePaymentParams {
   description: string;
   /** Absolute URL the provider redirects back to after a hosted payment. */
   redirectUrl: string;
+  /**
+   * Resolved recipient for this rail (optional & non-breaking). Providers that
+   * credit a specific account (direct mobile money) route to it; providers that
+   * settle to their own merchant account (cards, hosted Flutterwave) may ignore
+   * or attach it as metadata.
+   */
+  destination?: PaymentDestination;
 }
 
 export type InitiateResult =
