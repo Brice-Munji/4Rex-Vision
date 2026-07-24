@@ -40,11 +40,11 @@ export function PriceLevelsCard({
         {/* visual ladder */}
         <div className="relative hidden min-h-[280px] rounded-3xl glass p-4 lg:block">
           <div className="absolute inset-y-4 left-1/2 w-px -translate-x-1/2 bg-border" />
-          {sorted.map((lvl) => {
+          {sorted.map((lvl, i) => {
             const s = typeStyles[lvl.type];
             return (
               <div
-                key={lvl.type}
+                key={`${lvl.type}-${lvl.value}-${i}`}
                 className="absolute left-0 right-0 flex items-center gap-2 px-4"
                 style={{ top: `${100 - lvl.position}%` }}
               >
@@ -64,7 +64,7 @@ export function PriceLevelsCard({
             const s = typeStyles[lvl.type];
             return (
               <motion.div
-                key={lvl.type}
+                key={`${lvl.type}-${lvl.value}-${i}`}
                 initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}

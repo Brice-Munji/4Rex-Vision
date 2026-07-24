@@ -37,8 +37,8 @@ function ConfidenceCard({ metric, index }: { metric: ConfidenceMetric; index: nu
       </div>
       <ProgressBar value={metric.score} className="mt-3" />
       <ul className="mt-3 space-y-1.5">
-        {metric.contributors.map((c) => (
-          <li key={c} className="flex items-start gap-2 text-xs text-muted-foreground">
+        {metric.contributors.map((c, ci) => (
+          <li key={`${c}-${ci}`} className="flex items-start gap-2 text-xs text-muted-foreground">
             <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-sky-400" />
             {c}
           </li>

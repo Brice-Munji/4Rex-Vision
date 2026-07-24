@@ -196,9 +196,9 @@ export function MetadataSummaryCard({
           <div>
             <p className="text-xs text-muted-foreground">Visible Indicators</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {visibleIndicators.map((ind) => (
+              {visibleIndicators.map((ind, i) => (
                 <span
-                  key={ind}
+                  key={`${ind}-${i}`}
                   className="rounded-full border border-border/60 bg-secondary/60 px-2.5 py-0.5 text-xs font-medium"
                 >
                   {ind}
@@ -229,8 +229,8 @@ export function MetadataSummaryCard({
           <div>
             <p className="font-medium">Image notes</p>
             <ul className="mt-1 list-inside list-disc space-y-0.5">
-              {imageQuality.issues.map((iss) => (
-                <li key={iss}>{iss}</li>
+              {imageQuality.issues.map((iss, i) => (
+                <li key={`${iss}-${i}`}>{iss}</li>
               ))}
             </ul>
           </div>
@@ -242,8 +242,8 @@ export function MetadataSummaryCard({
         <div className="mt-4 flex items-start gap-2 rounded-2xl border border-border/60 bg-card/40 p-4 text-sm text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
           <ul className="space-y-0.5">
-            {notes.map((n) => (
-              <li key={n}>{n}</li>
+            {notes.map((n, i) => (
+              <li key={`${n}-${i}`}>{n}</li>
             ))}
           </ul>
         </div>

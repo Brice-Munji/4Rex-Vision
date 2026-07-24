@@ -24,7 +24,7 @@ export function WhatCouldChange({
       <div className="grid gap-3 sm:grid-cols-2">
         {items.map((item, i) => (
           <motion.div
-            key={item.label}
+            key={`${item.label}-${i}`}
             initial={{ opacity: 0, x: -10 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}

@@ -55,7 +55,7 @@ export function WhyRexThinks({
           const Icon = EVIDENCE_ICONS[e.icon] ?? Activity;
           return (
             <motion.div
-              key={e.key}
+              key={`${e.key}-${i}`}
               initial={{ opacity: 0, x: -10 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
