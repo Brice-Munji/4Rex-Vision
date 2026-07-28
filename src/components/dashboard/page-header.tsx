@@ -24,7 +24,7 @@ export function PageHeader({
     >
       <div className="flex items-center gap-3">
         {icon && (
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-lg shadow-sky-500/25">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm">
             {icon}
           </span>
         )}

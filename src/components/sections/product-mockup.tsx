@@ -54,7 +54,7 @@ function Stat({
   accent: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+    <div className="rounded-xl border border-border bg-card p-3">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Icon className={`h-3.5 w-3.5 ${accent}`} />
         {label}
@@ -71,7 +71,7 @@ export function ProductMockup() {
   return (
     <div className="relative">
       {/* glow */}
-      <div className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-gradient-to-tr from-sky-500/20 via-cyan-400/10 to-transparent blur-2xl" />
+      <div className="absolute -inset-6 -z-10 rounded-[2.5rem]" />
 
       <motion.div
         animate={{ y: [0, -10, 0] }}
@@ -90,7 +90,7 @@ export function ProductMockup() {
         </div>
 
         {/* chart screenshot */}
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/80 to-slate-950/80 p-4">
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center justify-between">
             <div className="text-xs font-medium text-foreground/80">Chart Screenshot</div>
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
@@ -121,7 +121,7 @@ export function ProductMockup() {
         </div>
 
         {/* detected pattern */}
-        <div className="mt-2.5 flex items-center justify-between rounded-xl border border-sky-500/20 bg-sky-500/5 p-3">
+        <div className="mt-2.5 flex items-center justify-between rounded-xl border border-border bg-primary/5 p-3">
           <div className="flex items-center gap-2 text-xs">
             <Activity className="h-3.5 w-3.5 text-sky-400" />
             <span className="text-muted-foreground">Detected Pattern</span>
@@ -130,7 +130,7 @@ export function ProductMockup() {
         </div>
 
         {/* AI analysis */}
-        <div className="mt-2.5 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+        <div className="mt-2.5 rounded-xl border border-border bg-card p-3">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
             AI Analysis
@@ -151,7 +151,7 @@ export function ProductMockup() {
             <div className="mt-1.5 text-sm font-semibold text-amber-300">Moderate</div>
             <div className="mt-1 text-[10px] text-muted-foreground">R:R 1 : 2.4</div>
           </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="rounded-xl border border-border bg-card p-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <CalendarClock className="h-3.5 w-3.5 text-rose-400" />
               High Impact News

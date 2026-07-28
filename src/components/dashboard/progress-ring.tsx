@@ -51,8 +51,8 @@ export function ProgressRing({
         />
         <defs>
           <linearGradient id="ring-gradient" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="rgb(14 165 233)" />
-            <stop offset="100%" stopColor="rgb(34 211 238)" />
+            <stop offset="0%" stopColor="rgb(59 130 246)" />
+            <stop offset="100%" stopColor="rgb(59 130 246)" />
           </linearGradient>
         </defs>
       </svg>
@@ -84,7 +84,7 @@ export function ProgressBar({
         animate={inView ? { width: `${value}%` } : {}}
         transition={{ duration: 0.9, ease: "easeOut" }}
         className={cn(
-          "h-full rounded-full bg-gradient-to-r from-sky-500 to-cyan-400",
+          "h-full rounded-full bg-primary",
           barClassName
         )}
       />

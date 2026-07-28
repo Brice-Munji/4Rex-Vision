@@ -18,10 +18,10 @@ export function AiInsightsPanel() {
 
   return (
     <div className="relative overflow-hidden rounded-3xl glass p-6">
-      <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-sky-500/15 blur-2xl" />
+      <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full" />
 
       <div className="flex items-center gap-2">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-lg shadow-sky-500/25">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <Brain className="h-5 w-5" />
         </span>
         <div>
@@ -58,7 +58,7 @@ export function AiInsightsPanel() {
             className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary"
           >
             <motion.span
-              className="block h-full rounded-full bg-gradient-to-r from-sky-500 to-cyan-400"
+              className="block h-full rounded-full bg-primary"
               initial={false}
               animate={{ width: i === index ? "100%" : "0%" }}
               transition={{ duration: i === index ? 5 : 0.3, ease: "linear" }}

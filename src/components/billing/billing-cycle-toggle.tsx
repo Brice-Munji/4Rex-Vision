@@ -30,7 +30,7 @@ export function BillingCycleToggle({
               {active && (
                 <motion.span
                   layoutId="cycle-pill"
-                  className="absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-sky-500 to-cyan-400 shadow-lg shadow-sky-500/30"
+                  className="absolute inset-0 -z-10 rounded-full bg-primary shadow-sm"
                   transition={{ type: "spring", stiffness: 400, damping: 32 }}
                 />
               )}

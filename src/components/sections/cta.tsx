@@ -12,11 +12,11 @@ export function CTA() {
         <Reveal>
           <div className="relative overflow-hidden rounded-3xl glass-strong px-6 py-16 text-center md:px-16 md:py-20">
             <div className="pointer-events-none absolute inset-0 -z-10">
-              <div className="absolute left-1/2 top-0 h-[300px] w-[600px] -translate-x-1/2 rounded-full bg-sky-500/25 blur-[100px]" />
+              <div className="absolute left-1/2 top-0 h-[300px] w-[600px] -translate-x-1/2 rounded-full" />
               <div className="absolute inset-0 bg-grid opacity-[0.2]" />
             </div>
 
-            <div className="mx-auto inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-600 dark:text-sky-300">
+            <div className="mx-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               Start in seconds — no card required
             </div>

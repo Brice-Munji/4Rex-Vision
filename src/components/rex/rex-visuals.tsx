@@ -76,7 +76,7 @@ export function TimeframeBadge({ timeframe }: { timeframe: string }) {
 
 export function PairBadge({ pair }: { pair: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/20 bg-sky-500/10 px-2.5 py-0.5 text-sm font-semibold text-sky-600 dark:text-sky-300">
+    <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-primary/10 px-2.5 py-0.5 text-sm font-semibold text-primary">
       <LineChart className="h-3.5 w-3.5" />
       {pair}
     </span>
@@ -100,7 +100,7 @@ export function StrengthMeter({ strength }: { strength: TrendStrength }) {
             className={cn(
               "h-1.5 w-5 rounded-full",
               i < active
-                ? "bg-gradient-to-r from-sky-500 to-cyan-400"
+                ? "bg-primary"
                 : "bg-secondary"
             )}
           />

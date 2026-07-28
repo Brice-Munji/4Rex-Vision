@@ -36,13 +36,13 @@ export function RexSection({
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           {icon && (
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-lg shadow-sky-500/25">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               {icon}
             </span>
           )}
           <div>
             {sectionNo !== undefined && (
-              <span className="text-xs font-semibold uppercase tracking-wider text-sky-500 dark:text-sky-400">
+              <span className="text-xs font-semibold uppercase tracking-wider text-primary">
                 Section {sectionNo}
               </span>
             )}

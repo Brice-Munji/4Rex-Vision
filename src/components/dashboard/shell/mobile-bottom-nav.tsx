@@ -21,7 +21,7 @@ export function MobileBottomNav() {
           <Link
             href="/analyze"
             aria-label="Analyze chart"
-            className="flex h-12 w-12 -translate-y-3 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-lg shadow-sky-500/40 transition-transform active:scale-95"
+            className="flex h-12 w-12 -translate-y-3 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm transition-transform active:scale-95"
           >
             <Plus className="h-6 w-6" />
           </Link>
@@ -50,7 +50,7 @@ function NavLink({
       href={item.href}
       className={cn(
         "flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[10px] font-medium transition-colors",
-        active ? "text-sky-500 dark:text-sky-400" : "text-muted-foreground"
+        active ? "text-primary" : "text-muted-foreground"
       )}
     >
       <item.icon className="h-5 w-5" />

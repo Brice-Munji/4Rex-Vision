@@ -56,7 +56,7 @@ export function Testimonials() {
               ))}
             </div>
             <figcaption className="mt-4 flex items-center gap-3">
-              <div className={`h-9 w-9 rounded-full bg-gradient-to-br ${t.accent}`} />
+              <div className="h-9 w-9 rounded-full bg-secondary" />
               <div>
                 <div className="text-sm font-semibold">{t.name}</div>
                 <div className="text-xs text-muted-foreground">{t.role}</div>

@@ -17,7 +17,7 @@ function Cell({ value, highlight }: { value: boolean | string; highlight?: boole
     <span
       className={cn(
         "mx-auto flex h-6 w-6 items-center justify-center rounded-full",
-        highlight ? "bg-gradient-to-br from-sky-500 to-cyan-400 text-white" : "bg-sky-500/10 text-sky-500"
+        highlight ? "bg-primary/10 text-primary" : "bg-sky-500/10 text-sky-500"
       )}
     >
       <Check className="h-3.5 w-3.5" strokeWidth={3} />

@@ -29,7 +29,7 @@ function SummaryStatCard({
       initial={{ opacity: 0, y: 14, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.4, delay: 0.1 + index * 0.05 }}
-      className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+      className="rounded-2xl border border-border bg-secondary p-4"
     >
       <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl", stat.accent)}>
         <Icon className="h-4 w-4" />
@@ -83,7 +83,7 @@ export function EndOfDaySummary({
               {/* header */}
               <div className="relative overflow-hidden rounded-3xl glass-strong p-6 text-center sm:p-8">
                 <div className="pointer-events-none absolute inset-0 -z-10">
-                  <div className="absolute left-1/2 top-0 h-40 w-72 -translate-x-1/2 rounded-full bg-sky-500/25 blur-[80px]" />
+                  <div className="absolute left-1/2 top-0 h-40 w-72 -translate-x-1/2 rounded-full" />
                 </div>
                 <button
                   onClick={onClose}
@@ -96,7 +96,7 @@ export function EndOfDaySummary({
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 180, damping: 13, delay: 0.1 }}
-                  className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-cyan-400 text-white shadow-xl shadow-emerald-500/30"
+                  className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 shadow-sm"
                 >
                   <CheckCircle2 className="h-8 w-8" />
                 </motion.div>
@@ -123,7 +123,7 @@ export function EndOfDaySummary({
                 className="rounded-3xl glass p-6"
               >
                 <div className="flex items-center gap-2">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Sparkles className="h-5 w-5" />
                   </span>
                   <h3 className="font-semibold">AI Summary</h3>

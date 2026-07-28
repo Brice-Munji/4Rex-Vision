@@ -34,16 +34,16 @@ export function AnalysisLoader({
       <div className="flex flex-col items-center text-center">
         <div className="relative flex h-16 w-16 items-center justify-center">
           <motion.span
-            className="absolute inset-0 rounded-2xl bg-gradient-to-br from-sky-500/30 to-cyan-400/20 blur-xl"
+            className="absolute inset-0 rounded-2xl"
             animate={{ scale: [1, 1.25, 1], opacity: [0.5, 0.9, 0.5] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           />
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-400 shadow-lg shadow-sky-500/30">
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 shadow-sm">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
             >
-              <Sparkles className="h-8 w-8 text-white" />
+              <Sparkles className="h-8 w-8 text-primary" />
             </motion.div>
           </div>
         </div>
@@ -69,15 +69,15 @@ export function AnalysisLoader({
               transition={{ duration: 0.3 }}
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
-                status === "active" && "bg-sky-500/10"
+                status === "active" && "bg-primary/10"
               )}
             >
               <span
                 className={cn(
                   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors",
                   status === "done" &&
-                    "border-transparent bg-gradient-to-br from-emerald-500 to-emerald-400 text-white",
-                  status === "active" && "border-sky-500/40 bg-sky-500/10 text-sky-500",
+                    "border-transparent bg-emerald-500/10 text-emerald-400",
+                  status === "active" && "border-primary/40 bg-primary/10 text-primary",
                   status === "pending" && "border-border text-muted-foreground"
                 )}
               >

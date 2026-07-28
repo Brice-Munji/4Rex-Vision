@@ -17,8 +17,8 @@ export function Hero() {
     <section className="relative overflow-hidden pt-36 pb-20 md:pt-44 md:pb-28">
       {/* background glows */}
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-sky-500/20 blur-[120px] dark:bg-sky-500/15" />
-        <div className="absolute right-0 top-40 h-[400px] w-[400px] rounded-full bg-cyan-400/10 blur-[100px]" />
+        <div className="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full" />
+        <div className="absolute right-0 top-40 h-[400px] w-[400px] rounded-full" />
         <div className="absolute inset-0 bg-grid mask-radial opacity-[0.35]" />
       </div>
 
@@ -81,11 +81,11 @@ export function Hero() {
             >
               <div className="flex items-center gap-2">
                 <div className="flex -space-x-2">
-                  {["from-sky-400 to-cyan-400", "from-indigo-400 to-sky-400", "from-cyan-400 to-emerald-400"].map(
+                  {["bg-muted", "bg-muted", "bg-muted"].map(
                     (g, i) => (
                       <div
                         key={i}
-                        className={`h-7 w-7 rounded-full border-2 border-background bg-gradient-to-br ${g}`}
+                        className={`h-7 w-7 rounded-full border-2 border-background ${g}`}
                       />
                     )
                   )}

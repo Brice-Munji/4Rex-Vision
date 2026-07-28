@@ -91,7 +91,7 @@ export function LoginForm() {
             <Label htmlFor="password">Password</Label>
             <Link
               href="/forgot-password"
-              className="text-xs font-medium text-sky-500 transition-colors hover:text-sky-400"
+              className="text-xs font-medium text-primary transition-colors hover:text-primary/80"
             >
               Forgot password?
             </Link>
@@ -114,7 +114,7 @@ export function LoginForm() {
             type="checkbox"
             name="rememberMe"
             defaultChecked
-            className="h-4 w-4 rounded border-input bg-card/50 text-sky-500 accent-sky-500"
+            className="h-4 w-4 rounded border-input bg-card/50 text-primary accent-primary"
           />
           Remember me for 30 days
         </label>
@@ -129,7 +129,7 @@ export function LoginForm() {
         Don&apos;t have an account?{" "}
         <Link
           href="/register"
-          className="font-medium text-sky-500 transition-colors hover:text-sky-400"
+          className="font-medium text-primary transition-colors hover:text-primary/80"
         >
           Sign up free
         </Link>

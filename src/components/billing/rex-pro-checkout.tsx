@@ -115,12 +115,12 @@ export function RexProCheckoutOverlay({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 32, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 260, damping: 26 }}
-            className="relative w-full max-w-[850px] overflow-hidden rounded-t-[24px] shadow-2xl shadow-black/60 ring-1 ring-white/10 glass-strong sm:rounded-[24px]"
+            className="relative w-full max-w-[850px] overflow-hidden rounded-t-[24px] shadow-2xl shadow-black/60 ring-1 ring-border glass-strong sm:rounded-[24px]"
           >
             {/* ambient glow */}
             <div className="pointer-events-none absolute inset-0 -z-10">
-              <div className="absolute -left-16 -top-24 h-64 w-64 rounded-full bg-sky-500/25 blur-[90px]" />
-              <div className="absolute -bottom-24 -right-10 h-64 w-64 rounded-full bg-cyan-400/15 blur-[90px]" />
+              <div className="absolute -left-16 -top-24 h-64 w-64 rounded-full" />
+              <div className="absolute -bottom-24 -right-10 h-64 w-64 rounded-full" />
             </div>
 
             <div className="max-h-[92vh] overflow-y-auto">
@@ -183,7 +183,7 @@ function CheckoutView({
       transition={{ duration: 0.2 }}
     >
       {/* Header */}
-      <div className="relative border-b border-white/10 bg-gradient-to-br from-sky-500/10 via-transparent to-cyan-400/5 px-7 py-6 sm:px-9">
+      <div className="relative border-b border-border px-7 py-6 sm:px-9">
         <button
           onClick={onMinimize}
           aria-label="Minimize"
@@ -218,7 +218,7 @@ function CheckoutView({
                 transition={{ delay: 0.05 + i * 0.04 }}
                 className="flex items-center gap-2.5 text-sm"
               >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-400 text-white shadow-sm shadow-emerald-500/30">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400 shadow-sm">
                   <Check className="h-3 w-3" strokeWidth={3} />
                 </span>
                 <span className="text-foreground/90">{b}</span>
@@ -247,14 +247,14 @@ function CheckoutView({
                   className={cn(
                     "group flex w-full items-center gap-3.5 rounded-2xl border p-3.5 text-left transition-all duration-200",
                     isSel
-                      ? "border-sky-500/70 bg-sky-500/10 shadow-[0_0_0_1px_rgba(14,165,233,0.5),0_8px_30px_-8px_rgba(14,165,233,0.55)]"
-                      : "border-border/60 bg-card/40 hover:-translate-y-0.5 hover:border-sky-500/40 hover:bg-secondary/40"
+                      ? "border-primary bg-primary/10 shadow-sm"
+                      : "border-border/60 bg-card/40 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-secondary/40"
                   )}
                 >
                   <span
                     className={cn(
                       "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl transition-colors",
-                      isSel ? "bg-sky-500/20" : "bg-secondary"
+                      isSel ? "bg-primary/10" : "bg-secondary"
                     )}
                   >
                     {m.glyph}
@@ -266,7 +266,7 @@ function CheckoutView({
                   <span
                     className={cn(
                       "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all",
-                      isSel ? "border-sky-500 bg-sky-500 text-white" : "border-border"
+                      isSel ? "border-primary bg-primary text-white" : "border-border"
                     )}
                   >
                     {isSel && <Check className="h-3 w-3" strokeWidth={3} />}
@@ -294,7 +294,7 @@ function CheckoutView({
                   disabled={busy}
                   inputMode="tel"
                   placeholder="e.g. 6 71 23 45 67"
-                  className="mt-1.5 w-full rounded-xl border border-border/60 bg-card/40 px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/30 disabled:opacity-60"
+                  className="mt-1.5 w-full rounded-xl border border-border/60 bg-card/40 px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-primary/60 focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
                 />
               </motion.div>
             )}
@@ -332,8 +332,8 @@ function CheckoutView({
         <div className="group relative">
           <div
             className={cn(
-              "absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-400 opacity-40 blur-lg transition-opacity duration-300",
-              busy ? "opacity-30" : "group-hover:opacity-70 motion-safe:animate-pulse"
+              "absolute -inset-0.5 rounded-2xl transition-opacity duration-300",
+              busy ? "opacity-30" : "group-hover:opacity-70"
             )}
           />
           <Button
@@ -387,15 +387,15 @@ function SuccessView({ onContinue }: { onContinue: () => void }) {
           initial={{ scale: 0.6, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="absolute inset-0 rounded-full bg-emerald-500/25 blur-2xl"
+          className="absolute inset-0 rounded-full"
         />
         <motion.div
           initial={{ scale: 0, rotate: -25 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", stiffness: 170, damping: 12, delay: 0.05 }}
-          className="relative flex h-24 w-24 items-center justify-center rounded-[28px] bg-gradient-to-br from-emerald-500 to-cyan-400 shadow-xl shadow-emerald-500/40"
+          className="relative flex h-24 w-24 items-center justify-center rounded-[28px] bg-emerald-500/10 shadow-sm"
         >
-          <PartyPopper className="h-11 w-11 text-white" />
+          <PartyPopper className="h-11 w-11 text-emerald-400" />
         </motion.div>
       </div>
 
@@ -414,7 +414,7 @@ function SuccessView({ onContinue }: { onContinue: () => void }) {
             transition={{ delay: 0.2 + i * 0.08 }}
             className="flex items-center gap-2.5 text-sm"
           >
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-400 text-white">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
               <Check className="h-3 w-3" strokeWidth={3} />
             </span>
             <span className="text-foreground/90">{u}</span>
@@ -449,7 +449,7 @@ function FailedView({
       className="px-8 py-12 text-center sm:px-12"
     >
       <div className="relative mx-auto h-20 w-20">
-        <div className="absolute inset-0 rounded-full bg-amber-500/20 blur-xl" />
+        <div className="absolute inset-0 rounded-full" />
         <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-amber-500/10 text-amber-500">
           <AlertTriangle className="h-9 w-9" />
         </div>

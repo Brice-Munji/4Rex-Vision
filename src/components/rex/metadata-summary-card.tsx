@@ -150,17 +150,17 @@ export function MetadataSummaryCard({
       className="relative overflow-hidden rounded-3xl glass-strong p-6 sm:p-8"
     >
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-sky-500/15 blur-[80px]" />
+        <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full" />
       </div>
 
       {/* header */}
       <div className="flex items-start gap-3">
         <span
           className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg",
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
             recognized
-              ? "bg-gradient-to-br from-emerald-500 to-cyan-400 shadow-emerald-500/25"
-              : "bg-gradient-to-br from-sky-500 to-cyan-400 shadow-sky-500/25"
+              ? "bg-emerald-500/10 text-emerald-400"
+              : "bg-primary/10 text-primary"
           )}
         >
           {recognized ? <CheckCircle2 className="h-6 w-6" /> : <ScanEye className="h-6 w-6" />}
@@ -175,7 +175,7 @@ export function MetadataSummaryCard({
               : "Rex measured your image and read what it could confidently see."}
           </p>
         </div>
-        <span className="ml-auto hidden shrink-0 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-600 dark:text-sky-300 sm:inline">
+        <span className="ml-auto hidden shrink-0 rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-semibold text-primary sm:inline">
           {metadata.overallConfidence}% overall
         </span>
       </div>
@@ -240,7 +240,7 @@ export function MetadataSummaryCard({
       {/* metadata notes (never-guess honesty) */}
       {notes.length > 0 && (
         <div className="mt-4 flex items-start gap-2 rounded-2xl border border-border/60 bg-card/40 p-4 text-sm text-muted-foreground">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <ul className="space-y-0.5">
             {notes.map((n, i) => (
               <li key={`${n}-${i}`}>{n}</li>

@@ -31,12 +31,12 @@ export function EmptyState({
       )}
     >
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-0 h-40 w-64 -translate-x-1/2 rounded-full bg-sky-500/10 blur-[80px]" />
+        <div className="absolute left-1/2 top-0 h-40 w-64 -translate-x-1/2 rounded-full" />
       </div>
       <motion.div
         animate={{ y: [0, -6, 0] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500/15 to-cyan-400/10 text-sky-500"
+        className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary"
       >
         {icon}
       </motion.div>

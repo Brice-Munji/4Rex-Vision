@@ -31,8 +31,8 @@ export function NotificationsMenu() {
           <Bell className="h-5 w-5" />
           {count > 0 && (
             <span className="absolute right-2 top-2 flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
             </span>
           )}
         </button>
@@ -41,7 +41,7 @@ export function NotificationsMenu() {
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notifications</span>
-          <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-500">
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
             {count} new
           </span>
         </DropdownMenuLabel>
@@ -77,7 +77,7 @@ export function NotificationsMenu() {
           })}
         </div>
         <DropdownMenuSeparator />
-        <button className="w-full rounded-xl px-3 py-2 text-center text-xs font-medium text-sky-500 transition-colors hover:bg-secondary">
+        <button className="w-full rounded-xl px-3 py-2 text-center text-xs font-medium text-primary transition-colors hover:bg-secondary">
           Mark all as read
         </button>
       </DropdownMenuContent>

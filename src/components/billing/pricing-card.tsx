@@ -40,12 +40,12 @@ export function PricingCard({
       className={cn(
         "relative flex h-full flex-col rounded-3xl p-7 transition-all duration-300",
         plan.highlight
-          ? "glass-strong border-sky-500/40 shadow-2xl shadow-sky-500/10 lg:-mt-4 lg:mb-4"
-          : "glass hover:-translate-y-1 hover:border-sky-500/30"
+          ? "glass-strong border-primary shadow-sm lg:-mt-4 lg:mb-4"
+          : "glass hover:-translate-y-1 hover:border-primary/50"
       )}
     >
       {plan.highlight && (
-        <div className="pointer-events-none absolute inset-0 -z-10 rounded-3xl bg-gradient-to-b from-sky-500/[0.08] to-transparent" />
+        <div className="pointer-events-none absolute inset-0 -z-10 rounded-3xl" />
       )}
       {plan.badge && (
         <Badge
@@ -60,7 +60,7 @@ export function PricingCard({
       <div className="flex items-center gap-3">
         <span
           className={cn(
-            "flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg",
+            "flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary",
             plan.accent
           )}
         >
@@ -101,7 +101,7 @@ export function PricingCard({
               className={cn(
                 "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
                 plan.highlight
-                  ? "bg-gradient-to-br from-sky-500 to-cyan-400 text-white"
+                  ? "bg-primary/10 text-primary"
                   : "bg-sky-500/10 text-sky-500"
               )}
             >

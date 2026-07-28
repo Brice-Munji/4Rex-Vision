@@ -17,7 +17,7 @@ const stats = [
     label: "Trades Reviewed",
     value: JOURNAL_STATS.tradesReviewed,
     icon: CheckCheck,
-    accent: "text-sky-500 bg-sky-500/10",
+    accent: "text-primary bg-primary/10",
   },
   {
     label: "AI Suggestions",
@@ -48,7 +48,7 @@ export function JournalPreview() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: i * 0.06 }}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-center"
+            className="rounded-2xl border border-border bg-secondary p-3 text-center"
           >
             <span
               className={`mx-auto flex h-8 w-8 items-center justify-center rounded-lg ${s.accent}`}

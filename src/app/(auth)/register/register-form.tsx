@@ -215,7 +215,7 @@ export function RegisterForm() {
         Already have an account?{" "}
         <Link
           href="/login"
-          className="font-medium text-sky-500 transition-colors hover:text-sky-400"
+          className="font-medium text-primary transition-colors hover:text-primary/80"
         >
           Sign in
         </Link>

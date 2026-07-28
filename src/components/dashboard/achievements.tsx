@@ -34,7 +34,7 @@ export function Achievements() {
               className={cn(
                 "relative flex items-start gap-4 overflow-hidden rounded-2xl border p-4",
                 a.unlocked
-                  ? "border-amber-500/30 bg-gradient-to-br from-amber-500/[0.08] to-transparent"
+                  ? "border-amber-500/30 bg-amber-500/[0.08]"
                   : "border-border/60 bg-card/40"
               )}
             >
@@ -42,7 +42,7 @@ export function Achievements() {
                 className={cn(
                   "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl",
                   a.unlocked
-                    ? "bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/25"
+                    ? "bg-amber-500/10 text-amber-400 shadow-sm"
                     : "bg-secondary text-muted-foreground"
                 )}
               >
@@ -64,7 +64,7 @@ export function Achievements() {
                   <div className="mt-2">
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
+                        className="h-full rounded-full bg-amber-500"
                         style={{ width: `${a.progress}%` }}
                       />
                     </div>

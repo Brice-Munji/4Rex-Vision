@@ -48,12 +48,12 @@ export function HowItWorks() {
 
           {steps.map((s, i) => (
             <StaggerItem key={s.step} className="relative">
-              <div className="glass group relative h-full rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1 hover:border-sky-500/30">
+              <div className="glass group relative h-full rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1 hover:border-border">
                 <div className="flex items-center justify-between">
                   <div
-                    className={`relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${s.gradient} shadow-lg shadow-sky-500/20`}
+                    className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 shadow-sm"
                   >
-                    <s.icon className="h-7 w-7 text-white" />
+                    <s.icon className="h-7 w-7 text-primary" />
                   </div>
                   <span className="text-5xl font-bold text-foreground/[0.06]">
                     0{i + 1}

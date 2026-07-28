@@ -18,7 +18,7 @@ export function UsageMeter({ used, limit, unlimited, plan }: UsageMeterProps) {
     <div className="rounded-3xl glass p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/10 text-sky-500">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Zap className="h-5 w-5" />
           </div>
           <div>
@@ -30,7 +30,7 @@ export function UsageMeter({ used, limit, unlimited, plan }: UsageMeterProps) {
 
       {unlimited ? (
         <div className="mt-5 flex items-center gap-2 text-foreground">
-          <InfinityIcon className="h-5 w-5 text-sky-500" />
+          <InfinityIcon className="h-5 w-5 text-primary" />
           <span className="text-lg font-semibold">Unlimited</span>
         </div>
       ) : (

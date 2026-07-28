@@ -13,21 +13,21 @@ const resources = [
     title: "Documentation",
     description: "Guides for uploading charts and reading AI reports.",
     href: "#",
-    accent: "from-sky-500 to-cyan-400",
+    accent: "bg-primary/10 text-primary",
   },
   {
     icon: MessageCircle,
     title: "Community",
     description: "Join other traders and share setups and feedback.",
     href: "#",
-    accent: "from-indigo-500 to-sky-500",
+    accent: "bg-primary/10 text-primary",
   },
   {
     icon: Mail,
     title: "Contact Support",
     description: "Reach our team — we usually reply within a few hours.",
     href: "#",
-    accent: "from-emerald-500 to-cyan-400",
+    accent: "bg-emerald-500/10 text-emerald-400",
   },
 ];
 
@@ -60,10 +60,10 @@ export default function HelpPage() {
           <Link
             key={r.title}
             href={r.href}
-            className="group rounded-2xl glass p-5 transition-all duration-300 hover:-translate-y-1 hover:border-sky-500/30"
+            className="group rounded-2xl glass p-5 transition-all duration-300 hover:-translate-y-1 hover:border-border"
           >
             <span
-              className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${r.accent} text-white shadow-lg`}
+              className={`flex h-11 w-11 items-center justify-center rounded-xl ${r.accent} shadow-sm`}
             >
               <r.icon className="h-5 w-5" />
             </span>

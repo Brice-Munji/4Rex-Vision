@@ -39,7 +39,7 @@ function ConfidenceCard({ metric, index }: { metric: ConfidenceMetric; index: nu
       <ul className="mt-3 space-y-1.5">
         {metric.contributors.map((c, ci) => (
           <li key={`${c}-${ci}`} className="flex items-start gap-2 text-xs text-muted-foreground">
-            <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-sky-400" />
+            <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-primary" />
             {c}
           </li>
         ))}
@@ -73,7 +73,7 @@ export function ConfidenceBreakdown({
         ref={ref}
         className="mb-4 flex items-center gap-4 rounded-3xl glass-strong p-6"
       >
-        <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-lg shadow-sky-500/25">
+        <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <span className="text-lg font-bold tabular-nums">{overallValue}</span>
         </div>
         <div>

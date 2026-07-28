@@ -22,8 +22,8 @@ export function EnterpriseContact() {
       className="relative overflow-hidden rounded-3xl glass-strong p-8 sm:p-12"
     >
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -right-10 -top-10 h-56 w-56 rounded-full bg-indigo-500/20 blur-[90px]" />
-        <div className="absolute -left-10 bottom-0 h-56 w-56 rounded-full bg-fuchsia-500/15 blur-[90px]" />
+        <div className="absolute -right-10 -top-10 h-56 w-56 rounded-full" />
+        <div className="absolute -left-10 bottom-0 h-56 w-56 rounded-full" />
         <div className="absolute inset-0 bg-grid opacity-[0.12]" />
       </div>
 
@@ -56,9 +56,9 @@ export function EnterpriseContact() {
           {perks.map((p) => (
             <div
               key={p.label}
-              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+              className="flex items-center gap-3 rounded-2xl border border-border bg-white/[0.03] p-4"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
                 <p.icon className="h-4 w-4" />
               </span>
               <span className="text-sm font-medium">{p.label}</span>

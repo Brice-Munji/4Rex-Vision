@@ -78,7 +78,7 @@ export function Features() {
   return (
     <section id="features" className="relative py-24 md:py-32">
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-1/4 top-1/3 h-[400px] w-[400px] rounded-full bg-sky-500/10 blur-[120px]" />
+        <div className="absolute left-1/4 top-1/3 h-[400px] w-[400px] rounded-full" />
       </div>
 
       <div className="container">
@@ -94,9 +94,9 @@ export function Features() {
         >
           {features.map((f) => (
             <StaggerItem key={f.title} className={f.span ?? ""}>
-              <div className="group relative h-full overflow-hidden rounded-2xl glass p-6 transition-all duration-300 hover:-translate-y-1 hover:border-sky-500/30">
-                <div className="absolute inset-0 -z-10 bg-gradient-to-br from-sky-500/0 to-cyan-500/0 opacity-0 transition-opacity duration-300 group-hover:from-sky-500/[0.06] group-hover:to-cyan-500/[0.03] group-hover:opacity-100" />
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+              <div className="group relative h-full overflow-hidden rounded-2xl glass p-6 transition-all duration-300 hover:-translate-y-1 hover:border-border">
+                <div className="absolute inset-0 -z-10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-card">
                   <f.icon className={`h-6 w-6 ${f.accent}`} />
                 </div>
                 <h3 className="mt-5 text-lg font-semibold">{f.title}</h3>

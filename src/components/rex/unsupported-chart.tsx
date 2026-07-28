@@ -35,7 +35,7 @@ export function UnsupportedChart({
       className="relative overflow-hidden rounded-3xl glass p-8 text-center sm:p-12"
     >
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-0 h-48 w-80 -translate-x-1/2 rounded-full bg-amber-500/10 blur-[90px]" />
+        <div className="absolute left-1/2 top-0 h-48 w-80 -translate-x-1/2 rounded-full" />
         <div className="absolute inset-0 bg-grid mask-radial opacity-[0.15]" />
       </div>
 
@@ -44,11 +44,11 @@ export function UnsupportedChart({
         <motion.div
           animate={{ y: [0, -6, 0] }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-400/20 to-orange-500/10 text-amber-500"
+          className="flex h-20 w-20 items-center justify-center rounded-3xl bg-amber-500/10 text-amber-500"
         >
           <ImageOff className="h-9 w-9" />
         </motion.div>
-        <span className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-lg">
+        <span className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <CandlestickChart className="h-5 w-5" />
         </span>
       </div>

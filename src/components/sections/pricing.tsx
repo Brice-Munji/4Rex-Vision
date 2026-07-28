@@ -62,7 +62,7 @@ export function Pricing() {
   return (
     <section id="pricing" className="relative py-24 md:py-32">
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-1/2 h-[500px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-500/10 blur-[140px]" />
+        <div className="absolute left-1/2 top-1/2 h-[500px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full" />
       </div>
 
       <div className="container">
@@ -82,13 +82,13 @@ export function Pricing() {
                 className={cn(
                   "relative flex h-full flex-col rounded-3xl p-7 transition-all duration-300",
                   plan.featured
-                    ? "glass-strong border-sky-500/40 shadow-2xl shadow-sky-500/10 lg:-mt-4 lg:mb-4"
-                    : "glass hover:-translate-y-1 hover:border-sky-500/30"
+                    ? "glass-strong border-border shadow-sm lg:-mt-4 lg:mb-4"
+                    : "glass hover:-translate-y-1 hover:border-border"
                 )}
               >
                 {plan.featured && (
                   <>
-                    <div className="pointer-events-none absolute inset-0 -z-10 rounded-3xl bg-gradient-to-b from-sky-500/[0.08] to-transparent" />
+                    <div className="pointer-events-none absolute inset-0 -z-10 rounded-3xl bg-card" />
                     <Badge
                       variant="gradient"
                       className="absolute -top-3 left-1/2 -translate-x-1/2"
@@ -124,8 +124,8 @@ export function Pricing() {
                         className={cn(
                           "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
                           plan.featured
-                            ? "bg-gradient-to-br from-sky-500 to-cyan-400 text-white"
-                            : "bg-sky-500/10 text-sky-500 dark:text-sky-400"
+                            ? "bg-primary/10 text-primary"
+                            : "bg-primary/10 text-primary"
                         )}
                       >
                         <Check className="h-3 w-3" strokeWidth={3} />

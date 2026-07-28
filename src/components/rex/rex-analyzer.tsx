@@ -268,13 +268,13 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
               className={cn(
                 "mt-6 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 text-center transition-all",
                 dragging
-                  ? "border-sky-500/60 bg-sky-500/10"
-                  : "border-border hover:border-sky-500/40 hover:bg-secondary/40"
+                  ? "border-primary/60 bg-primary/10"
+                  : "border-border hover:border-primary/40 hover:bg-secondary/40"
               )}
             >
               <motion.div
                 animate={dragging ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
-                className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-lg shadow-sky-500/30"
+                className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary"
               >
                 <UploadCloud className="h-8 w-8" />
               </motion.div>
@@ -282,7 +282,7 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
                 Drag &amp; drop your chart here
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                or <span className="text-sky-500">click to upload</span>
+                or <span className="text-primary">click to upload</span>
               </p>
               <div className="mt-5 flex flex-wrap justify-center gap-1.5">
                 {ACCEPTED.map((f) => (

@@ -30,7 +30,7 @@ export function ExplainThis({
     <Dialog>
       <DialogTrigger asChild>
         <button
-          className="inline-flex items-center gap-1 rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-xs font-medium text-sky-600 transition-colors hover:bg-sky-500/20 dark:text-sky-300"
+          className="inline-flex items-center gap-1 rounded-full border border-border bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
         >
           <HelpCircle className="h-3.5 w-3.5" />
           {label}
@@ -39,7 +39,7 @@ export function ExplainThis({
       <DialogContent>
         <DialogHeader>
           <div className="mb-2 flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Sparkles className="h-5 w-5" />
             </span>
             <DialogTitle>{entry.term}</DialogTitle>

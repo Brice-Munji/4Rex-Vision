@@ -23,21 +23,21 @@
   }
 
   .dark {
-    --background: 222 47% 5%;
-    --foreground: 210 40% 98%;
-    --card: 222 40% 8%;
-    --card-foreground: 210 40% 98%;
-    --primary: 199 89% 52%;
-    --primary-foreground: 222 47% 6%;
-    --secondary: 217 33% 14%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 14%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 187 92% 50%;
-    --accent-foreground: 222 47% 6%;
-    --border: 217 33% 18%;
-    --input: 217 33% 18%;
-    --ring: 199 89% 52%;
+    --background: 0 0% 2%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 96%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 13%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 217 91% 60%;
   }
 }
 
@@ -56,13 +56,13 @@
 
 @layer utilities {
   .glass {
-    @apply bg-card/60 backdrop-blur-xl border border-white/10 dark:border-white/[0.08];
+    @apply bg-card/80 backdrop-blur-xl border border-border;
   }
   .glass-strong {
-    @apply bg-card/80 backdrop-blur-2xl border border-white/10 dark:border-white/[0.08];
+    @apply bg-card/90 backdrop-blur-2xl border border-border;
   }
   .text-gradient {
-    @apply bg-gradient-to-r from-sky-400 via-cyan-300 to-blue-500 bg-clip-text text-transparent;
+    @apply bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent;
   }
   .text-gradient-subtle {
     @apply bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent;

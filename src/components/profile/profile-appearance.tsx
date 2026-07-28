@@ -56,15 +56,15 @@ export function ProfileAppearance({ user }: { user: User }) {
                 className={cn(
                   "flex flex-col items-center gap-3 rounded-2xl border p-5 text-center transition-all",
                   selected
-                    ? "border-sky-500/50 bg-sky-500/10"
-                    : "border-border bg-card/40 hover:border-sky-500/30"
+                    ? "border-primary/50 bg-primary/10"
+                    : "border-border bg-card/40 hover:border-primary/30"
                 )}
               >
                 <span
                   className={cn(
                     "flex h-11 w-11 items-center justify-center rounded-xl",
                     selected
-                      ? "bg-gradient-to-br from-sky-500 to-cyan-400 text-white"
+                      ? "bg-primary/10 text-primary"
                       : "bg-secondary text-muted-foreground"
                   )}
                 >

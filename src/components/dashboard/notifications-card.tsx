@@ -30,7 +30,7 @@ export function NotificationsCard() {
   return (
     <div className="rounded-3xl glass p-6">
       <div className="flex items-center gap-2">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/10 text-sky-500">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <Bell className="h-5 w-5" />
         </span>
         <h2 className="text-sm font-semibold">Notifications</h2>

@@ -94,7 +94,7 @@ export function AiWorkspace({
     <section className="rounded-3xl glass p-6 sm:p-8">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/10 text-sky-500">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Sparkles className="h-5 w-5" />
           </span>
           <div>
@@ -141,13 +141,13 @@ export function AiWorkspace({
                 className={cn(
                   "flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 text-center transition-all",
                   dragging
-                    ? "border-sky-500/60 bg-sky-500/10"
-                    : "border-border hover:border-sky-500/40 hover:bg-secondary/40"
+                    ? "border-primary/60 bg-primary/10"
+                    : "border-border hover:border-primary/40 hover:bg-secondary/40"
                 )}
               >
                 <motion.div
                   animate={dragging ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
-                  className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-lg shadow-sky-500/30"
+                  className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm"
                 >
                   <UploadCloud className="h-8 w-8" />
                 </motion.div>
@@ -155,7 +155,7 @@ export function AiWorkspace({
                   Drag & drop your chart here
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  or <span className="text-sky-500">browse files</span> to upload
+                  or <span className="text-primary">browse files</span> to upload
                 </p>
                 <div className="mt-5 flex flex-wrap justify-center gap-1.5">
                   {ACCEPTED_UPLOAD_FORMATS.map((f) => (
@@ -249,14 +249,14 @@ export function AiWorkspace({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div className="rounded-2xl border border-sky-500/20 bg-sky-500/[0.04] p-5">
-                <div className="flex items-center gap-2 text-sm font-medium text-sky-500">
+              <div className="rounded-2xl border border-border bg-primary/5 p-5">
+                <div className="flex items-center gap-2 text-sm font-medium text-primary">
                   <Sparkles className="h-4 w-4" />
                   Analysis complete · EUR/USD · H1
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <Stat icon={TrendingUp} label="Bias" value="Bullish" accent="text-emerald-500" />
-                  <Stat icon={Gauge} label="Confidence" value="84%" accent="text-sky-500" />
+                  <Stat icon={Gauge} label="Confidence" value="84%" accent="text-primary" />
                   <Stat icon={ShieldAlert} label="Risk" value="Moderate" accent="text-amber-500" />
                 </div>
                 <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
@@ -293,7 +293,7 @@ function Stat({
   accent: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+    <div className="rounded-xl border border-border bg-secondary p-3">
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Icon className={cn("h-3.5 w-3.5", accent)} />
         {label}

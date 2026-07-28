@@ -40,8 +40,8 @@ export function VerifyClient() {
           animate={{ opacity: 1 }}
           className="flex flex-col items-center"
         >
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-500/10">
-            <Loader2 className="h-8 w-8 animate-spin text-sky-500" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
           <h1 className="mt-6 text-2xl font-bold tracking-tight">
             Verifying your email

@@ -111,11 +111,11 @@ export function WhatsNext({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 32, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 260, damping: 26 }}
-            className="relative w-full max-w-2xl overflow-hidden rounded-t-[24px] shadow-2xl shadow-black/60 ring-1 ring-white/10 glass-strong sm:rounded-[24px]"
+            className="relative w-full max-w-2xl overflow-hidden rounded-t-[24px] shadow-sm ring-1 ring-border glass-strong sm:rounded-[24px]"
           >
             <div className="pointer-events-none absolute inset-0 -z-10">
-              <div className="absolute -left-16 -top-24 h-64 w-64 rounded-full bg-sky-500/25 blur-[90px]" />
-              <div className="absolute -bottom-24 -right-10 h-64 w-64 rounded-full bg-cyan-400/15 blur-[90px]" />
+              <div className="absolute -left-16 -top-24 h-64 w-64 rounded-full" />
+              <div className="absolute -bottom-24 -right-10 h-64 w-64 rounded-full" />
             </div>
 
             <button
@@ -133,7 +133,7 @@ export function WhatsNext({
               </h2>
 
               {/* Rex personality */}
-              <div className="mt-5 rounded-2xl border border-sky-500/20 bg-sky-500/[0.06] p-4">
+              <div className="mt-5 rounded-2xl border border-border bg-primary/[0.06] p-4">
                 <p className="text-sm leading-relaxed text-foreground/90">
                   👋 Nice work today. You&apos;ve already completed all 3 free
                   analyses included with Rex Explorer.
@@ -147,7 +147,7 @@ export function WhatsNext({
               {/* Countdown */}
               <div className="mt-5 flex items-center justify-between rounded-2xl border border-border/60 bg-card/40 p-4">
                 <div className="flex items-center gap-2.5">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/10 text-sky-500">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Clock className="h-5 w-5" />
                   </span>
                   <div>
@@ -170,10 +170,10 @@ export function WhatsNext({
                     onClick={onClose}
                     className={cn(
                       "group flex items-center gap-3 rounded-2xl border border-border/60 bg-card/40 p-3.5 text-left transition-all",
-                      "hover:-translate-y-0.5 hover:border-sky-500/40 hover:bg-secondary/40"
+                      "hover:-translate-y-0.5 hover:border-primary/40 hover:bg-secondary/40"
                     )}
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-sky-500">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
                       <a.icon className="h-4 w-4" />
                     </span>
                     <span className="flex-1 text-sm font-medium">{a.label}</span>
@@ -183,10 +183,10 @@ export function WhatsNext({
               </div>
 
               {/* Unlock Rex Pro */}
-              <div className="relative mt-7 overflow-hidden rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-transparent to-cyan-400/5 p-5">
-                <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-sky-500/20 blur-2xl" />
+              <div className="relative mt-7 overflow-hidden rounded-2xl border border-border bg-card p-5">
+                <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full" />
                 <div className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-md shadow-sky-500/30">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <Sparkles className="h-4 w-4" />
                   </span>
                   <div className="flex items-end gap-1.5">

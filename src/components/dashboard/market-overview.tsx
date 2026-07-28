@@ -34,7 +34,7 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
       variants={item}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
-        "group relative overflow-hidden rounded-2xl glass p-5 transition-all duration-300 hover:-translate-y-1 hover:border-sky-500/30",
+        "group relative overflow-hidden rounded-2xl glass p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30",
         className
       )}
     >
@@ -66,9 +66,9 @@ const sentimentMeta: Record<
   MarketSentiment,
   { color: string; icon: React.ElementType; bar: string }
 > = {
-  Bullish: { color: "text-emerald-500", icon: TrendingUp, bar: "from-emerald-500 to-emerald-400" },
-  Neutral: { color: "text-amber-500", icon: Minus, bar: "from-amber-500 to-amber-400" },
-  Bearish: { color: "text-rose-500", icon: TrendingDown, bar: "from-rose-500 to-rose-400" },
+  Bullish: { color: "text-emerald-500", icon: TrendingUp, bar: "bg-emerald-500" },
+  Neutral: { color: "text-amber-500", icon: Minus, bar: "bg-amber-500" },
+  Bearish: { color: "text-rose-500", icon: TrendingDown, bar: "bg-rose-500" },
 };
 
 export function MarketOverview() {
@@ -89,7 +89,7 @@ export function MarketOverview() {
     >
       {/* 1 — Market sentiment */}
       <Card>
-        <CardHead icon={Gauge} label="Market Sentiment" accent="bg-sky-500/10 text-sky-500" />
+        <CardHead icon={Gauge} label="Market Sentiment" accent="bg-primary/10 text-primary" />
         <div className="mt-4 flex items-center gap-2">
           <SmIcon className={cn("h-6 w-6", sm.color)} />
           <span className={cn("text-2xl font-bold", sm.color)}>
@@ -108,7 +108,7 @@ export function MarketOverview() {
               whileInView={{ width: `${MARKET_SENTIMENT.score}%` }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className={cn("h-full rounded-full bg-gradient-to-r", sm.bar)}
+              className={cn("h-full rounded-full", sm.bar)}
             />
           </div>
         </div>
@@ -140,7 +140,7 @@ export function MarketOverview() {
 
       {/* 3 — Most active session */}
       <Card>
-        <CardHead icon={Clock} label="Most Active Session" accent="bg-indigo-500/10 text-indigo-400" />
+        <CardHead icon={Clock} label="Most Active Session" accent="bg-primary/10 text-primary" />
         <div className="mt-4 text-2xl font-bold">{MOST_ACTIVE_SESSION}</div>
         <div className="mt-3 space-y-1.5">
           {SESSIONS.map((s) => (
@@ -162,7 +162,7 @@ export function MarketOverview() {
                   className={cn(
                     "h-full rounded-full",
                     s.active
-                      ? "bg-gradient-to-r from-sky-500 to-cyan-400"
+                      ? "bg-primary"
                       : "bg-muted-foreground/30"
                   )}
                 />

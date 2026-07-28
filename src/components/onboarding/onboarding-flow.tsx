@@ -112,7 +112,7 @@ export function OnboardingFlow({ firstName }: { firstName?: string | null }) {
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-sky-500/10 blur-[120px]" />
+        <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full" />
         <div className="absolute inset-0 bg-grid mask-radial opacity-[0.25]" />
       </div>
 
@@ -151,9 +151,9 @@ export function OnboardingFlow({ firstName }: { firstName?: string | null }) {
                   initial={{ scale: 0, rotate: -20 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: "spring", stiffness: 180, damping: 14 }}
-                  className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-sky-500 to-cyan-400 shadow-2xl shadow-sky-500/30"
+                  className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10 shadow-sm"
                 >
-                  <Sparkles className="h-10 w-10 text-white" />
+                  <Sparkles className="h-10 w-10 text-primary" />
                 </motion.div>
                 <h1 className="mt-8 text-balance text-4xl font-bold tracking-tight md:text-5xl">
                   Welcome to{" "}
@@ -239,13 +239,13 @@ export function OnboardingFlow({ firstName }: { firstName?: string | null }) {
                         className={cn(
                           "relative flex items-center justify-center gap-2 rounded-2xl border p-4 text-sm font-semibold transition-all",
                           selected
-                            ? "border-sky-500/50 bg-sky-500/10 text-foreground"
-                            : "glass hover:border-sky-500/30"
+                            ? "border-primary/50 bg-primary/10 text-foreground"
+                            : "glass hover:border-primary/30"
                         )}
                       >
                         {selected && (
-                          <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-cyan-400">
-                            <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+                          <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary">
+                            <Check className="h-2.5 w-2.5 text-primary-foreground" strokeWidth={3} />
                           </span>
                         )}
                         {pair}
@@ -281,15 +281,15 @@ export function OnboardingFlow({ firstName }: { firstName?: string | null }) {
                         className={cn(
                           "flex flex-col items-center gap-3 rounded-2xl border p-6 text-center transition-all",
                           selected
-                            ? "border-sky-500/50 bg-sky-500/10"
-                            : "glass hover:border-sky-500/30"
+                            ? "border-primary/50 bg-primary/10"
+                            : "glass hover:border-primary/30"
                         )}
                       >
                         <span
                           className={cn(
                             "flex h-12 w-12 items-center justify-center rounded-xl",
                             selected
-                              ? "bg-gradient-to-br from-sky-500 to-cyan-400 text-white"
+                              ? "bg-primary/10 text-primary"
                               : "bg-secondary text-muted-foreground"
                           )}
                         >
@@ -322,9 +322,9 @@ export function OnboardingFlow({ firstName }: { firstName?: string | null }) {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: "spring", stiffness: 160, damping: 12 }}
-                    className="flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-500 to-cyan-400 shadow-2xl shadow-emerald-500/30"
+                    className="flex h-24 w-24 items-center justify-center rounded-3xl bg-emerald-500/10 shadow-sm"
                   >
-                    <CheckCircle2 className="h-12 w-12 text-white" />
+                    <CheckCircle2 className="h-12 w-12 text-emerald-400" />
                   </motion.div>
                   <motion.div
                     initial={{ opacity: 0, y: 0, scale: 0 }}
@@ -432,15 +432,15 @@ function SelectCard({
       className={cn(
         "group relative flex items-start gap-4 rounded-2xl border p-5 text-left transition-all",
         selected
-          ? "border-sky-500/50 bg-sky-500/10"
-          : "glass hover:border-sky-500/30"
+          ? "border-primary/50 bg-primary/10"
+          : "glass hover:border-primary/30"
       )}
     >
       <span
         className={cn(
           "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors",
           selected
-            ? "bg-gradient-to-br from-sky-500 to-cyan-400 text-white"
+            ? "bg-primary/10 text-primary"
             : "bg-secondary text-muted-foreground"
         )}
       >
@@ -456,11 +456,11 @@ function SelectCard({
         className={cn(
           "mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all",
           selected
-            ? "border-transparent bg-gradient-to-br from-sky-500 to-cyan-400"
+            ? "border-transparent bg-primary"
             : "border-border"
         )}
       >
-        {selected && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+        {selected && <Check className="h-3 w-3 text-primary-foreground" strokeWidth={3} />}
       </span>
     </button>
   );

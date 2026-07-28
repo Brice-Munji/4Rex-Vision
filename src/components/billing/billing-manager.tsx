@@ -126,7 +126,7 @@ export function BillingManager({
         transition={{ duration: 0.45 }}
         className="relative overflow-hidden rounded-3xl glass-strong p-6 sm:p-8"
       >
-        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-sky-500/15 blur-[80px]" />
+        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full" />
 
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -220,7 +220,7 @@ export function BillingManager({
       {/* Upgrade (free) or manage (paid) */}
       {isFree ? (
         <div className="relative overflow-hidden rounded-3xl glass p-6 sm:p-8">
-          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-sky-500/10 blur-[70px]" />
+          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full" />
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-sky-500" />
             <h3 className="text-lg font-semibold">Upgrade to {REX_PRO.name}</h3>

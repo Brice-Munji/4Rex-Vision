@@ -25,11 +25,11 @@ export function ExplorerLimit({
     return (
       <div className={cn("rounded-2xl glass p-5", compact && "p-4")}>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Zap className="h-4 w-4 text-sky-500" />
+          <Zap className="h-4 w-4 text-primary" />
           Daily Analyses
         </div>
         <div className="mt-3 flex items-center gap-2">
-          <InfinityIcon className="h-6 w-6 text-sky-400" />
+          <InfinityIcon className="h-6 w-6 text-primary" />
           <span className="text-xl font-bold">Unlimited</span>
         </div>
       </div>
@@ -40,7 +40,7 @@ export function ExplorerLimit({
     <div className={cn("rounded-2xl glass p-5", compact && "p-4")}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Zap className="h-4 w-4 text-sky-500" />
+          <Zap className="h-4 w-4 text-primary" />
           Daily Analyses
         </div>
         <span className="text-sm font-semibold">
@@ -61,7 +61,7 @@ export function ExplorerLimit({
               className={cn(
                 "h-2.5 flex-1 rounded-full",
                 filled
-                  ? "bg-gradient-to-r from-sky-500 to-cyan-400"
+                  ? "bg-primary"
                   : "bg-secondary"
               )}
             />
@@ -75,7 +75,7 @@ export function ExplorerLimit({
             label="Unlock Rex Pro"
             variant="ghost"
             size="sm"
-            className="h-auto px-0 text-xs font-medium text-sky-500 hover:bg-transparent hover:text-sky-400"
+            className="h-auto px-0 text-xs font-medium text-primary hover:bg-transparent hover:text-primary/80"
           />
         </div>
       )}

@@ -86,11 +86,11 @@ function FloatingCard({
 
 export function AuthArtwork() {
   return (
-    <div className="relative hidden h-full flex-col justify-between overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-sky-950/40 to-slate-950 p-10 lg:flex">
+    <div className="relative hidden h-full flex-col justify-between overflow-hidden rounded-3xl bg-secondary p-10 lg:flex">
       {/* gradient glows */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-20 top-0 h-80 w-80 rounded-full bg-sky-500/30 blur-[100px]" />
-        <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-cyan-400/20 blur-[100px]" />
+        <div className="absolute -left-20 top-0 h-80 w-80 rounded-full" />
+        <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full" />
         <div className="absolute inset-0 bg-grid opacity-[0.15]" />
       </div>
 
@@ -106,7 +106,7 @@ export function AuthArtwork() {
         <div className="relative h-64">
           <FloatingCard className="absolute left-0 top-0 w-52" delay={0.3}>
             <div className="flex items-center gap-2 text-xs text-white/60">
-              <Sparkles className="h-3.5 w-3.5 text-sky-400" />
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
               AI Analysis
             </div>
             <div className="mt-2 text-sm font-semibold text-white">
@@ -131,7 +131,7 @@ export function AuthArtwork() {
           <FloatingCard className="absolute bottom-0 left-10 w-56" delay={0.7}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs text-white/60">
-                <Activity className="h-3.5 w-3.5 text-cyan-400" />
+                <Activity className="h-3.5 w-3.5 text-primary" />
                 EUR/USD · 15M
               </div>
               <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-400">
@@ -164,13 +164,13 @@ export function AuthArtwork() {
           transition={{ delay: 1, duration: 0.6 }}
           className="max-w-md"
         >
-          <Quote className="h-6 w-6 text-sky-400/60" />
+          <Quote className="h-6 w-6 text-primary/60" />
           <p className="mt-3 text-lg font-medium leading-relaxed text-white/90">
             “4RexVision reads my charts faster than I can blink — it’s like having
             an institutional analyst on call 24/7.”
           </p>
           <footer className="mt-4 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-sky-400 to-cyan-400" />
+            <div className="h-9 w-9 rounded-full bg-primary/10" />
             <div>
               <div className="text-sm font-semibold text-white">Marcus Devlin</div>
               <div className="text-xs text-white/50">Full-time FX Trader</div>

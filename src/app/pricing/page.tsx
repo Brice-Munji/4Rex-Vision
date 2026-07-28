@@ -26,7 +26,7 @@ export default function PricingPage() {
         {/* hero */}
         <section className="relative overflow-hidden pt-36 pb-12 md:pt-44">
           <div className="pointer-events-none absolute inset-0 -z-10">
-            <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-sky-500/15 blur-[120px]" />
+            <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full" />
             <div className="absolute inset-0 bg-grid mask-radial opacity-[0.3]" />
           </div>
           <div className="container text-center">

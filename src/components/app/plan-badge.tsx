@@ -10,12 +10,12 @@ const styles: Record<Plan, { className: string; icon: React.ElementType }> = {
   },
   PROFESSIONAL: {
     className:
-      "border-transparent bg-gradient-to-r from-sky-500 to-cyan-400 text-white shadow-sm shadow-sky-500/30",
+      "border-transparent bg-primary/10 text-primary shadow-sm",
     icon: Crown,
   },
   ENTERPRISE: {
     className:
-      "border-transparent bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white shadow-sm shadow-indigo-500/30",
+      "border-transparent bg-violet-500/10 text-violet-400 shadow-sm",
     icon: Building2,
   },
 };

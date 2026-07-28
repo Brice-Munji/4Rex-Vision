@@ -31,14 +31,14 @@ export function WelcomeHero({
     >
       {/* ambient gradients */}
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -left-10 -top-16 h-64 w-64 rounded-full bg-sky-500/20 blur-[90px]" />
-        <div className="absolute -right-10 bottom-0 h-56 w-56 rounded-full bg-cyan-400/15 blur-[90px]" />
+        <div className="absolute -left-10 -top-16 h-64 w-64 rounded-full" />
+        <div className="absolute -right-10 bottom-0 h-56 w-56 rounded-full" />
         <div className="absolute inset-0 bg-grid opacity-[0.15]" />
       </div>
 
       <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-xl">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-600 dark:text-sky-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
             <Sparkles className="h-3.5 w-3.5" />
             {planDisplay} Plan
           </span>
@@ -69,16 +69,16 @@ export function WelcomeHero({
         </div>
 
         {/* remaining analyses widget */}
-        <div className="w-full max-w-xs shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="w-full max-w-xs shrink-0 rounded-2xl border border-border bg-secondary p-5">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 text-sky-500">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Zap className="h-4 w-4" />
             </span>
             Remaining Analyses
           </div>
           {unlimited ? (
             <div className="mt-4 flex items-center gap-2">
-              <InfinityIcon className="h-7 w-7 text-sky-400" />
+              <InfinityIcon className="h-7 w-7 text-primary" />
               <span className="text-2xl font-bold">Unlimited</span>
             </div>
           ) : (
@@ -99,7 +99,7 @@ export function WelcomeHero({
                     transition={{ delay: 0.3 + i * 0.08, duration: 0.4 }}
                     className={`h-2 flex-1 origin-left rounded-full ${
                       i < remaining
-                        ? "bg-gradient-to-r from-sky-500 to-cyan-400"
+                        ? "bg-primary"
                         : "bg-secondary"
                     }`}
                   />

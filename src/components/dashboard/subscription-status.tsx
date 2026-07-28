@@ -53,7 +53,7 @@ export function SubscriptionStatus({
     return () => clearInterval(t);
   }, [unlimited, target]);
 
-  const ringColor = reached ? "text-amber-500" : "text-sky-500";
+  const ringColor = reached ? "text-amber-500" : "text-primary";
 
   return (
     <div className="rounded-3xl glass p-6">
@@ -63,7 +63,7 @@ export function SubscriptionStatus({
           className={cn(
             "rounded-full px-2.5 py-0.5 text-xs font-semibold",
             unlimited
-              ? "bg-sky-500/10 text-sky-500"
+              ? "bg-primary/10 text-primary"
               : "bg-secondary text-muted-foreground"
           )}
         >
@@ -99,7 +99,7 @@ export function SubscriptionStatus({
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             {unlimited ? (
-              <InfinityIcon className="h-8 w-8 text-sky-400" />
+              <InfinityIcon className="h-8 w-8 text-primary" />
             ) : (
               <>
                 <span className="text-2xl font-bold tabular-nums leading-none">
@@ -118,7 +118,7 @@ export function SubscriptionStatus({
         <div className="min-w-0 flex-1 space-y-3">
           {unlimited ? (
             <div>
-              <div className="flex items-center gap-1.5 text-sm font-semibold text-sky-500">
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-primary">
                 <Zap className="h-4 w-4" />
                 Unlimited Analyses
               </div>
@@ -148,7 +148,7 @@ export function SubscriptionStatus({
                 </p>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Clock className="h-3.5 w-3.5 text-sky-500" />
+                <Clock className="h-3.5 w-3.5 text-primary" />
                 Resets in{" "}
                 <span className="font-medium tabular-nums text-foreground">
                   {fmtShort(resetIn)}

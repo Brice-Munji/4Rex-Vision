@@ -31,8 +31,8 @@ export function MinimizedCheckout({
           transition={{ type: "spring", stiffness: 300, damping: 26 }}
           className="fixed bottom-4 right-4 z-[75] w-[min(340px,calc(100vw-2rem))]"
         >
-          <div className="relative overflow-hidden rounded-2xl p-4 shadow-2xl shadow-black/50 ring-1 ring-white/10 glass-strong">
-            <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-sky-500/20 blur-2xl" />
+          <div className="relative overflow-hidden rounded-2xl p-4 shadow-2xl shadow-black/50 ring-1 ring-border glass-strong">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full" />
 
             <button
               onClick={onDismiss}
@@ -43,7 +43,7 @@ export function MinimizedCheckout({
             </button>
 
             <div className="flex items-center gap-2 text-sm font-semibold">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-md shadow-sky-500/30">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 {processing ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (

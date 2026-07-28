@@ -44,7 +44,7 @@ export function RecentAnalyses({
             >
               <Link
                 href="/history"
-                className="group flex h-full flex-col rounded-2xl glass p-5 transition-all duration-300 hover:-translate-y-1 hover:border-sky-500/30"
+                className="group flex h-full flex-col rounded-2xl glass p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-base font-semibold">{a.pair}</span>
@@ -67,7 +67,7 @@ export function RecentAnalyses({
                     whileInView={{ width: `${a.confidence}%` }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.7, ease: "easeOut" }}
-                    className="h-full rounded-full bg-gradient-to-r from-sky-500 to-cyan-400"
+                    className="h-full rounded-full bg-primary"
                   />
                 </div>
 
@@ -76,7 +76,7 @@ export function RecentAnalyses({
                     <Clock className="h-3 w-3" />
                     {a.timeAgo}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-sky-500">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                     View Report
                     <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </span>

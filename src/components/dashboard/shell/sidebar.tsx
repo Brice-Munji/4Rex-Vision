@@ -46,8 +46,8 @@ export function Sidebar({ user, collapsed, onToggle, onNavigate }: SidebarProps)
       >
         {collapsed ? (
           <Link href="/dashboard" aria-label="4RexVision AI" onClick={onNavigate}>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 shadow-lg shadow-sky-500/30">
-              <Sparkles className="h-5 w-5 text-white" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-sm">
+              <Sparkles className="h-5 w-5 text-primary-foreground" />
             </div>
           </Link>
         ) : (
@@ -99,19 +99,19 @@ export function Sidebar({ user, collapsed, onToggle, onNavigate }: SidebarProps)
               {active && (
                 <motion.span
                   layoutId="sidebar-active"
-                  className="absolute inset-0 -z-10 rounded-xl border border-sky-500/30 bg-sky-500/10"
+                  className="absolute inset-0 -z-10 rounded-xl border border-primary/30 bg-primary/10"
                   transition={{ type: "spring", stiffness: 400, damping: 32 }}
                 />
               )}
               <item.icon
                 className={cn(
                   "h-5 w-5 shrink-0 transition-colors",
-                  active && "text-sky-500 dark:text-sky-400"
+                  active && "text-primary"
                 )}
               />
               {!collapsed && <span className="truncate">{item.label}</span>}
               {active && !collapsed && (
-                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-sky-400" />
+                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
               )}
             </Link>
           );
@@ -121,10 +121,10 @@ export function Sidebar({ user, collapsed, onToggle, onNavigate }: SidebarProps)
       {/* footer: plan + user */}
       <div className="shrink-0 space-y-3 border-t border-border/60 p-3">
         {!collapsed ? (
-          <div className="relative overflow-hidden rounded-2xl border border-sky-500/20 bg-gradient-to-br from-sky-500/10 to-cyan-400/5 p-4">
-            <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-sky-500/20 blur-2xl" />
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-primary/5 p-4">
+            <div className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full" />
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Sparkles className="h-3.5 w-3.5 text-sky-400" />
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
               Current plan
             </div>
             <div className="mt-1 text-base font-semibold">
@@ -133,7 +133,7 @@ export function Sidebar({ user, collapsed, onToggle, onNavigate }: SidebarProps)
             <Link
               href="/billing"
               onClick={onNavigate}
-              className="mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-400 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-sky-500/25 transition-all hover:shadow-sky-500/40"
+              className="mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all"
             >
               Upgrade
               <ArrowUpRight className="h-3.5 w-3.5" />
@@ -144,7 +144,7 @@ export function Sidebar({ user, collapsed, onToggle, onNavigate }: SidebarProps)
             href="/billing"
             onClick={onNavigate}
             title="Upgrade plan"
-            className="flex items-center justify-center rounded-xl bg-gradient-to-r from-sky-500 to-cyan-400 p-2.5 text-white shadow-lg shadow-sky-500/25"
+            className="flex items-center justify-center rounded-xl bg-primary p-2.5 text-primary-foreground shadow-sm"
           >
             <ArrowUpRight className="h-4 w-4" />
           </Link>

@@ -43,7 +43,7 @@ export default function MarketPage() {
                     ? "bg-rose-500/10 text-rose-500"
                     : e.impact === "medium"
                       ? "bg-amber-500/10 text-amber-500"
-                      : "bg-sky-500/10 text-sky-500"
+                      : "bg-primary/10 text-primary"
                 }`}
               >
                 {e.impact} impact

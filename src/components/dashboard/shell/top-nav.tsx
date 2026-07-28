@@ -31,7 +31,7 @@ export function TopNav({ user, onOpenMobileNav }: TopNavProps) {
             <input
               type="search"
               placeholder="Search analyses, pairs…"
-              className="h-10 w-full rounded-xl border border-input bg-card/50 pl-10 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/20"
+              className="h-10 w-full rounded-xl border border-input bg-card/50 pl-10 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
             />
           </div>
         </div>

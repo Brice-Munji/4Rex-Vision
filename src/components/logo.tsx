@@ -3,11 +3,11 @@ import { cn } from "@/lib/utils";
 export function Logo({ className }: { className?: string }) {
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 shadow-lg shadow-sky-500/30">
+      <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-sm">
         <svg
           viewBox="0 0 24 24"
           fill="none"
-          className="h-5 w-5 text-white"
+          className="h-5 w-5 text-primary-foreground"
           xmlns="http://www.w3.org/2000/svg"
         >
           <path

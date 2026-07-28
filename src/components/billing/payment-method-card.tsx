@@ -17,7 +17,7 @@ export function PaymentMethodCard({ hasMethod = true }: { hasMethod?: boolean })
       {hasMethod ? (
         <div className="mt-5 flex items-center justify-between rounded-2xl border border-border/60 bg-card/40 p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-14 items-center justify-center rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 text-xs font-bold text-white">
+            <div className="flex h-10 w-14 items-center justify-center rounded-lg bg-secondary text-xs font-bold text-foreground">
               {PAYMENT_METHOD.brand}
             </div>
             <div>
@@ -36,7 +36,7 @@ export function PaymentMethodCard({ hasMethod = true }: { hasMethod?: boolean })
           </Button>
         </div>
       ) : (
-        <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border p-5 text-sm font-medium text-muted-foreground transition-colors hover:border-sky-500/40 hover:text-foreground">
+        <button className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border p-5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
           <Plus className="h-4 w-4" />
           Add payment method
         </button>

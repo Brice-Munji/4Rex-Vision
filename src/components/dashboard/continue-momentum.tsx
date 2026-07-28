@@ -16,13 +16,13 @@ export function ContinueMomentum() {
       className="relative overflow-hidden rounded-3xl glass-strong p-6 sm:p-10"
     >
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-1/2 top-0 h-64 w-[500px] -translate-x-1/2 rounded-full bg-sky-500/20 blur-[110px]" />
+        <div className="absolute left-1/2 top-0 h-64 w-[500px] -translate-x-1/2 rounded-full" />
         <div className="absolute inset-0 bg-grid mask-radial opacity-[0.15]" />
       </div>
 
       <div className="grid items-center gap-8 lg:grid-cols-2">
         <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-600 dark:text-sky-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
             <Sparkles className="h-3.5 w-3.5" />
             Vision Pro
           </span>
@@ -55,9 +55,9 @@ export function ContinueMomentum() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: 0.1 + i * 0.06 }}
-              className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm"
+              className="flex items-center gap-2.5 rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm"
             >
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-cyan-400 text-white">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Check className="h-3 w-3" strokeWidth={3} />
               </span>
               <span className="text-foreground/90">{u}</span>

@@ -36,11 +36,11 @@ export function VisionConfidenceCard({
       className="rounded-3xl glass p-6"
     >
       <div className="mb-4 flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-lg shadow-sky-500/25">
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <Eye className="h-5 w-5" />
         </span>
         <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-sky-500 dark:text-sky-400">
+          <span className="text-xs font-semibold uppercase tracking-wider text-primary">
             Vision Confidence
           </span>
           <h2 className="text-lg font-semibold tracking-tight">
@@ -48,7 +48,7 @@ export function VisionConfidenceCard({
           </h2>
         </div>
         {vision.chartSource !== "Unknown" && (
-          <span className="ml-auto hidden rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-600 dark:text-sky-300 sm:inline">
+          <span className="ml-auto hidden rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-semibold text-primary sm:inline">
             {vision.chartSource}
           </span>
         )}
