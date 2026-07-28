@@ -1,6 +1,8 @@
 "use client";
 
+import * as React from "react";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 function GoogleIcon() {
@@ -27,20 +29,35 @@ function GoogleIcon() {
 }
 
 export function SocialButtons() {
-  const notImplemented = (provider: string) =>
-    toast.info(`${provider} sign-in is coming soon.`, {
-      description: "OAuth providers are wired and ready to enable.",
-    });
+  const [loading, setLoading] = React.useState<string | null>(null);
+
+  const handleSignIn = (provider: string) => {
+    if (loading) return;
+    setLoading(provider);
+    // OAuth providers are wired and ready to enable; simulate the redirect handoff.
+    setTimeout(() => {
+      toast.info(`${provider} sign-in is coming soon.`, {
+        description: "OAuth providers are wired and ready to enable.",
+      });
+      setLoading(null);
+    }, 1200);
+  };
 
   return (
     <div className="grid grid-cols-1 gap-3">
       <Button
         type="button"
         variant="secondary"
-        onClick={() => notImplemented("Google")}
+        onClick={() => handleSignIn("Google")}
+        disabled={loading !== null}
+        aria-busy={loading === "Google"}
       >
-        <GoogleIcon />
-        Google
+        {loading === "Google" ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <GoogleIcon />
+        )}
+        {loading === "Google" ? "Connecting to Google…" : "Google"}
       </Button>
     </div>
   );
