@@ -16,7 +16,7 @@ export default function AuthLayout({
         <AuthArtwork />
 
         {/* Right content */}
-        <div className="relative flex flex-col">
+        <div className="relative flex flex-col rounded-3xl border border-border bg-card p-6 sm:p-8 lg:border-0 lg:bg-transparent lg:p-0">
           <div className="flex items-center justify-between">
             <Link
               href="/"
