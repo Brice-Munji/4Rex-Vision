@@ -105,32 +105,32 @@ export function AuthArtwork() {
       <div className="relative z-10 my-8">
         <div className="relative h-64">
           <FloatingCard className="absolute left-0 top-0 w-52" delay={0.3}>
-            <div className="flex items-center gap-2 text-xs text-white/60">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               AI Analysis
             </div>
-            <div className="mt-2 text-sm font-semibold text-white">
+            <div className="mt-2 text-sm font-semibold text-foreground">
               Ascending Triangle
             </div>
-            <div className="mt-1 text-[11px] text-white/50">
+            <div className="mt-1 text-[11px] text-muted-foreground">
               Breakout bias · 78% bullish
             </div>
           </FloatingCard>
 
           <FloatingCard className="absolute right-0 top-10 w-44" delay={0.5}>
-            <div className="flex items-center gap-2 text-xs text-white/60">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
               Confidence
             </div>
             <div className="mt-2 flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-white">92</span>
-              <span className="text-xs text-white/50">/ 100</span>
+              <span className="text-2xl font-bold text-foreground">92</span>
+              <span className="text-xs text-muted-foreground">/ 100</span>
             </div>
           </FloatingCard>
 
           <FloatingCard className="absolute bottom-0 left-10 w-56" delay={0.7}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-white/60">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Activity className="h-3.5 w-3.5 text-primary" />
                 EUR/USD · 15M
               </div>
@@ -144,14 +144,14 @@ export function AuthArtwork() {
           </FloatingCard>
 
           <FloatingCard className="absolute bottom-6 right-2 w-40" delay={0.9}>
-            <div className="flex items-center gap-2 text-xs text-white/60">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
               Risk
             </div>
             <div className="mt-1.5 text-sm font-semibold text-amber-300">
               Moderate
             </div>
-            <div className="text-[10px] text-white/50">R:R 1 : 2.4</div>
+            <div className="text-[10px] text-muted-foreground">R:R 1 : 2.4</div>
           </FloatingCard>
         </div>
       </div>
@@ -165,15 +165,15 @@ export function AuthArtwork() {
           className="max-w-md"
         >
           <Quote className="h-6 w-6 text-primary/60" />
-          <p className="mt-3 text-lg font-medium leading-relaxed text-white/90">
+          <p className="mt-3 text-lg font-medium leading-relaxed text-foreground/90">
             “4RexVision reads my charts faster than I can blink — it’s like having
             an institutional analyst on call 24/7.”
           </p>
           <footer className="mt-4 flex items-center gap-3">
             <div className="h-9 w-9 rounded-full bg-primary/10" />
             <div>
-              <div className="text-sm font-semibold text-white">Marcus Devlin</div>
-              <div className="text-xs text-white/50">Full-time FX Trader</div>
+              <div className="text-sm font-semibold text-foreground">Marcus Devlin</div>
+              <div className="text-xs text-muted-foreground">Full-time FX Trader</div>
             </div>
           </footer>
         </motion.blockquote>
