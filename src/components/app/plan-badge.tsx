@@ -1,0 +1,46 @@
+import { Crown, Sparkles, Building2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { PLAN_DISPLAY_NAMES } from "@/lib/constants";
+import type { Plan } from "@prisma/client";
+
+const styles: Record<Plan, { className: string; icon: React.ElementType }> = {
+  FREE: {
+    className: "border-border bg-secondary text-muted-foreground",
+    icon: Sparkles,
+  },
+  PROFESSIONAL: {
+    className:
+      "border-transparent bg-primary/10 text-primary shadow-sm",
+    icon: Crown,
+  },
+  ENTERPRISE: {
+    className:
+      "border-transparent bg-violet-500/10 text-violet-400 shadow-sm",
+    icon: Building2,
+  },
+};
+
+export function PlanBadge({
+  plan,
+  className,
+  showIcon = true,
+}: {
+  plan: Plan;
+  className?: string;
+  showIcon?: boolean;
+}) {
+  const s = styles[plan];
+  const Icon = s.icon;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold",
+        s.className,
+        className
+      )}
+    >
+      {showIcon && <Icon className="h-3 w-3" />}
+      {PLAN_DISPLAY_NAMES[plan]}
+    </span>
+  );
+}
