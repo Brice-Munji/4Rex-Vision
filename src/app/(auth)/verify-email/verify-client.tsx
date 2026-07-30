@@ -67,7 +67,7 @@ export function VerifyClient() {
           <p className="mx-auto mt-2 max-w-sm text-muted-foreground">
             Your email is confirmed. You now have full access to your workspace.
           </p>
-          <Button className="mt-8 w-full" asChild>
+          <Button className="mt-8 h-14 w-full" asChild>
             <Link href="/dashboard">Go to dashboard</Link>
           </Button>
         </motion.div>
@@ -88,13 +88,13 @@ export function VerifyClient() {
             {message || "This verification link is invalid or has expired."}
           </p>
           <div className="mt-8 space-y-3">
-            <Button className="w-full" asChild>
+            <Button className="h-14 w-full" asChild>
               <Link href="/dashboard">
                 <MailCheck className="h-4 w-4" />
                 Resend from dashboard
               </Link>
             </Button>
-            <Button variant="ghost" className="w-full" asChild>
+            <Button variant="ghost" className="h-14 w-full" asChild>
               <Link href="/login">Back to sign in</Link>
             </Button>
           </div>
