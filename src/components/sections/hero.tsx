@@ -43,7 +43,7 @@ export function Hero() {
               className="text-balance text-5xl font-bold leading-[1.05] tracking-tight md:text-6xl lg:text-7xl"
             >
               See Beyond <br />
-              the <span className="text-gradient">Charts.</span>
+              the <strong className="font-bold text-primary">Charts</strong>.
             </motion.h1>
 
             <motion.p
