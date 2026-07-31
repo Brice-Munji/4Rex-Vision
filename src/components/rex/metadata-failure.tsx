@@ -16,9 +16,13 @@ const SUGGESTIONS = [
 export function MetadataFailure({
   metadata,
   onRetry,
+  title = "We couldn't confidently identify the trading instrument",
+  message = "Rex never guesses. Because the currency pair isn't clearly readable in this screenshot, it won't start the analysis. A clearer upload will fix this:",
 }: {
   metadata?: ChartMetadata;
   onRetry: () => void;
+  title?: string;
+  message?: string;
 }) {
   return (
     <motion.div
@@ -40,14 +44,8 @@ export function MetadataFailure({
         <SearchX className="h-9 w-9" />
       </motion.div>
 
-      <h2 className="mt-6 text-xl font-semibold">
-        We couldn&apos;t confidently identify the trading instrument
-      </h2>
-      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-        Rex never guesses. Because the currency pair isn&apos;t clearly readable in
-        this screenshot, it won&apos;t start the analysis. A clearer upload will fix
-        this:
-      </p>
+      <h2 className="mt-6 text-xl font-semibold">{title}</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{message}</p>
 
       <ul className="mx-auto mt-6 grid max-w-lg gap-2 text-left sm:grid-cols-2">
         {SUGGESTIONS.map((s) => (

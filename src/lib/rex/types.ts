@@ -199,6 +199,37 @@ export interface WhatCouldChangeItem {
   detail: string;
 }
 
+/* ------------------------- Pair Integrity (P0) --------------------------- */
+
+/**
+ * The authoritative analysis context locked at extraction time. Every verdict
+ * in the report is for this pair and timeframe — nothing else.
+ */
+export interface AnalysisContext {
+  symbol: string; // raw ticker, e.g. "AUDUSD"
+  instrument: string; // display, e.g. "AUD/USD"
+  timeframe: Timeframe;
+  timeframeLabel: string; // banner form, e.g. "1H"
+  platform: TradingPlatform;
+  currentPrice?: string | null;
+}
+
+/** A correlated pair evaluated by the Correlation Guard. */
+export interface CorrelationPair {
+  pair: string; // display, e.g. "GBP/USD"
+  bias: MarketBias;
+  note?: string;
+}
+
+/** Result of the Correlation Guard — surfaced when correlated pairs diverge. */
+export interface CorrelationCheck {
+  title: string;
+  group: string | null;
+  correlated: CorrelationPair[];
+  hasDivergence: boolean;
+  explanation?: string;
+}
+
 /* -------------------------------- Report --------------------------------- */
 
 export interface RexReport {
@@ -207,6 +238,13 @@ export interface RexReport {
   timeframe: Timeframe;
   generatedAtLabel: string;
   headline: string;
+
+  /** P0 — authoritative pair/timeframe lock (present on live AI reports). */
+  analysisContext?: AnalysisContext;
+  /** P0 — correlation guard result (present when correlated context exists). */
+  correlation?: CorrelationCheck;
+  /** P0 — explanation shown when the confidence rule reduced the score. */
+  confidenceNote?: string;
 
   /** True when produced by the live Anthropic vision model. */
   aiPowered: boolean;

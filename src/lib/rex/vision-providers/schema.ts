@@ -57,6 +57,11 @@ export interface VisionWhatCouldChange {
   label: string;
   detail: string;
 }
+export interface VisionMarketContextPair {
+  pair: string; // e.g. "GBP/USD"
+  bias: "Bullish" | "Bearish" | "Neutral";
+  note: string | null;
+}
 
 /** Canonical structured result returned by every provider. */
 export interface VisionChartRead {
@@ -101,6 +106,9 @@ export interface VisionChartRead {
   insightTitle: string;
   insightBody: string;
   whatCouldChange: VisionWhatCouldChange[];
+
+  // --- P0: correlated pairs referenced as market context only (never verdicts) ---
+  marketContext: VisionMarketContextPair[];
 }
 
 /* --------------------------- Defensive coercion -------------------------- */
@@ -197,6 +205,17 @@ export function normalizeVisionRead(raw: unknown): VisionChartRead {
     return { label: str(wo.label) ?? "", detail: str(wo.detail) ?? "" };
   });
 
+  const marketContext: VisionMarketContextPair[] = arr(o.marketContext).flatMap((c) => {
+    const co = (c && typeof c === "object" ? c : {}) as Record<string, unknown>;
+    const pair = str(co.pair ?? co.symbol ?? co.instrument);
+    if (!pair) return [];
+    return [{
+      pair,
+      bias: pick(co.bias, ["Bullish", "Bearish", "Neutral"], "Neutral"),
+      note: str(co.note),
+    }];
+  });
+
   return {
     isTradingChart,
     platform,
@@ -253,6 +272,7 @@ export function normalizeVisionRead(raw: unknown): VisionChartRead {
       str(o.insightBody) ??
       "No single read is certain — size your risk so any one trade can't hurt you.",
     whatCouldChange,
+    marketContext,
   };
 }
 
@@ -291,7 +311,9 @@ First, read the chart's metadata:
 
 Then, if isTradingChart is true, produce the analysis payload (headline, trendDirection, trendStrength, trendSummary, bias, biasConfidence, suggestedDirection, biasSummary, bullishProbability, bearishProbability (sum ~100), positiveFactors, negativeFactors, 5-7 confidence items {label, score 0-100, contributors[]}, priceLevels {type, value, description}, evidence {label, explanation}, plainEnglish {technical, plain, concept-or-null}, insightTitle, insightBody, whatCouldChange {label, detail}).
 
-Rules: Any field you cannot confidently read must be null (or "Unknown"/[]), added to notDetected, with a lowered confidence. Analyze probabilities, never certainties.
+PAIR DISCIPLINE (critical): The uploaded chart's pair is the ONLY pair you deliver a verdict for. Every field above — headline, trendSummary, biasSummary, evidence, price levels, the final verdict — must be about the extracted pair. Do NOT give a directional verdict for any other pair. If it helps, you MAY list up to 3 related pairs in a SEPARATE "marketContext" array of {pair, bias ("Bullish"/"Bearish"/"Neutral"), note} — this is background context only, never the verdict. Leave marketContext as [] if you have nothing to add.
+
+Rules: Any field you cannot confidently read must be null (or "Unknown"/[]), added to notDetected, with a lowered confidence. If you cannot confidently read the currency pair, set instrument and symbol to null with a low instrumentConfidence — never guess or substitute another pair. Analyze probabilities, never certainties.
 
 Respond with ONLY a single JSON object. No markdown, no prose, no code fences.`;
 
