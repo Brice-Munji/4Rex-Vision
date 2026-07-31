@@ -240,7 +240,7 @@ export function BillingManager({
           </ul>
 
           <div className="mt-6">
-            <UnlockRexProButton fullWidth />
+            <UnlockRexProButton fullWidth className="h-14" />
           </div>
         </div>
       ) : (
