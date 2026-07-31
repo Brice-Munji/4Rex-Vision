@@ -115,7 +115,11 @@ export function PricingCard({
       <Button
         variant={plan.highlight ? "default" : "secondary"}
         size="lg"
-        className="mt-8 w-full"
+        className={cn(
+          "mt-8 w-full",
+          // Any button that actually reads "Unlock Rex Pro" stands 56px tall.
+          !currentPlan && !plan.comingSoon && plan.cta === "Unlock Rex Pro" && "h-14"
+        )}
         disabled={currentPlan || plan.comingSoon || pending}
         onClick={() => onSelect?.(plan)}
       >
