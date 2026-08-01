@@ -340,7 +340,7 @@ function CheckoutView({
             size="lg"
             onClick={onPay}
             disabled={busy}
-            className="relative w-full rounded-2xl text-base"
+            className="relative h-14 w-full rounded-2xl text-base"
           >
             {busy ? (
               <>

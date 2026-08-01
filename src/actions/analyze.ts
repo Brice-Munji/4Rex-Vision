@@ -24,6 +24,18 @@ import { getEconomicContext } from "@/lib/rex/economic";
 import { normalizeInstrument, unsupportedReason } from "@/lib/rex/instruments";
 import { rex } from "@/lib/rex/mock-pipeline";
 import { CLOSING_NOTE } from "@/lib/rex/scenarios";
+import { detectDivergence } from "@/lib/rex/correlation";
+import {
+  assessPairExtraction,
+  guardPrimaryPair,
+  displayTimeframe,
+  applyConfidencePolicy,
+  confidenceReasons,
+  normalizePairKey,
+  PAIR_NOT_DETECTED_TITLE,
+  PAIR_NOT_DETECTED_MESSAGE,
+  type ConfidenceFlags,
+} from "@/lib/rex/pair-integrity";
 import type {
   RexReport,
   UploadValidation,
@@ -35,6 +47,8 @@ import type {
   ChartMetadata,
   TradingPlatform,
   ReadTimeframe,
+  AnalysisContext,
+  CorrelationCheck,
 } from "@/lib/rex/types";
 import type { ImageMetrics } from "@/lib/rex/image-analysis";
 
@@ -53,6 +67,8 @@ export type AnalyzeResult =
     }
   /** Vision providers are configured but the request failed — show a soft error. */
   | { status: "unavailable"; message: string }
+  /** Strict validation: the pair could not be confidently extracted. Never guess. */
+  | { status: "pair_not_detected"; title: string; message: string }
   /** Explorer daily limit reached — blocked BEFORE any AI processing. */
   | { status: "limit_reached"; usage: UsageSummary; resetAt: string }
   | {
@@ -200,29 +216,54 @@ function slug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 }
 
-/** Build the full Rex report from the multimodal vision analysis payload. */
+/**
+ * Build the full Rex report from the multimodal vision analysis payload.
+ *
+ * The pair and timeframe are LOCKED to the authoritative `context` extracted at
+ * read time (ANALYSIS LOCK) — never re-derived from free text — and the
+ * CONFIDENCE RULE caps the headline confidence on weak/conflicting setups.
+ */
 function buildReportFromAI(
   ai: VisionChartRead,
   validation: UploadValidation,
   visionConfidence: VisionConfidence,
-  economic: RexReport["economic"]
+  economic: RexReport["economic"],
+  context: AnalysisContext,
+  correlation: CorrelationCheck | undefined,
+  flags: ConfidenceFlags,
+  correctionNote?: string
 ): RexReport {
-  const overallConfidence = clamp(
+  const rawOverall = clamp(
     ai.confidence.length
       ? ai.confidence.reduce((s, c) => s + c.score, 0) / ai.confidence.length
       : ai.biasConfidence
   );
-  const timeframe: Timeframe = (ai.timeframe === "Unknown" ? "H1" : ai.timeframe) as Timeframe;
+  // ANALYSIS LOCK: the uploaded timeframe is authoritative; higher timeframes
+  // (4H/D1) are context only and must never override it.
+  const timeframe: Timeframe = context.timeframe;
+
+  // CONFIDENCE RULE — cap below 85% when the setup is weak or conflicting.
+  const overallConfidence = applyConfidencePolicy(rawOverall, flags);
+  const biasConfidence = applyConfidencePolicy(clamp(ai.biasConfidence), flags);
+  const reduced = overallConfidence < rawOverall || biasConfidence < clamp(ai.biasConfidence);
+  const reasons = confidenceReasons(flags);
+  const confidenceNote = reduced && reasons.length
+    ? `Confidence was held below 85% because ${reasons.join(", ")}.`
+    : undefined;
 
   return {
-    id: `rex_${slug(ai.instrument ?? "chart")}_${Date.now().toString(36)}`,
-    pair: ai.instrument ?? "Unknown pair",
+    id: `rex_${slug(context.instrument)}_${Date.now().toString(36)}`,
+    // RESPONSE GUARD / ANALYSIS LOCK — always the uploaded pair.
+    pair: context.instrument,
     timeframe,
     generatedAtLabel: "Just now",
     headline: ai.headline,
+    analysisContext: context,
+    correlation,
+    confidenceNote,
     aiPowered: true,
     chartSource: ai.platform,
-    currentPrice: ai.currentPrice,
+    currentPrice: context.currentPrice ?? ai.currentPrice,
     visionConfidence,
     trend: {
       direction: ai.trendDirection,
@@ -232,14 +273,14 @@ function buildReportFromAI(
     },
     bias: {
       bias: ai.bias,
-      confidence: clamp(ai.biasConfidence),
+      confidence: biasConfidence,
       suggestedDirection: ai.suggestedDirection,
-      summary: ai.biasSummary,
+      summary: correctionNote ? `${correctionNote} ${ai.biasSummary}`.trim() : ai.biasSummary,
     },
     confidence: ai.confidence.map((c) => ({
       key: slug(c.label),
       label: c.label,
-      score: clamp(c.score),
+      score: applyConfidencePolicy(clamp(c.score), flags),
       contributors: c.contributors,
     })),
     overallConfidence,
@@ -387,18 +428,112 @@ export async function analyzeChart(
   }
 
   if (ai) {
-    const visionConfidence = computeVisionConfidence(metrics, classification, {
-      pairConfidence: clamp(ai.instrumentConfidence),
-      timeframeConfidence: clamp(ai.timeframeConfidence),
-      source: ai.platform,
+    // ── PAIR EXTRACTION + STRICT VALIDATION ──────────────────────────────
+    const normalized = normalizeInstrument(ai.symbol ?? ai.instrument);
+    const instrument = normalized?.instrument ?? null;
+    const symbol = normalized?.symbol ?? (ai.symbol ? normalizePairKey(ai.symbol) : null);
+    const supported = normalized?.supported ?? false;
+    const instrumentConfidence = clamp(ai.instrumentConfidence);
+
+    const extraction = assessPairExtraction({
+      instrument,
+      symbol,
+      supported,
+      instrumentConfidence,
     });
-    const economic = await getEconomicContext(ai.instrument);
+    // Never guess / substitute / default: stop when the pair itself couldn't be
+    // read confidently. A recognized-but-unsupported market (e.g. an index) is a
+    // separate case and still flows through to existing metadata handling.
+    if (extraction.reason === "no-instrument" || extraction.reason === "low-confidence") {
+      return {
+        status: "pair_not_detected",
+        title: PAIR_NOT_DETECTED_TITLE,
+        message: PAIR_NOT_DETECTED_MESSAGE,
+      };
+    }
+
+    const lockedSymbol = symbol as string;
+    const lockedInstrument = instrument as string;
+
+    // ── ANALYSIS LOCK — authoritative context (uploaded pair + timeframe) ──
+    const timeframe: Timeframe = (ai.timeframe === "Unknown" ? "H1" : ai.timeframe) as Timeframe;
+    const context: AnalysisContext = {
+      symbol: lockedSymbol,
+      instrument: lockedInstrument,
+      timeframe,
+      timeframeLabel: displayTimeframe(ai.timeframe),
+      platform: mapPlatform(ai.platform),
+      currentPrice: ai.currentPrice,
+    };
+
+    // ── RESPONSE GUARD — the verdict must be for the uploaded pair ─────────
+    const verdictText = (a: VisionChartRead) =>
+      `${a.headline} ${a.biasSummary} ${a.trendSummary}`;
+    let activeAi = ai;
+    let guard = guardPrimaryPair(verdictText(activeAi), lockedSymbol);
+    if (guard.violated) {
+      // Reject and regenerate once with the same image.
+      const retry = await analyzeChartImage(input.base64, mediaType);
+      if (retry.status === "ok" && retry.data.isTradingChart) {
+        const retryNorm = normalizeInstrument(retry.data.symbol ?? retry.data.instrument);
+        const g2 = guardPrimaryPair(verdictText(retry.data), lockedSymbol);
+        if (!g2.violated && retryNorm?.symbol === lockedSymbol) {
+          activeAi = retry.data;
+          guard = g2;
+        }
+      }
+    }
+    // If the drift persists, hard-correct so the final verdict is unambiguously
+    // for the uploaded pair.
+    const correctionNote = guard.violated
+      ? `This verdict is for the uploaded pair ${lockedInstrument}.`
+      : undefined;
+
+    // ── CORRELATION GUARD — explain any correlated-pair divergence ─────────
+    const correlation: CorrelationCheck = detectDivergence(
+      { symbol: lockedSymbol, bias: activeAi.bias },
+      activeAi.marketContext.map((c) => ({
+        pair: c.pair,
+        bias: c.bias,
+        note: c.note ?? undefined,
+      }))
+    );
+
+    const economic = await getEconomicContext(lockedInstrument);
+
+    // ── CONFIDENCE RULE — reduce on weak / conflicting setups ──────────────
+    const flags: ConfidenceFlags = {
+      lowExtraction: instrumentConfidence < 70,
+      mixedStructure:
+        activeAi.bias === "Neutral" ||
+        activeAi.suggestedDirection === "Wait" ||
+        activeAi.suggestedDirection === "Wait For Confirmation" ||
+        Math.abs(clamp(activeAi.bullishProbability) - clamp(activeAi.bearishProbability)) < 15,
+      conflictingCorrelation: correlation.hasDivergence,
+      highNews: economic.some((e) => e.impact === "High"),
+    };
+
+    const visionConfidence = computeVisionConfidence(metrics, classification, {
+      pairConfidence: instrumentConfidence,
+      timeframeConfidence: clamp(activeAi.timeframeConfidence),
+      source: activeAi.platform,
+    });
+
     // Analysis succeeded → consume one credit (after AI, never before).
     const usage = await consumeAnalysis(gateUser.id);
     return {
       status: "ok",
-      report: buildReportFromAI(ai, validation, visionConfidence, economic),
-      metadata: buildMetadata(ai, metrics),
+      report: buildReportFromAI(
+        activeAi,
+        validation,
+        visionConfidence,
+        economic,
+        context,
+        correlation.correlated.length ? correlation : undefined,
+        flags,
+        correctionNote
+      ),
+      metadata: buildMetadata(activeAi, metrics),
       usage,
     };
   }
@@ -418,6 +553,16 @@ export async function analyzeChart(
   report.notice = isVisionConfigured()
     ? "Rex's live vision model was unavailable for this upload, so this is a representative sample analysis — not a reading of your specific chart. Please try again."
     : "Rex's live vision model isn't connected in this environment, so this is a representative sample analysis — not a reading of your specific chart. Set OPENAI_API_KEY (or GEMINI_API_KEY / ANTHROPIC_API_KEY) to enable live analysis of your uploads.";
+  // Still lock the (sample) pair/timeframe so the validation banner renders.
+  const fbNorm = normalizeInstrument(report.pair);
+  report.analysisContext = {
+    symbol: fbNorm?.symbol ?? normalizePairKey(report.pair) ?? report.pair,
+    instrument: fbNorm?.instrument ?? report.pair,
+    timeframe: report.timeframe,
+    timeframeLabel: displayTimeframe(report.timeframe),
+    platform: "Unknown Trading Platform",
+    currentPrice: report.currentPrice,
+  };
   // Analysis succeeded (sample fallback) → consume one credit.
   const usage = await consumeAnalysis(gateUser.id);
   return { status: "ok", report, metadata: buildMetadata(null, metrics), usage };

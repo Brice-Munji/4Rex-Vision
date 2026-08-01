@@ -48,6 +48,7 @@ export function SocialButtons() {
       <Button
         type="button"
         variant="secondary"
+        className="h-14"
         onClick={() => handleSignIn("Google")}
         disabled={loading !== null}
         aria-busy={loading === "Google"}

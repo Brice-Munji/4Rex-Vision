@@ -84,7 +84,7 @@ export function JournalPreview() {
         </div>
       </div>
 
-      <Button variant="secondary" className="mt-5 w-full" asChild>
+      <Button variant="secondary" className="mt-5 h-14 w-full" asChild>
         <Link href="/journal">
           Open Journal
           <ArrowRight className="h-4 w-4" />

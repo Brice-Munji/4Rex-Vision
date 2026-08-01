@@ -43,7 +43,7 @@ export function Hero() {
               className="text-balance text-5xl font-bold leading-[1.05] tracking-tight md:text-6xl lg:text-7xl"
             >
               See Beyond <br />
-              the <span className="text-gradient">Charts.</span>
+              the <strong className="font-bold text-primary">Charts</strong>.
             </motion.h1>
 
             <motion.p
@@ -60,13 +60,13 @@ export function Hero() {
               transition={{ duration: 0.6 }}
               className="mt-9 flex flex-col gap-3 sm:flex-row"
             >
-              <Button size="lg" asChild>
+              <Button size="lg" className="h-14" asChild>
                 <Link href="/register">
                   Start Free
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button size="lg" variant="secondary" asChild>
+              <Button size="lg" variant="secondary" className="h-14" asChild>
                 <Link href="#how-it-works">
                   <Play className="h-4 w-4" />
                   Watch Demo

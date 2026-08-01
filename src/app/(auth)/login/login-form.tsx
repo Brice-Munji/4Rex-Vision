@@ -119,7 +119,7 @@ export function LoginForm() {
           Remember me for 30 days
         </label>
 
-        <Button type="submit" size="lg" className="w-full" disabled={pending}>
+        <Button type="submit" size="lg" className="h-14 w-full" disabled={pending}>
           {pending && <Loader2 className="h-4 w-4 animate-spin" />}
           {pending ? "Signing in…" : "Sign in"}
         </Button>

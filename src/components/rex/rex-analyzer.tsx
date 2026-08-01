@@ -14,6 +14,8 @@ import { UnsupportedChart } from "./unsupported-chart";
 import { ChartReading } from "./chart-reading";
 import { MetadataSummaryCard } from "./metadata-summary-card";
 import { MetadataFailure } from "./metadata-failure";
+import { AnalysisBanner } from "./analysis-banner";
+import { displayTimeframe } from "@/lib/rex/pair-integrity";
 import { rex } from "@/lib/rex/mock-pipeline";
 import type {
   RexReport as RexReportType,
@@ -35,6 +37,7 @@ type Stage =
   | "reading"
   | "metadata"
   | "metadata-failure"
+  | "pair-not-detected"
   | "thinking"
   | "report"
   | "unsupported"
@@ -65,6 +68,7 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
   const [report, setReport] = React.useState<RexReportType | null>(null);
   const [metadata, setMetadata] = React.useState<ChartMetadata | null>(null);
   const [classification, setClassification] = React.useState<ChartClassification | undefined>();
+  const [pairNotDetected, setPairNotDetected] = React.useState<{ title: string; message: string } | null>(null);
   const [usedState, setUsedState] = React.useState(usage?.used ?? 0);
   const [whatsNextOpen, setWhatsNextOpen] = React.useState(false);
   const [resetAt, setResetAt] = React.useState<string | null>(null);
@@ -91,6 +95,7 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
     setReport(null);
     setMetadata(null);
     setClassification(undefined);
+    setPairNotDetected(null);
     fileRef.current = null;
     resultRef.current = null;
     setStage("idle");
@@ -179,6 +184,13 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
     // never claim the upload isn't a chart.
     if (result.status === "unavailable") {
       setStage("unavailable");
+      return;
+    }
+
+    // Strict validation: the pair couldn't be confidently extracted. Never guess.
+    if (result.status === "pair_not_detected") {
+      setPairNotDetected({ title: result.title, message: result.message });
+      setStage("pair-not-detected");
       return;
     }
 
@@ -370,6 +382,16 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
+            {metadata.symbol && (
+              <AnalysisBanner
+                context={{
+                  symbol: metadata.symbol,
+                  timeframeLabel: displayTimeframe(metadata.timeframe),
+                  platform: metadata.platform,
+                }}
+                className="mb-4"
+              />
+            )}
             <MetadataSummaryCard
               metadata={metadata}
               onContinue={proceedToAnalysis}
@@ -387,6 +409,23 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
             exit={{ opacity: 0 }}
           >
             <MetadataFailure metadata={metadata ?? undefined} onRetry={reset} />
+          </motion.div>
+        )}
+
+        {/* PAIR NOT DETECTED — strict validation stop (never guess) */}
+        {stage === "pair-not-detected" && pairNotDetected && (
+          <motion.div
+            key="pair-not-detected"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <MetadataFailure
+              metadata={metadata ?? undefined}
+              onRetry={reset}
+              title={pairNotDetected.title}
+              message={pairNotDetected.message}
+            />
           </motion.div>
         )}
 

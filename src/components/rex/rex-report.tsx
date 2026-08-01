@@ -16,6 +16,8 @@ import { EducationalInsightCard } from "./educational-insight-card";
 import { AnalysisReliabilityCard } from "./analysis-reliability-card";
 import { WhatCouldChange } from "./what-could-change";
 import { ClosingNote } from "./closing-note";
+import { AnalysisBanner } from "./analysis-banner";
+import { CorrelationCheckCard } from "./correlation-check";
 import type { RexReport as RexReportType } from "@/lib/rex/types";
 
 export function RexReport({
@@ -27,6 +29,11 @@ export function RexReport({
 }) {
   return (
     <div className="space-y-6">
+      {/* P0 — validation banner: which pair Rex is analyzing */}
+      {report.analysisContext && (
+        <AnalysisBanner context={report.analysisContext} />
+      )}
+
       {/* Report header */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -117,10 +124,22 @@ export function RexReport({
       {/* Progressive report sections */}
       <TrendCard trend={report.trend} />
       <BiasCard bias={report.bias} />
+
+      {/* P0 — correlation guard: explain any correlated-pair divergence */}
+      {report.correlation?.hasDivergence && (
+        <CorrelationCheckCard correlation={report.correlation} />
+      )}
+
       <ConfidenceBreakdown
         overall={report.overallConfidence}
         metrics={report.confidence}
       />
+      {report.confidenceNote && (
+        <div className="-mt-3 flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>{report.confidenceNote}</p>
+        </div>
+      )}
       <EconomicContextCard events={report.economic} />
       <PriceLevelsCard levels={report.priceLevels} />
       <WhyRexThinks evidence={report.evidence} />

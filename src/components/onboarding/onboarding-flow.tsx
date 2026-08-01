@@ -164,7 +164,7 @@ export function OnboardingFlow({ firstName }: { firstName?: string | null }) {
                   See Beyond the Charts. Let&apos;s personalize your AI trading
                   workspace in just a few taps.
                 </p>
-                <Button size="lg" className="mt-10" onClick={next}>
+                <Button size="lg" className="mt-10 h-14" onClick={next}>
                   Continue
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -344,7 +344,7 @@ export function OnboardingFlow({ firstName }: { firstName?: string | null }) {
                 </p>
                 <Button
                   size="lg"
-                  className="mt-10"
+                  className="mt-10 h-14"
                   onClick={() => {
                     router.push("/dashboard");
                     router.refresh();
@@ -362,17 +362,17 @@ export function OnboardingFlow({ firstName }: { firstName?: string | null }) {
       {/* footer nav */}
       {step > 0 && step < 5 && (
         <footer className="relative z-10 mx-auto flex w-full max-w-2xl items-center justify-between gap-3 px-6 py-6">
-          <Button variant="ghost" onClick={back} disabled={pending}>
+          <Button variant="ghost" className="h-14" onClick={back} disabled={pending}>
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
           {step < 4 ? (
-            <Button onClick={next} disabled={!canContinue}>
+            <Button className="h-14" onClick={next} disabled={!canContinue}>
               Continue
               <ArrowRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button onClick={finish} disabled={pending}>
+            <Button className="h-14" onClick={finish} disabled={pending}>
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
               {pending ? "Setting up…" : "Finish setup"}
               {!pending && <Check className="h-4 w-4" />}

@@ -34,7 +34,7 @@ export function ResetForm() {
           This password reset link is missing or malformed. Request a new one to
           continue.
         </p>
-        <Button className="mt-8 w-full" asChild>
+        <Button className="mt-8 h-14 w-full" asChild>
           <Link href="/forgot-password">Request new link</Link>
         </Button>
       </div>
@@ -84,7 +84,7 @@ export function ResetForm() {
         <p className="mt-2 text-muted-foreground">
           Redirecting you to sign in…
         </p>
-        <Button className="mt-8 w-full" asChild>
+        <Button className="mt-8 h-14 w-full" asChild>
           <Link href="/login">Continue to sign in</Link>
         </Button>
       </motion.div>
@@ -142,13 +142,13 @@ export function ResetForm() {
           )}
         </div>
 
-        <Button type="submit" size="lg" className="w-full" disabled={pending}>
+        <Button type="submit" size="lg" className="h-14 w-full" disabled={pending}>
           {pending && <Loader2 className="h-4 w-4 animate-spin" />}
           {pending ? "Updating…" : "Reset password"}
         </Button>
       </form>
 
-      <Button variant="ghost" className="mt-6 w-full" asChild>
+      <Button variant="ghost" className="mt-6 h-14 w-full" asChild>
         <Link href="/login">
           <ArrowLeft className="h-4 w-4" />
           Back to sign in

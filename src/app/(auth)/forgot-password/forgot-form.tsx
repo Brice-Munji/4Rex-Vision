@@ -57,12 +57,12 @@ export function ForgotForm() {
           <div className="mt-8 space-y-3">
             <Button
               variant="secondary"
-              className="w-full"
+              className="h-14 w-full"
               onClick={() => setSent(false)}
             >
               Use a different email
             </Button>
-            <Button variant="ghost" className="w-full" asChild>
+            <Button variant="ghost" className="h-14 w-full" asChild>
               <Link href="/login">
                 <ArrowLeft className="h-4 w-4" />
                 Back to sign in
@@ -105,13 +105,13 @@ export function ForgotForm() {
               {error && <p className="text-xs text-red-500">{error}</p>}
             </div>
 
-            <Button type="submit" size="lg" className="w-full" disabled={pending}>
+            <Button type="submit" size="lg" className="h-14 w-full" disabled={pending}>
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
               {pending ? "Sending…" : "Send reset link"}
             </Button>
           </form>
 
-          <Button variant="ghost" className="mt-6 w-full" asChild>
+          <Button variant="ghost" className="mt-6 h-14 w-full" asChild>
             <Link href="/login">
               <ArrowLeft className="h-4 w-4" />
               Back to sign in

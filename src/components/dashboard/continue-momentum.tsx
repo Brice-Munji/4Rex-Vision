@@ -35,13 +35,13 @@ export function ContinueMomentum() {
             deeper reasoning and tools that compound over time.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-            <Button size="lg" asChild>
+            <Button size="lg" className="h-14" asChild>
               <Link href="/billing">
                 Continue with Vision Pro
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button size="lg" variant="secondary" asChild>
+            <Button size="lg" variant="secondary" className="h-14" asChild>
               <Link href="/pricing">Compare plans</Link>
             </Button>
           </div>
