@@ -53,9 +53,15 @@ export function AiWorkspace({
   function handleAnalysisComplete() {
     setStage("complete");
     if (trackUsage) {
-      recordAnalysis().then((res) => {
-        if (res.ok) onUsageRecorded?.(res);
-      });
+      recordAnalysis()
+        .then((res) => {
+          if (res?.ok) onUsageRecorded?.(res);
+        })
+        .catch(() => {
+          // A stale client (e.g. after a redeploy) can invoke a missing Server
+          // Action, which resolves to undefined/rejects. Never crash the UI —
+          // the analysis already completed and the credit is tracked server-side.
+        });
     }
   }
 
