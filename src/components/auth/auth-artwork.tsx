@@ -106,7 +106,7 @@ export function AuthArtwork() {
       {/* top: logo */}
       <div className="relative z-10">
         <Link href="/" className="inline-flex">
-          <Logo />
+          <Logo className="text-white" />
         </Link>
       </div>
 
