@@ -76,7 +76,7 @@ function FloatingCard({
       <motion.div
         animate={{ y: [0, -8, 0] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay }}
-        className="glass-strong rounded-2xl p-3.5 shadow-xl shadow-black/20"
+        className="rounded-2xl border border-white/10 bg-card/60 p-3.5 shadow-xl shadow-black/40 backdrop-blur-xl"
       >
         {children}
       </motion.div>
@@ -86,12 +86,21 @@ function FloatingCard({
 
 export function AuthArtwork() {
   return (
-    <div className="relative hidden h-full flex-col justify-between overflow-hidden rounded-3xl bg-secondary p-10 lg:flex">
-      {/* gradient glows */}
+    <div className="dark relative hidden h-full flex-col justify-between overflow-hidden rounded-3xl bg-secondary p-10 lg:flex">
+      {/* full-bleed background image (cover, centered, aspect preserved) */}
+      <div
+        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/images/auth-bg.png')" }}
+      />
+
+      {/* dark charcoal overlay for readability — soft vertical gradient (~45–65%) */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/45 via-black/55 to-black/70" />
+
+      {/* gradient glows + subtle grid texture on top of the image */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-20 top-0 h-80 w-80 rounded-full" />
         <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full" />
-        <div className="absolute inset-0 bg-grid opacity-[0.15]" />
+        <div className="absolute inset-0 bg-grid opacity-[0.08]" />
       </div>
 
       {/* top: logo */}
