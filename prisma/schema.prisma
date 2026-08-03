@@ -16,6 +16,31 @@ enum Plan {
   ENTERPRISE
 }
 
+enum Role {
+  USER
+  SUPER_ADMIN
+}
+
+/// Where a user's active subscription originated. Payment = paid checkout,
+/// ADMIN = granted from the Owner Command Center, PROMO = promotional grant.
+enum SubscriptionSource {
+  PAYMENT
+  ADMIN
+  PROMO
+}
+
+/// Every privileged action performed from the super-admin dashboard is logged
+/// with one of these types for the audit trail.
+enum AdminActionType {
+  GRANT_PRO
+  EXTEND_PRO
+  REVOKE_PRO
+  RESET_USAGE
+  SUSPEND_USER
+  UNSUSPEND_USER
+  CHANGE_SETTINGS
+}
+
 enum SubscriptionStatus {
   ACTIVE
   TRIALING
@@ -63,9 +88,17 @@ model User {
   avatar        String?
   emailVerified DateTime?
 
+  // Access control
+  role      Role     @default(USER)
+  suspended Boolean  @default(false)
+
   // Plan & subscription
-  plan               Plan               @default(FREE)
-  subscriptionStatus SubscriptionStatus @default(INACTIVE)
+  plan               Plan                @default(FREE)
+  subscriptionStatus SubscriptionStatus  @default(INACTIVE)
+  subscriptionSource SubscriptionSource?
+
+  // Presence (updated on authenticated activity — powers Active Users Today)
+  lastActiveAt DateTime?
 
   // Subscription billing
   billingCycle         BillingCycle?
@@ -98,6 +131,47 @@ model User {
   verificationTokens  VerificationToken[]
   passwordResetTokens PasswordResetToken[]
   transactions        Transaction[]
+  analysisEvents      AnalysisUsage[]
+  adminActionsMade    AdminAction[]        @relation("AdminActor")
+  adminActionsTarget  AdminAction[]        @relation("AdminTarget")
+}
+
+/// One row per completed chart analysis. Additive usage telemetry (never gates
+/// analysis) that powers the Analysis Activity + Analytics dashboards: per-user
+/// counts by day, most-analyzed pair, and average confidence.
+model AnalysisUsage {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  pair       String? // e.g. "AUDUSD" — null when not confidently extracted
+  timeframe  String? // e.g. "1H"
+  confidence Int? // 0–100
+  provider   String? // vision provider used, e.g. "gemini"
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([pair])
+}
+
+/// Audit trail of every privileged action taken from the super-admin dashboard.
+model AdminAction {
+  id       String          @id @default(cuid())
+  actorId  String
+  actor    User            @relation("AdminActor", fields: [actorId], references: [id], onDelete: Cascade)
+  targetId String?
+  target   User?           @relation("AdminTarget", fields: [targetId], references: [id], onDelete: SetNull)
+
+  type    AdminActionType
+  details String? // human-readable summary, e.g. "Granted Pro · 30 days · reason: VIP"
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([targetId])
+  @@index([createdAt])
 }
 
 /// Provider-agnostic payment record. One row per checkout attempt; the

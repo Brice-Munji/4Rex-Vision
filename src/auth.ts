@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/auth.config";
 import { loginSchema } from "@/lib/validations";
+import { resolveRole } from "@/lib/admin/roles";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -40,6 +41,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           lastName: user.lastName,
           avatar: user.avatar,
           plan: user.plan,
+          role: resolveRole(user.role, user.email),
           emailVerified: user.emailVerified,
           onboardingComplete: user.onboardingComplete,
           rememberMe,

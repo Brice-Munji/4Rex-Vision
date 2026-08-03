@@ -21,6 +21,7 @@ import {
   type VisionChartRead,
 } from "@/lib/rex/vision-providers";
 import { getEconomicContext } from "@/lib/rex/economic";
+import { recordAnalysisEvent } from "@/lib/admin/telemetry";
 import { normalizeInstrument, unsupportedReason } from "@/lib/rex/instruments";
 import { rex } from "@/lib/rex/mock-pipeline";
 import { CLOSING_NOTE } from "@/lib/rex/scenarios";
@@ -521,6 +522,14 @@ export async function analyzeChart(
 
     // Analysis succeeded → consume one credit (after AI, never before).
     const usage = await consumeAnalysis(gateUser.id);
+    // Additive usage telemetry for the Owner Command Center (never gates).
+    await recordAnalysisEvent({
+      userId: gateUser.id,
+      pair: context.symbol,
+      timeframe: context.timeframe,
+      confidence: visionConfidence.overall,
+      provider: vision.status === "ok" ? vision.provider : null,
+    });
     return {
       status: "ok",
       report: buildReportFromAI(
@@ -565,5 +574,12 @@ export async function analyzeChart(
   };
   // Analysis succeeded (sample fallback) → consume one credit.
   const usage = await consumeAnalysis(gateUser.id);
+  await recordAnalysisEvent({
+    userId: gateUser.id,
+    pair: report.analysisContext?.symbol ?? report.pair,
+    timeframe: report.analysisContext?.timeframe ?? report.timeframe,
+    confidence: report.visionConfidence?.overall ?? null,
+    provider: null,
+  });
   return { status: "ok", report, metadata: buildMetadata(null, metrics), usage };
 }
