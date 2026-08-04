@@ -59,11 +59,19 @@ export function WelcomeHero({
                 Upload Screenshot
               </Link>
             </Button>
-            <Button size="lg" variant="secondary" className="h-14" asChild>
-              <Link href="/analyze?mode=ask">
-                <Sparkles className="h-4 w-4" />
-                Ask AI
-              </Link>
+            <Button
+              size="lg"
+              variant="secondary"
+              className="h-14"
+              disabled
+              aria-disabled="true"
+              title="Ask AI is coming soon"
+            >
+              <Sparkles className="h-4 w-4" />
+              Ask AI
+              <span className="ml-1.5 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Soon
+              </span>
             </Button>
           </div>
         </div>
