@@ -3,7 +3,8 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ScanLine, Crown, CreditCard, UserPlus, AlertTriangle, type LucideIcon } from "lucide-react";
-import { AdminCard, SectionTitle, relativeTime } from "./ui";
+import { AdminCard, SectionTitle } from "./ui";
+import { RelativeTime } from "./relative-time";
 import type { ActivityItem } from "@/lib/admin/queries";
 
 const META: Record<ActivityItem["type"], { icon: LucideIcon; color: string }> = {
@@ -79,7 +80,7 @@ export function LiveActivity({ initial }: { initial: ActivityItem[] }) {
                   </p>
                 </div>
                 <span className="shrink-0 text-[11px] text-[var(--a-muted)]">
-                  {relativeTime(item.time)}
+                  <RelativeTime iso={item.time} />
                 </span>
               </motion.div>
             );

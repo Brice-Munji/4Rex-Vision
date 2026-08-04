@@ -155,6 +155,9 @@ export function formatDate(iso: string | null, withTime = false): string {
     month: "short",
     day: "numeric",
     ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+    // Pin to UTC so server-rendered HTML matches the client regardless of the
+    // viewer's timezone (avoids hydration mismatches on date/time columns).
+    timeZone: "UTC",
   });
 }
 

@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { DataTable, type Column } from "./data-table";
 import { StatusBadge, formatDate, relativeTime } from "./ui";
+import { RelativeTime } from "./relative-time";
 import { GrantProModal, type GrantMode } from "./grant-pro-modal";
 import type { AdminUserRow, UserFilter } from "@/lib/admin/queries";
 
@@ -127,7 +128,7 @@ export function UsersTable({ initial }: { initial: AdminUserRow[] }) {
     {
       key: "last",
       header: "Last Active",
-      cell: (r) => <span className="text-[var(--a-muted)]">{relativeTime(r.lastActive)}</span>,
+      cell: (r) => <span className="text-[var(--a-muted)]"><RelativeTime iso={r.lastActive} /></span>,
     },
     {
       key: "created",
