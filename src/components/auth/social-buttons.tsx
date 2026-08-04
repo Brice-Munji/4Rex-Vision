@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,19 +29,50 @@ function GoogleIcon() {
   );
 }
 
+/** Human-friendly copy for the error codes Auth.js appends to `?error=`. */
+const OAUTH_ERRORS: Record<string, string> = {
+  OAuthAccountNotLinked:
+    "That email is already registered with a different sign-in method.",
+  OAuthSignin: "Could not start Google sign-in. Please try again.",
+  OAuthCallback: "Google sign-in was cancelled or failed. Please try again.",
+  Configuration: "Google sign-in isn't configured yet.",
+  AccessDenied: "Access was denied. Please try again.",
+};
+
+const GOOGLE_ENABLED =
+  process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
+
 export function SocialButtons() {
   const [loading, setLoading] = React.useState<string | null>(null);
 
+  // Surface OAuth errors that Auth.js redirects back with (?error=...).
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (code) {
+      toast.error(OAUTH_ERRORS[code] ?? "Sign-in failed. Please try again.");
+    }
+  }, []);
+
   const handleSignIn = (provider: string) => {
     if (loading) return;
-    setLoading(provider);
-    // OAuth providers are wired and ready to enable; simulate the redirect handoff.
-    setTimeout(() => {
-      toast.info(`${provider} sign-in is coming soon.`, {
-        description: "OAuth providers are wired and ready to enable.",
+
+    if (!GOOGLE_ENABLED) {
+      toast.info("Google sign-in isn't available yet.", {
+        description: "The owner needs to add Google OAuth credentials.",
       });
+      return;
+    }
+
+    setLoading(provider);
+    const callbackUrl =
+      new URLSearchParams(window.location.search).get("callbackUrl") ||
+      "/dashboard";
+    // Real OAuth handoff — a full-page redirect to Google and back.
+    signIn(provider.toLowerCase(), { callbackUrl }).catch(() => {
+      toast.error("Could not connect to Google. Please try again.");
       setLoading(null);
-    }, 1200);
+    });
   };
 
   return (

@@ -21,7 +21,7 @@ export default async function AppLayout({
         avatar: user.avatar,
         plan: user.plan,
       }}
-      showVerifyBanner={!user.emailVerified}
+      showVerifyBanner={!user.emailVerified && !!user.passwordHash}
     >
       <CheckoutProvider>{children}</CheckoutProvider>
     </DashboardShell>
