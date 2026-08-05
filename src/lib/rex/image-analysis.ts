@@ -36,6 +36,23 @@ export function isSupportedFormat(format: string | undefined): boolean {
   return !!format && SUPPORTED_FORMATS.includes(format.toLowerCase());
 }
 
+/**
+ * Produce a compact chart thumbnail as a data URL for the Analysis History
+ * (chart_image_url). Kept small (max 640px wide, webp) so rows stay light in
+ * the DB. Best-effort: returns null on failure and never throws into analysis.
+ */
+export async function makeThumbnailDataUrl(buffer: Buffer): Promise<string | null> {
+  try {
+    const out = await sharp(buffer)
+      .resize(640, 640, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 72 })
+      .toBuffer();
+    return `data:image/webp;base64,${out.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function analyzeImage(
   buffer: Buffer,
   sizeBytes: number

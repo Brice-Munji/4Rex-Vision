@@ -149,6 +149,13 @@ model AnalysisUsage {
   confidence Int? // 0–100
   provider   String? // vision provider used, e.g. "gemini"
 
+  // History record (powers the user-facing Analysis History). Additive &
+  // nullable so older telemetry rows and the admin dashboard are unaffected.
+  direction String? // "Bullish" | "Bearish" | "Neutral"
+  headline  String? // Rex's one-line verdict
+  summary   String? @db.Text // rex_summary — the bias/verdict explanation
+  imageUrl  String? @db.Text // chart thumbnail (data URL)
+
   createdAt DateTime @default(now())
 
   @@index([userId])

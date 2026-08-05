@@ -12,6 +12,10 @@ export async function recordAnalysisEvent(params: {
   timeframe?: string | null;
   confidence?: number | null;
   provider?: string | null;
+  direction?: string | null;
+  headline?: string | null;
+  summary?: string | null;
+  imageUrl?: string | null;
 }): Promise<void> {
   try {
     await prisma.$transaction([
@@ -25,6 +29,10 @@ export async function recordAnalysisEvent(params: {
               ? Math.round(params.confidence)
               : null,
           provider: params.provider ?? null,
+          direction: params.direction ?? null,
+          headline: params.headline ?? null,
+          summary: params.summary ?? null,
+          imageUrl: params.imageUrl ?? null,
         },
       }),
       prisma.user.update({

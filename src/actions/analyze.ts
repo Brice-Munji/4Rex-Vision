@@ -7,7 +7,7 @@ import {
   consumeAnalysis,
   type UsageSummary,
 } from "@/lib/usage";
-import { analyzeImage } from "@/lib/rex/image-analysis";
+import { analyzeImage, makeThumbnailDataUrl } from "@/lib/rex/image-analysis";
 import {
   validateImage,
   classifyChart,
@@ -522,26 +522,34 @@ export async function analyzeChart(
 
     // Analysis succeeded → consume one credit (after AI, never before).
     const usage = await consumeAnalysis(gateUser.id);
-    // Additive usage telemetry for the Owner Command Center (never gates).
+
+    const report = buildReportFromAI(
+      activeAi,
+      validation,
+      visionConfidence,
+      economic,
+      context,
+      correlation.correlated.length ? correlation : undefined,
+      flags,
+      correctionNote
+    );
+
+    // Additive usage telemetry + Analysis History record (never gates analysis).
+    const thumbnail = await makeThumbnailDataUrl(buffer);
     await recordAnalysisEvent({
       userId: gateUser.id,
       pair: context.symbol,
       timeframe: context.timeframe,
-      confidence: visionConfidence.overall,
+      confidence: report.overallConfidence,
       provider: vision.status === "ok" ? vision.provider : null,
+      direction: report.bias.bias,
+      headline: report.headline,
+      summary: report.bias.summary,
+      imageUrl: thumbnail,
     });
     return {
       status: "ok",
-      report: buildReportFromAI(
-        activeAi,
-        validation,
-        visionConfidence,
-        economic,
-        context,
-        correlation.correlated.length ? correlation : undefined,
-        flags,
-        correctionNote
-      ),
+      report,
       metadata: buildMetadata(activeAi, metrics),
       usage,
     };
@@ -574,12 +582,17 @@ export async function analyzeChart(
   };
   // Analysis succeeded (sample fallback) → consume one credit.
   const usage = await consumeAnalysis(gateUser.id);
+  const thumbnail = await makeThumbnailDataUrl(buffer);
   await recordAnalysisEvent({
     userId: gateUser.id,
     pair: report.analysisContext?.symbol ?? report.pair,
     timeframe: report.analysisContext?.timeframe ?? report.timeframe,
-    confidence: report.visionConfidence?.overall ?? null,
+    confidence: report.overallConfidence ?? report.visionConfidence?.overall ?? null,
     provider: null,
+    direction: report.bias.bias,
+    headline: report.headline,
+    summary: report.bias.summary,
+    imageUrl: thumbnail,
   });
   return { status: "ok", report, metadata: buildMetadata(null, metrics), usage };
 }
