@@ -43,7 +43,7 @@ export function WelcomeHero({
             {planDisplay} Plan
           </span>
           <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-            Hello {firstName} <span className="inline-block">👋</span>
+            Hello {firstName}
           </h1>
           <p className="mt-2 text-lg font-medium text-foreground/80">
             Ready to <span className="text-gradient">See Beyond the Charts?</span>
