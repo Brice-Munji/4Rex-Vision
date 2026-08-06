@@ -1,6 +1,11 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { logAdminAction } from "@/lib/admin/guard";
+import {
+  notifyProGranted,
+  notifyProRevoked,
+  createNotificationsForUsers,
+} from "@/lib/notifications/service";
 import type { User } from "@prisma/client";
 
 export type GrantDuration = "7d" | "30d" | "90d" | "1y" | "lifetime";
@@ -82,6 +87,8 @@ export async function grantPro(
     }`,
   });
 
+  await notifyProGranted(target.id);
+
   return {
     ok: true,
     message: `Rex Pro granted to ${target.email} (${DURATION_LABEL[input.duration]}).`,
@@ -125,6 +132,8 @@ export async function extendPro(
     details: `Extended Pro · +${DURATION_LABEL[input.duration]}`,
   });
 
+  await notifyProGranted(target.id);
+
   return {
     ok: true,
     message: `Rex Pro extended for ${target.email}.`,
@@ -157,10 +166,55 @@ export async function revokePro(
     details: `Revoked Pro${input.reason ? ` · reason: ${input.reason}` : ""}`,
   });
 
+  await notifyProRevoked(target.id);
+
   return {
     ok: true,
     message: `Rex Pro revoked for ${target.email}.`,
     user: { id: target.id, email: target.email },
+  };
+}
+
+export type AnnouncementAudience = "all" | "pro";
+
+/** Broadcast a system announcement to the selected audience. */
+export async function sendAnnouncement(
+  adminId: string,
+  input: { title: string; message: string; audience: AnnouncementAudience }
+): Promise<ActionResult> {
+  const title = input.title.trim();
+  const message = input.message.trim();
+  if (!title || !message) {
+    return { ok: false, message: "Title and message are required." };
+  }
+
+  const recipients = await prisma.user.findMany({
+    where:
+      input.audience === "pro"
+        ? { plan: { in: ["PROFESSIONAL", "ENTERPRISE"] } }
+        : {},
+    select: { id: true },
+  });
+  const ids = recipients.map((r) => r.id);
+
+  const count = await createNotificationsForUsers(ids, {
+    type: "system_announcement",
+    title,
+    message,
+    actionUrl: "/notifications",
+  });
+
+  await logAdminAction({
+    actorId: adminId,
+    type: "SEND_ANNOUNCEMENT",
+    details: `Announcement "${title}" → ${
+      input.audience === "pro" ? "Rex Pro users" : "All users"
+    } (${count} recipients)`,
+  });
+
+  return {
+    ok: true,
+    message: `Announcement sent to ${count} ${count === 1 ? "user" : "users"}.`,
   };
 }
 

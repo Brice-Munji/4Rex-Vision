@@ -22,6 +22,7 @@ import {
 } from "@/lib/rex/vision-providers";
 import { getEconomicContext } from "@/lib/rex/economic";
 import { recordAnalysisEvent } from "@/lib/admin/telemetry";
+import { notifyAnalysisSaved } from "@/lib/notifications/service";
 import { normalizeInstrument, unsupportedReason } from "@/lib/rex/instruments";
 import { rex } from "@/lib/rex/mock-pipeline";
 import { CLOSING_NOTE } from "@/lib/rex/scenarios";
@@ -547,6 +548,7 @@ export async function analyzeChart(
       summary: report.bias.summary,
       imageUrl: thumbnail,
     });
+    await notifyAnalysisSaved(gateUser.id, context.instrument);
     return {
       status: "ok",
       report,
@@ -594,5 +596,6 @@ export async function analyzeChart(
     summary: report.bias.summary,
     imageUrl: thumbnail,
   });
+  await notifyAnalysisSaved(gateUser.id, report.analysisContext?.instrument ?? report.pair);
   return { status: "ok", report, metadata: buildMetadata(null, metrics), usage };
 }
