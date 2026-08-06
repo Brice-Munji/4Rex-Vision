@@ -6,13 +6,33 @@ import { isSuperAdmin } from "@/lib/admin/roles";
 import type { User } from "@prisma/client";
 
 /**
+ * Resolve the signed-in user from a fresh DB read. Looks up by session id
+ * first, then falls back to the session email — so a long-lived "remember me"
+ * JWT whose `sub` was minted in an earlier database incarnation (id drift after
+ * a DB reset) still resolves to the current record instead of silently 403-ing.
+ */
+async function resolveSessionUser(): Promise<User | null> {
+  const session = await auth();
+  if (!session?.user) return null;
+  if (session.user.id) {
+    const byId = await prisma.user.findUnique({ where: { id: session.user.id } });
+    if (byId) return byId;
+  }
+  if (session.user.email) {
+    const byEmail = await prisma.user.findUnique({
+      where: { email: session.user.email.toLowerCase() },
+    });
+    if (byEmail) return byEmail;
+  }
+  return null;
+}
+
+/**
  * Authoritative super-admin check backed by a fresh DB read (never trusts the
  * JWT alone). Returns the admin user or null.
  */
 export async function getSuperAdmin(): Promise<User | null> {
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  const user = await resolveSessionUser();
   if (!user) return null;
   return isSuperAdmin(user) ? user : null;
 }
@@ -26,13 +46,20 @@ export async function requireSuperAdmin(): Promise<
   { admin: User } | { response: NextResponse }
 > {
   const session = await auth();
-  if (!session?.user?.id) {
+  if (!session?.user) {
     return {
       response: NextResponse.json({ error: "unauthorized" }, { status: 401 }),
     };
   }
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-  if (!user || !isSuperAdmin(user)) {
+  const user = await resolveSessionUser();
+  if (!user) {
+    // Session exists but no matching DB record (stale/invalid token) — force a
+    // fresh sign-in rather than a misleading "forbidden".
+    return {
+      response: NextResponse.json({ error: "session_stale" }, { status: 401 }),
+    };
+  }
+  if (!isSuperAdmin(user)) {
     return {
       response: NextResponse.json({ error: "forbidden" }, { status: 403 }),
     };
