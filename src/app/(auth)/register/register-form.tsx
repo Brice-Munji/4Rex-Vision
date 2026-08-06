@@ -200,7 +200,7 @@ export function RegisterForm() {
 
         <p className="text-center text-xs text-muted-foreground">
           By signing up you agree to our{" "}
-          <Link href="#" className="underline underline-offset-2 hover:text-foreground">
+          <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">
             Terms
           </Link>{" "}
           and{" "}
