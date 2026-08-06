@@ -28,6 +28,7 @@ export function RegisterForm() {
     password: "",
     confirmPassword: "",
   });
+  const [agreed, setAgreed] = React.useState(false);
 
   function update(field: keyof typeof values, value: string) {
     setValues((v) => ({ ...v, [field]: value }));
@@ -49,7 +50,13 @@ export function RegisterForm() {
       for (const issue of parsed.error.issues) {
         fieldErrors[issue.path[0] as string] = issue.message;
       }
+      // Also flag the agreement if it hasn't been accepted.
+      if (!agreed) fieldErrors.terms = "Please accept the Terms to continue.";
       setErrors(fieldErrors);
+      return;
+    }
+    if (!agreed) {
+      setErrors({ terms: "Please accept the Terms to continue." });
       return;
     }
     setErrors({});
@@ -193,22 +200,50 @@ export function RegisterForm() {
           )}
         </div>
 
-        <Button type="submit" size="lg" className="h-14 w-full" disabled={pending}>
+        <div className="space-y-1.5">
+          <label className="flex cursor-pointer items-start gap-2.5 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => {
+                setAgreed(e.target.checked);
+                if (errors.terms) setErrors((er) => ({ ...er, terms: "" }));
+              }}
+              disabled={pending}
+              aria-invalid={!!errors.terms}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-input bg-card/50 text-primary accent-primary"
+            />
+            <span>
+              I agree to 4RexVision&apos;s{" "}
+              <Link
+                href="/terms"
+                target="_blank"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                Terms &amp; Conditions
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="#"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
+          {errors.terms && <p className="text-xs text-red-500">{errors.terms}</p>}
+        </div>
+
+        <Button
+          type="submit"
+          size="lg"
+          className="h-14 w-full"
+          disabled={pending || !agreed}
+        >
           {pending && <Loader2 className="h-4 w-4 animate-spin" />}
           {pending ? "Creating account…" : "Create free account"}
         </Button>
-
-        <p className="text-center text-xs text-muted-foreground">
-          By signing up you agree to our{" "}
-          <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">
-            Terms
-          </Link>{" "}
-          and{" "}
-          <Link href="#" className="underline underline-offset-2 hover:text-foreground">
-            Privacy Policy
-          </Link>
-          .
-        </p>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
