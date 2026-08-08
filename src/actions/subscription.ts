@@ -100,12 +100,11 @@ export interface RecordAnalysisResult {
   reachedLimit: boolean;
 }
 
-function isSameUtcDay(a: Date, b: Date) {
-  return (
-    a.getUTCFullYear() === b.getUTCFullYear() &&
-    a.getUTCMonth() === b.getUTCMonth() &&
-    a.getUTCDate() === b.getUTCDate()
-  );
+const USAGE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/** Active while under 24h since the last analysis (rolling window). */
+function usageWindowActive(windowStart: Date): boolean {
+  return Date.now() - windowStart.getTime() < USAGE_WINDOW_MS;
 }
 
 /**
@@ -131,9 +130,9 @@ export async function recordAnalysis(): Promise<RecordAnalysisResult> {
   const limit = PLAN_DAILY_LIMITS[user.plan];
   const unlimited = !Number.isFinite(limit);
 
-  // Reset for a new UTC day.
-  const sameDay = isSameUtcDay(new Date(user.analysisCountDate), new Date());
-  const current = sameDay ? user.dailyAnalysisCount : 0;
+  // Rolling 24h window — continue if active, else start fresh.
+  const active = usageWindowActive(new Date(user.analysisCountDate));
+  const current = active ? user.dailyAnalysisCount : 0;
   const next = current + 1;
 
   await prisma.user.update({

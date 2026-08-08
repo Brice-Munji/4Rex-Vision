@@ -20,12 +20,9 @@ import { cn } from "@/lib/utils";
 import { UnlockRexProButton } from "@/components/billing/unlock-rex-pro";
 import { REX_PRO } from "@/lib/payments/catalog";
 
-/** Next UTC midnight — matches the backend's daily reset boundary. */
-function nextUtcMidnight(): Date {
-  const n = new Date();
-  return new Date(
-    Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1)
-  );
+/** 24 hours from now — matches the backend's rolling reset window. */
+function fallbackReset(): Date {
+  return new Date(Date.now() + 24 * 60 * 60 * 1000);
 }
 
 function formatCountdown(ms: number): string {
@@ -67,7 +64,7 @@ export function WhatsNext({
   resetAt?: string | null;
 }) {
   const target = React.useMemo(
-    () => (resetAt ? new Date(resetAt) : nextUtcMidnight()),
+    () => (resetAt ? new Date(resetAt) : fallbackReset()),
     [resetAt]
   );
   const [remaining, setRemaining] = React.useState(() => target.getTime() - Date.now());

@@ -166,13 +166,29 @@ function SaveModal({ report, onClose }: { report: RexReportType; onClose: () => 
   );
 }
 
-/* shared bits */
+/* Full-screen overlay */
 function Overlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  // Lock body scroll while the full-screen sheet is open.
+  React.useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/70 p-4" onClick={onClose}>
-      <div className="relative my-8 w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute right-4 top-4 text-muted-foreground hover:text-foreground" aria-label="Close"><X className="h-5 w-5" /></button>
-        {children}
+    <div className="fixed inset-0 z-[100] flex flex-col bg-background">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-grid opacity-[0.06]" />
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:right-6 sm:top-6"
+      >
+        <X className="h-5 w-5" />
+      </button>
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex min-h-full w-full max-w-2xl items-center px-4 py-16 sm:px-6">
+          <div className="w-full">{children}</div>
+        </div>
       </div>
     </div>
   );
