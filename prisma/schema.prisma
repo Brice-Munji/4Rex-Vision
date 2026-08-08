@@ -146,6 +146,7 @@ model User {
   transactions        Transaction[]
   analysisEvents      AnalysisUsage[]
   notifications       Notification[]
+  journalEntries      JournalEntry[]
   adminActionsMade    AdminAction[]        @relation("AdminActor")
   adminActionsTarget  AdminAction[]        @relation("AdminTarget")
 }
@@ -284,6 +285,81 @@ model Notification {
   @@index([isRead])
   @@index([createdAt])
   @@index([userId, isRead])
+}
+
+/// Smart Journal — a Rex Pro trade journal. One row per logged trade. Journal
+/// data is never deleted; when Pro lapses the journal becomes read-only.
+model JournalEntry {
+  id         String  @id @default(cuid())
+  userId     String
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysisId String? // reference to the originating AnalysisUsage row
+
+  pair       String
+  timeframe  String?
+  direction  String? // "Bullish" | "Bearish" | "Neutral"
+  confidence Int? // 0–100 (imported from the analysis)
+
+  entryPrice Float?
+  stopLoss   Float?
+  takeProfit Float?
+  lotSize    Float?
+  riskAmount Float?
+
+  resultType   String  @default("OPEN") // OPEN | WIN | LOSS | BREAKEVEN
+  resultR      Float? // R multiple
+  resultAmount Float?
+
+  traderNote String? @db.Text
+  newsRisk   String? // LOW | MEDIUM | HIGH
+
+  createdAt DateTime  @default(now())
+  closedAt  DateTime?
+  updatedAt DateTime  @updatedAt
+
+  tags     JournalTag[]
+  emotions JournalEmotion[]
+  outcome  JournalOutcome?
+
+  @@index([userId])
+  @@index([userId, resultType])
+  @@index([createdAt])
+}
+
+model JournalTag {
+  id      String       @id @default(cuid())
+  entryId String
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  label   String
+
+  @@unique([entryId, label])
+  @@index([entryId])
+}
+
+model JournalEmotion {
+  id      String       @id @default(cuid())
+  entryId String
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  emotion String
+
+  @@unique([entryId, emotion])
+  @@index([entryId])
+}
+
+/// "What Happened Next" — the measured outcome of a trade vs its original plan.
+model JournalOutcome {
+  id      String       @id @default(cuid())
+  entryId String       @unique
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  targetReached    Boolean?
+  mfe              Float? // maximum favorable excursion (price)
+  mae              Float? // maximum adverse excursion (price)
+  timeToTargetMins Int?
+  accuracyScore    Int? // 0–100
+  note             String?  @db.Text
+
+  checkedAt DateTime @default(now())
 }
 
 // Password reset (token hashed before storage)

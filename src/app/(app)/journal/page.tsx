@@ -1,38 +1,34 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { JournalPreview } from "@/components/dashboard/journal-preview";
-import { ComingSoon } from "@/components/dashboard/coming-soon";
+import { JournalPreviewLocked } from "@/components/journal/journal-preview-locked";
+import { JournalDashboard } from "@/components/journal/journal-dashboard";
+import { getJournalAccess } from "@/lib/journal/access";
 
 export const metadata: Metadata = {
-  title: "Trading Journal · 4RexVision AI",
+  title: "Smart Journal · 4RexVision AI",
 };
 
-export default function JournalPage() {
+export const dynamic = "force-dynamic";
+
+export default async function JournalPage() {
+  const access = await getJournalAccess();
+  if (!access) redirect("/login");
+
+  // Free users with no journal data see the premium locked preview.
+  if (!access.canView) {
+    return <JournalPreviewLocked />;
+  }
+
   return (
     <div className="space-y-8">
       <PageHeader
         icon={<BookOpen className="h-5 w-5" />}
-        title="Trading Journal"
-        description="Track your trades, review your edge and learn from every setup."
+        title="Smart Journal"
+        description="Turn every analysis into a measurable trading journey."
       />
-      <div className="grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <JournalPreview />
-        </div>
-        <div className="lg:col-span-2">
-          <ComingSoon
-            title="Your full journal is on the way"
-            description="The journal will auto-log every analysis with notes, tags, screenshots and AI-driven performance reviews."
-            features={[
-              "Auto-logged analyses",
-              "Custom notes & tags",
-              "Win-rate analytics",
-              "AI performance reviews",
-            ]}
-          />
-        </div>
-      </div>
+      <JournalDashboard initialCanEdit={access.canEdit} />
     </div>
   );
 }

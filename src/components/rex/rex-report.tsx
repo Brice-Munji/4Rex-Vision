@@ -19,13 +19,17 @@ import { ClosingNote } from "./closing-note";
 import { AnalysisBanner } from "./analysis-banner";
 import { CorrelationCheckCard } from "./correlation-check";
 import type { RexReport as RexReportType } from "@/lib/rex/types";
+import type { Plan } from "@prisma/client";
+import { SaveToJournalButton } from "@/components/journal/save-to-journal";
 
 export function RexReport({
   report,
   onReset,
+  plan,
 }: {
   report: RexReportType;
   onReset?: () => void;
+  plan?: Plan;
 }) {
   return (
     <div className="space-y-6">
@@ -85,10 +89,11 @@ export function RexReport({
             </p>
           </div>
 
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <SaveToJournalButton report={report} plan={plan} />
             <Button variant="secondary" size="sm">
               <Download className="h-4 w-4" />
-              Save
+              PDF
             </Button>
             {onReset && (
               <Button variant="ghost" size="sm" onClick={onReset}>

@@ -493,7 +493,7 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <RexReport report={report} onReset={reset} />
+            <RexReport report={report} onReset={reset} plan={usage?.plan} />
           </motion.div>
         )}
       </AnimatePresence>

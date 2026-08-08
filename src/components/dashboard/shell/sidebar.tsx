@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { PanelLeftClose, PanelLeftOpen, Sparkles, ArrowUpRight } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Sparkles, ArrowUpRight, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -110,7 +110,10 @@ export function Sidebar({ user, collapsed, onToggle, onNavigate }: SidebarProps)
                 )}
               />
               {!collapsed && <span className="truncate">{item.label}</span>}
-              {active && !collapsed && (
+              {item.pro && user.plan === "FREE" && !collapsed && (
+                <Lock className="ml-auto h-3.5 w-3.5 text-muted-foreground/70" />
+              )}
+              {active && !collapsed && !(item.pro && user.plan === "FREE") && (
                 <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
               )}
             </Link>
