@@ -186,9 +186,7 @@ function Overlay({ children, onClose }: { children: React.ReactNode; onClose: ()
         <X className="h-5 w-5" />
       </button>
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex min-h-full w-full max-w-2xl items-center px-4 py-16 sm:px-6">
-          <div className="w-full">{children}</div>
-        </div>
+        <div className="w-full px-5 py-16 sm:px-10 lg:px-16">{children}</div>
       </div>
     </div>
   );
