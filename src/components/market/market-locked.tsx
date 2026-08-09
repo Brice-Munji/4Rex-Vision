@@ -24,12 +24,12 @@ function PreviewCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[24px] border border-[#1F1F1F] bg-[#111111] p-6">
+    <div className="rounded-[24px] border border-border bg-card p-6">
       <div className="flex items-center gap-2.5">
         <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${accent}`}>
           <Icon className="h-[18px] w-[18px]" />
         </span>
-        <h3 className="text-sm font-semibold text-[#F5F5F5]">{title}</h3>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       </div>
       <div className="mt-5 select-none blur-[3px]">{children}</div>
     </div>
@@ -38,7 +38,7 @@ function PreviewCard({
 
 function Bar({ pct, color }: { pct: number; color: string }) {
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-[#0A0A0A]">
+    <div className="h-2 overflow-hidden rounded-full bg-secondary">
       <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -54,15 +54,15 @@ export function MarketLocked() {
           <Radio className="h-5 w-5" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#F5F5F5]">Market Intelligence</h1>
-          <p className="mt-0.5 text-sm text-[#A3A3A3]">Real-time trading context</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Market Intelligence</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">Real-time trading context</p>
         </div>
       </div>
 
       <div className="relative">
         {/* Blurred preview grid */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2" aria-hidden>
-          <PreviewCard icon={CalendarClock} title="Upcoming High-Impact News" accent="bg-rose-500/10 text-rose-400">
+          <PreviewCard icon={CalendarClock} title="Upcoming High-Impact News" accent="bg-rose-500/10 text-rose-600 dark:text-rose-400">
             <div className="space-y-3 text-sm">
               {[
                 ["13:30", "USD", "CPI m/m", "HIGH"],
@@ -70,10 +70,10 @@ export function MarketLocked() {
                 ["16:00", "GBP", "BoE Gov Speaks", "MED"],
               ].map(([t, c, e, i]) => (
                 <div key={t} className="flex items-center gap-3">
-                  <span className="w-12 font-semibold text-[#F5F5F5]">{t}</span>
-                  <span className="rounded-md bg-[#0A0A0A] px-2 py-0.5 text-[11px] font-bold text-[#A3A3A3]">{c}</span>
-                  <span className="flex-1 truncate text-[#F5F5F5]">{e}</span>
-                  <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-400">{i}</span>
+                  <span className="w-12 font-semibold text-foreground">{t}</span>
+                  <span className="rounded-md bg-secondary px-2 py-0.5 text-[11px] font-bold text-muted-foreground">{c}</span>
+                  <span className="flex-1 truncate text-foreground">{e}</span>
+                  <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">{i}</span>
                 </div>
               ))}
             </div>
@@ -88,7 +88,7 @@ export function MarketLocked() {
                 ["XAU/USD", "Bearish", 71, "bg-rose-500"],
               ].map(([p, l, v, col]) => (
                 <div key={p as string}>
-                  <div className="flex justify-between text-sm text-[#F5F5F5]">
+                  <div className="flex justify-between text-sm text-foreground">
                     <span className="font-semibold">{p}</span>
                     <span>{l} {v}%</span>
                   </div>
@@ -101,12 +101,12 @@ export function MarketLocked() {
           <PreviewCard icon={Clock} title="Active Trading Sessions" accent="bg-primary/10 text-primary">
             <div className="space-y-3">
               {[
-                ["Tokyo", "Low", 20, "bg-[#1F1F1F]"],
+                ["Tokyo", "Low", 20, "bg-border"],
                 ["London", "High", 90, "bg-primary"],
-                ["New York", "Medium", 55, "bg-[#A3A3A3]"],
+                ["New York", "Medium", 55, "bg-muted-foreground/40"],
               ].map(([n, a, v, col]) => (
-                <div key={n as string} className="rounded-2xl border border-[#1F1F1F] bg-[#0A0A0A] p-3">
-                  <div className="flex justify-between text-sm text-[#F5F5F5]">
+                <div key={n as string} className="rounded-2xl border border-border bg-secondary p-3">
+                  <div className="flex justify-between text-sm text-foreground">
                     <span className="font-semibold">{n}</span>
                     <span>{a}</span>
                   </div>
@@ -119,13 +119,13 @@ export function MarketLocked() {
           <PreviewCard icon={GitBranch} title="Correlation Watch" accent="bg-primary/10 text-primary">
             <div className="space-y-2.5 text-sm">
               {[
-                ["EUR/USD ↔ GBP/USD", "+0.91", "text-emerald-400"],
-                ["USD/JPY ↔ XAU/USD", "-0.62", "text-rose-400"],
-                ["EUR/USD ↔ XAU/USD", "-0.41", "text-rose-400"],
-                ["GBP/USD ↔ XAU/USD", "-0.38", "text-rose-400"],
+                ["EUR/USD ↔ GBP/USD", "+0.91", "text-emerald-600 dark:text-emerald-400"],
+                ["USD/JPY ↔ XAU/USD", "-0.62", "text-rose-600 dark:text-rose-400"],
+                ["EUR/USD ↔ XAU/USD", "-0.41", "text-rose-600 dark:text-rose-400"],
+                ["GBP/USD ↔ XAU/USD", "-0.38", "text-rose-600 dark:text-rose-400"],
               ].map(([p, v, col]) => (
-                <div key={p as string} className="flex items-center justify-between rounded-2xl border border-[#1F1F1F] bg-[#0A0A0A] px-3 py-2.5">
-                  <span className="font-semibold text-[#F5F5F5]">{p}</span>
+                <div key={p as string} className="flex items-center justify-between rounded-2xl border border-border bg-secondary px-3 py-2.5">
+                  <span className="font-semibold text-foreground">{p}</span>
                   <span className={`font-bold ${col}`}>{v}</span>
                 </div>
               ))}
@@ -134,17 +134,17 @@ export function MarketLocked() {
         </div>
 
         {/* Upgrade overlay */}
-        <div className="absolute inset-0 flex items-center justify-center rounded-[24px] bg-[#050505]/40 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-md rounded-[24px] border border-primary/25 bg-[#0A0A0A]/90 p-8 text-center shadow-[0_0_60px_-20px_rgba(59,130,246,0.7)]">
+        <div className="absolute inset-0 flex items-center justify-center rounded-[24px] bg-background/50 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-md rounded-[24px] border border-primary/25 bg-card/95 p-8 text-center shadow-[0_0_60px_-20px_rgba(59,130,246,0.7)]">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
               <Crown className="h-3.5 w-3.5" />
               Rex Pro feature
             </span>
-            <h2 className="mt-4 flex items-center justify-center gap-2 text-xl font-bold tracking-tight text-[#F5F5F5]">
+            <h2 className="mt-4 flex items-center justify-center gap-2 text-xl font-bold tracking-tight text-foreground">
               <Sparkles className="h-5 w-5 text-primary" />
               Unlock Market Intelligence
             </h2>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-[#A3A3A3]">
+            <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
               High-impact news, Rex sentiment by pair, live session activity and correlation watch — the full trading context, in one place.
             </p>
             <Link
@@ -155,7 +155,7 @@ export function MarketLocked() {
               Upgrade to Rex Pro
               <ArrowUpRight className="h-4 w-4" />
             </Link>
-            <p className="mt-3 text-xs text-[#A3A3A3]">Included in Rex Pro • $15.99/month</p>
+            <p className="mt-3 text-xs text-muted-foreground">Included in Rex Pro • $15.99/month</p>
           </div>
         </div>
       </div>

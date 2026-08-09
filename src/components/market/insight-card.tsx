@@ -11,7 +11,7 @@ export function InsightCard({ insight }: { insight: RexInsight | null }) {
     <motion.section
       variants={cardVariants}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="relative overflow-hidden rounded-[24px] border border-primary/25 bg-gradient-to-br from-[#0B1220] via-[#0A0A0A] to-[#111111] p-6 sm:p-7"
+      className="relative overflow-hidden rounded-[24px] border border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card p-6 sm:p-7"
     >
       {/* soft blue glow accent */}
       <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-primary/20 blur-3xl" />
@@ -26,7 +26,7 @@ export function InsightCard({ insight }: { insight: RexInsight | null }) {
               Rex Insight of the Day
             </h3>
           </div>
-          <div className="mt-2 max-w-3xl text-[15px] leading-relaxed text-[#F5F5F5]">
+          <div className="mt-2 max-w-3xl text-[15px] leading-relaxed text-foreground">
             {insight ? insight.text : <InsightSkeleton />}
           </div>
         </div>

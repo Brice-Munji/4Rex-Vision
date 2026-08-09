@@ -99,17 +99,17 @@ export function MarketIntelligence() {
             <Radio className="h-5 w-5" />
           </span>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#F5F5F5]">Market Intelligence</h1>
-            <p className="mt-0.5 text-sm text-[#A3A3A3]">Real-time trading context</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Market Intelligence</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">Real-time trading context</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-[#1F1F1F] bg-[#111111] px-3 py-1.5 text-xs text-[#A3A3A3]">
+        <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
           <span className="relative flex h-1.5 w-1.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
           </span>
           Last updated{" "}
-          <span className="font-medium text-[#F5F5F5]" suppressHydrationWarning>
+          <span className="font-medium text-foreground" suppressHydrationWarning>
             {lastUpdated
               ? lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
               : "—"}

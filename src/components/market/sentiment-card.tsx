@@ -8,9 +8,9 @@ import { IntelCard, CardHead, CardFooter, CardError } from "./card";
 import { CardSkeleton } from "./skeletons";
 
 const META: Record<SentimentLabel, { text: string; bar: string; icon: React.ElementType }> = {
-  Bullish: { text: "text-emerald-400", bar: "bg-emerald-500", icon: TrendingUp },
-  Bearish: { text: "text-rose-400", bar: "bg-rose-500", icon: TrendingDown },
-  Neutral: { text: "text-amber-400", bar: "bg-amber-500", icon: Minus },
+  Bullish: { text: "text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500", icon: TrendingUp },
+  Bearish: { text: "text-rose-600 dark:text-rose-400", bar: "bg-rose-500", icon: TrendingDown },
+  Neutral: { text: "text-amber-600 dark:text-amber-400", bar: "bg-amber-500", icon: Minus },
 };
 
 function fmtPair(pair: string): string {
@@ -50,14 +50,14 @@ export function SentimentCard({
             return (
               <div key={p.pair}>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-semibold text-[#F5F5F5]">{fmtPair(p.pair)}</span>
+                  <span className="font-semibold text-foreground">{fmtPair(p.pair)}</span>
                   <span className={cn("flex items-center gap-1.5 font-semibold", m.text)}>
                     <Icon className="h-3.5 w-3.5" />
                     {p.label}
                     <span className="tabular-nums">{p.strength}%</span>
                   </span>
                 </div>
-                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#0A0A0A]">
+                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-secondary">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${p.strength}%` }}

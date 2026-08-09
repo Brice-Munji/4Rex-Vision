@@ -41,15 +41,15 @@ export function CorrelationCard({
             return (
               <div
                 key={c.id}
-                className="flex items-center gap-3 rounded-2xl border border-[#1F1F1F] bg-[#0A0A0A] px-3 py-2.5"
+                className="flex items-center gap-3 rounded-2xl border border-border bg-secondary px-3 py-2.5"
               >
-                <span className="flex items-center gap-1.5 text-sm text-[#F5F5F5]">
+                <span className="flex items-center gap-1.5 text-sm text-foreground">
                   <span className="font-semibold">{fmtPair(c.a)}</span>
-                  <span className="text-[#A3A3A3]">↔</span>
+                  <span className="text-muted-foreground">↔</span>
                   <span className="font-semibold">{fmtPair(c.b)}</span>
                 </span>
                 <div className="ml-auto flex items-center gap-2">
-                  <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-[#111111] sm:block">
+                  <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-card sm:block">
                     <div
                       className={cn("h-full rounded-full", positive ? "bg-emerald-500" : "bg-rose-500")}
                       style={{ width: `${magnitude}%` }}
@@ -58,7 +58,7 @@ export function CorrelationCard({
                   <span
                     className={cn(
                       "w-14 text-right text-sm font-bold tabular-nums",
-                      positive ? "text-emerald-400" : "text-rose-400"
+                      positive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                     )}
                   >
                     {signed(c.value)}

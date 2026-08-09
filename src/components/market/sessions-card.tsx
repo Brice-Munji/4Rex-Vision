@@ -9,8 +9,8 @@ import { CardSkeleton } from "./skeletons";
 
 const ACTIVITY_STYLES: Record<ActivityLevel, string> = {
   High: "border-primary/30 bg-primary/10 text-primary",
-  Medium: "border-amber-500/30 bg-amber-500/10 text-amber-400",
-  Low: "border-[#1F1F1F] bg-[#0A0A0A] text-[#A3A3A3]",
+  Medium: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  Low: "border-border bg-secondary text-muted-foreground",
 };
 
 /** Sessions are computed locally from UTC time — no fetch, so no error state. */
@@ -30,7 +30,7 @@ export function SessionsCard({ data }: { data: SessionsPayload | null }) {
                 "rounded-2xl border p-3 transition-all duration-300",
                 s.active
                   ? "border-primary/40 bg-primary/[0.06] shadow-[0_0_28px_-12px_rgba(59,130,246,0.6)]"
-                  : "border-[#1F1F1F] bg-[#0A0A0A]"
+                  : "border-border bg-secondary"
               )}
             >
               <div className="flex items-center justify-between">
@@ -44,12 +44,12 @@ export function SessionsCard({ data }: { data: SessionsPayload | null }) {
                   <span
                     className={cn(
                       "text-sm font-semibold",
-                      s.active ? "text-[#F5F5F5]" : s.open ? "text-[#F5F5F5]" : "text-[#A3A3A3]"
+                      s.active ? "text-foreground" : s.open ? "text-foreground" : "text-muted-foreground"
                     )}
                   >
                     {s.name}
                   </span>
-                  <span className="text-[10px] text-[#A3A3A3]">
+                  <span className="text-[10px] text-muted-foreground">
                     {s.openUtc}–{s.closeUtc} UTC
                   </span>
                 </div>
@@ -62,14 +62,14 @@ export function SessionsCard({ data }: { data: SessionsPayload | null }) {
                   {s.activity}
                 </span>
               </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#111111]">
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-card">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${s.progressPct}%` }}
                   transition={{ duration: 0.7, ease: "easeOut" }}
                   className={cn(
                     "h-full rounded-full",
-                    s.active ? "bg-primary" : s.open ? "bg-[#A3A3A3]" : "bg-[#1F1F1F]"
+                    s.active ? "bg-primary" : s.open ? "bg-muted-foreground/40" : "bg-border"
                   )}
                 />
               </div>
