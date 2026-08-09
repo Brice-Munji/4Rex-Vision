@@ -372,3 +372,16 @@ model PasswordResetToken {
 
   @@index([userId])
 }
+
+// Aggregated Rex sentiment per pair — a lightweight cache that powers the
+// Market Intelligence "Rex Sentiment by Pair" card. Derived from AnalysisUsage
+// (recent Rex analyses), NOT external APIs. Recomputed whenever an analysis
+// completes. One global row per normalized pair (e.g. "EURUSD").
+model PairSentiment {
+  pair      String   @id // normalized ticker, e.g. "EURUSD"
+  bullish   Int      @default(0) // count of Bullish analyses in the window
+  bearish   Int      @default(0) // count of Bearish analyses in the window
+  neutral   Int      @default(0) // count of Neutral analyses in the window
+  samples   Int      @default(0) // total directional analyses in the window
+  updatedAt DateTime @updatedAt
+}

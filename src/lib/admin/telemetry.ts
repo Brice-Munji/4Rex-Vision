@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { recomputePairSentiment } from "@/lib/market/sentiment";
 
 /**
  * Best-effort usage telemetry: records one row per completed analysis and
@@ -40,6 +41,10 @@ export async function recordAnalysisEvent(params: {
         data: { lastActiveAt: new Date() },
       }),
     ]);
+
+    // Refresh the aggregated Rex-sentiment cache so Market Intelligence reflects
+    // this new analysis. Best-effort and self-contained — never blocks/throws.
+    await recomputePairSentiment();
   } catch {
     // Telemetry must never break an analysis.
   }
