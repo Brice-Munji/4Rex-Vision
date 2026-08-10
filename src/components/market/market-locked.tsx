@@ -7,7 +7,7 @@ import {
   CalendarClock,
   Activity,
   Clock,
-  GitBranch,
+  Newspaper,
   Sparkles,
 } from "lucide-react";
 
@@ -62,7 +62,7 @@ export function MarketLocked() {
       <div className="relative">
         {/* Blurred preview grid */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2" aria-hidden>
-          <PreviewCard icon={CalendarClock} title="Upcoming High-Impact News" accent="bg-rose-500/10 text-rose-600 dark:text-rose-400">
+          <PreviewCard icon={CalendarClock} title="Live Economic Calendar" accent="bg-rose-500/10 text-rose-600 dark:text-rose-400">
             <div className="space-y-3 text-sm">
               {[
                 ["13:30", "USD", "CPI m/m", "HIGH"],
@@ -116,17 +116,19 @@ export function MarketLocked() {
             </div>
           </PreviewCard>
 
-          <PreviewCard icon={GitBranch} title="Correlation Watch" accent="bg-primary/10 text-primary">
-            <div className="space-y-2.5 text-sm">
+          <PreviewCard icon={Newspaper} title="Real-Time Forex News" accent="bg-primary/10 text-primary">
+            <div className="space-y-3 text-sm">
               {[
-                ["EUR/USD ↔ GBP/USD", "+0.91", "text-emerald-600 dark:text-emerald-400"],
-                ["USD/JPY ↔ XAU/USD", "-0.62", "text-rose-600 dark:text-rose-400"],
-                ["EUR/USD ↔ XAU/USD", "-0.41", "text-rose-600 dark:text-rose-400"],
-                ["GBP/USD ↔ XAU/USD", "-0.38", "text-rose-600 dark:text-rose-400"],
-              ].map(([p, v, col]) => (
-                <div key={p as string} className="flex items-center justify-between rounded-2xl border border-border bg-secondary px-3 py-2.5">
-                  <span className="font-semibold text-foreground">{p}</span>
-                  <span className={`font-bold ${col}`}>{v}</span>
+                ["Dollar firms ahead of US CPI as traders weigh Fed path", "Forexlive", "12m ago"],
+                ["ECB officials signal caution on further rate cuts", "Reuters", "34m ago"],
+                ["Gold holds near record as yields dip; eyes on data", "FXStreet", "1h ago"],
+              ].map(([h, s, t]) => (
+                <div key={h} className="flex items-start gap-3">
+                  <div className="h-10 w-14 shrink-0 rounded-lg border border-border bg-secondary" />
+                  <div className="min-w-0">
+                    <p className="line-clamp-2 font-medium text-foreground">{h}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{s} · {t}</p>
+                  </div>
                 </div>
               ))}
             </div>

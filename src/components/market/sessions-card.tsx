@@ -3,14 +3,15 @@
 import { motion } from "framer-motion";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ActivityLevel, SessionsPayload } from "@/lib/market/types";
+import type { SessionStatus, SessionsPayload } from "@/lib/market/types";
 import { IntelCard, CardHead, CardFooter } from "./card";
 import { CardSkeleton } from "./skeletons";
 
-const ACTIVITY_STYLES: Record<ActivityLevel, string> = {
-  High: "border-primary/30 bg-primary/10 text-primary",
-  Medium: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  Low: "border-border bg-secondary text-muted-foreground",
+const STATUS_STYLES: Record<SessionStatus, string> = {
+  "Peak Volatility": "border-primary/40 bg-primary/15 text-primary",
+  Active: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  "Opening Soon": "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  Closed: "border-border bg-secondary text-muted-foreground",
 };
 
 /** Sessions are computed locally from UTC time — no fetch, so no error state. */
@@ -56,10 +57,10 @@ export function SessionsCard({ data }: { data: SessionsPayload | null }) {
                 <span
                   className={cn(
                     "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                    ACTIVITY_STYLES[s.activity]
+                    STATUS_STYLES[s.status]
                   )}
                 >
-                  {s.activity}
+                  {s.status}
                 </span>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-card">

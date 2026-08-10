@@ -10,6 +10,7 @@ import type {
   ActivityLevel,
   SessionName,
   SessionsPayload,
+  SessionStatus,
   SessionView,
 } from "./types";
 
@@ -45,8 +46,12 @@ function pad(n: number): string {
  * openness with overlap boosts; the single highest-scoring open session is
  * flagged `active` (the one that gets the blue glow in the UI).
  */
+/** "Opening Soon" window — this many minutes before a session opens. */
+const OPENING_SOON_MINS = 30;
+
 export function computeSessions(now: Date = new Date()): SessionsPayload {
   const hour = now.getUTCHours();
+  const nowMin = hour * 60 + now.getUTCMinutes();
   const londonNyOverlap =
     hour >= LONDON_NY_OVERLAP[0] && hour < LONDON_NY_OVERLAP[1];
   const tokyoLondonOverlap =
@@ -54,24 +59,32 @@ export function computeSessions(now: Date = new Date()): SessionsPayload {
 
   const scored = SESSION_DEFS.map((def) => {
     const open = inWindow(hour, def.open, def.close);
-    let score = open ? 45 : 8;
+    // Minutes until this session's next open (wraps past midnight).
+    const openMin = def.open * 60;
+    const minsToOpen = openMin >= nowMin ? openMin - nowMin : openMin + 1440 - nowMin;
+    const openingSoon = !open && minsToOpen <= OPENING_SOON_MINS;
+
+    const peak =
+      open && londonNyOverlap && (def.name === "London" || def.name === "New York");
+
+    let score = open ? 45 : openingSoon ? 20 : 8;
     // Overlaps concentrate volume — reward the sessions taking part.
-    if (open && londonNyOverlap && (def.name === "London" || def.name === "New York")) {
-      score += 45;
-    }
+    if (peak) score += 45;
     if (open && tokyoLondonOverlap && (def.name === "Tokyo" || def.name === "London")) {
       score += 25;
     }
     const progressPct = Math.min(100, score);
     const activity: ActivityLevel =
       score >= 75 ? "High" : score >= 40 ? "Medium" : "Low";
-    return {
-      def,
-      open,
-      score,
-      progressPct,
-      activity,
-    };
+    const status: SessionStatus = peak
+      ? "Peak Volatility"
+      : open
+        ? "Active"
+        : openingSoon
+          ? "Opening Soon"
+          : "Closed";
+
+    return { def, open, score, progressPct, activity, status };
   });
 
   const openSessions = scored.filter((s) => s.open);
@@ -84,6 +97,7 @@ export function computeSessions(now: Date = new Date()): SessionsPayload {
     name: s.def.name,
     open: s.open,
     activity: s.activity,
+    status: s.status,
     active: top !== null && s.def.name === top.def.name,
     progressPct: s.progressPct,
     openUtc: `${pad(s.def.open)}:00`,

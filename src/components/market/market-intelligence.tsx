@@ -4,21 +4,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Radio } from "lucide-react";
 import { computeSessions } from "@/lib/market/sessions";
-import { generateInsight } from "@/lib/market/insight";
+import { generateLiveInsight } from "@/lib/market/insight";
 import type {
+  CalendarPayload,
   CorrelationsPayload,
-  NewsPayload,
+  ForexNewsPayload,
   SentimentPayload,
   SessionsPayload,
 } from "@/lib/market/types";
-import { NewsCard } from "./news-card";
+import { LiveCalendarCard } from "./live-calendar-card";
+import { ForexNewsCard } from "./forex-news-card";
 import { SentimentCard } from "./sentiment-card";
 import { SessionsCard } from "./sessions-card";
 import { CorrelationCard } from "./correlation-card";
 import { InsightCard } from "./insight-card";
 
-// Lightweight polling cadences (no websockets for MVP).
-const NEWS_MS = 15 * 60 * 1000; // 15 min
+// Live polling cadences.
+const CALENDAR_MS = 15 * 60 * 1000; // 15 min
+const NEWS_MS = 5 * 60 * 1000; // 5 min
 const CORRELATIONS_MS = 30 * 60 * 1000; // 30 min
 const SENTIMENT_MS = 60 * 1000; // reflects new analyses shortly after completion
 const SESSIONS_MS = 30 * 1000; // local recalculation
@@ -29,15 +32,16 @@ interface FetchState<T> {
   error: boolean;
 }
 
-const grid = {
+const container = {
   hidden: {},
   show: { transition: { staggerChildren: 0.08 } },
 };
+const column = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.1 } },
+};
 
-/**
- * Small polling hook: fetches immediately, then on an interval. Exposes a
- * `reload` for the per-card retry buttons.
- */
+/** Polling hook: fetch immediately, then on an interval; exposes `reload`. */
 function usePoll<T>(url: string, intervalMs: number, onSuccess?: () => void) {
   const [state, setState] = useState<FetchState<T>>({ data: null, loading: true, error: false });
   const savedOnSuccess = useRef(onSuccess);
@@ -68,11 +72,12 @@ export function MarketIntelligence() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const touch = useCallback(() => setLastUpdated(new Date()), []);
 
-  const news = usePoll<NewsPayload>("/api/market/news", NEWS_MS, touch);
+  const calendar = usePoll<CalendarPayload>("/api/market/calendar", CALENDAR_MS, touch);
+  const news = usePoll<ForexNewsPayload>("/api/market/news", NEWS_MS, touch);
   const sentiment = usePoll<SentimentPayload>("/api/market/sentiment", SENTIMENT_MS, touch);
   const correlations = usePoll<CorrelationsPayload>("/api/market/correlations", CORRELATIONS_MS, touch);
 
-  // Sessions are computed locally from the browser clock (UTC-based).
+  // Sessions computed locally from the browser clock (UTC-based).
   const [sessions, setSessions] = useState<SessionsPayload | null>(null);
   useEffect(() => {
     const tick = () => {
@@ -84,11 +89,14 @@ export function MarketIntelligence() {
     return () => clearInterval(id);
   }, []);
 
-  // Rex Insight — derived on the client from live correlation + sentiment data.
+  // Rex Insight — from the live calendar + current session + Rex sentiment.
   const insight = useMemo(() => {
-    if (!correlations.data || !sentiment.data) return null;
-    return generateInsight(correlations.data.pairs, sentiment.data.pairs);
-  }, [correlations.data, sentiment.data]);
+    if (!calendar.data || !sessions) return null;
+    return generateLiveInsight(calendar.data.events, sessions, sentiment.data?.pairs ?? []);
+  }, [calendar.data, sessions, sentiment.data]);
+
+  const degraded =
+    calendar.data?.source === "fallback" || news.data?.source === "fallback";
 
   return (
     <div className="space-y-6">
@@ -105,10 +113,14 @@ export function MarketIntelligence() {
         </div>
         <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
           <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span
+              className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${degraded ? "bg-amber-400" : "bg-emerald-400"}`}
+            />
+            <span
+              className={`relative inline-flex h-1.5 w-1.5 rounded-full ${degraded ? "bg-amber-500" : "bg-emerald-500"}`}
+            />
           </span>
-          Last updated{" "}
+          {degraded ? "Degraded" : "Live"} · updated{" "}
           <span className="font-medium text-foreground" suppressHydrationWarning>
             {lastUpdated
               ? lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -117,31 +129,61 @@ export function MarketIntelligence() {
         </div>
       </div>
 
-      {/* 2×2 intelligence grid */}
+      {/* Primary 2-column layout */}
       <motion.div
-        variants={grid}
+        variants={container}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 gap-5 lg:grid-cols-2"
+        className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2"
       >
-        <NewsCard data={news.data} loading={news.loading} error={news.error} onRetry={news.reload} />
-        <SentimentCard
-          data={sentiment.data}
-          loading={sentiment.loading}
-          error={sentiment.error}
-          onRetry={sentiment.reload}
-        />
-        <SessionsCard data={sessions} />
-        <CorrelationCard
-          data={correlations.data}
-          loading={correlations.loading}
-          error={correlations.error}
-          onRetry={correlations.reload}
-        />
+        {/* LEFT */}
+        <motion.div variants={column} className="flex flex-col gap-5">
+          <LiveCalendarCard
+            data={calendar.data}
+            loading={calendar.loading}
+            error={calendar.error}
+            onRetry={calendar.reload}
+          />
+          <SessionsCard data={sessions} />
+        </motion.div>
+
+        {/* RIGHT */}
+        <motion.div variants={column} className="flex flex-col gap-5">
+          <ForexNewsCard
+            data={news.data}
+            loading={news.loading}
+            error={news.error}
+            onRetry={news.reload}
+          />
+          <InsightCard insight={insight} />
+        </motion.div>
       </motion.div>
 
-      {/* Full-width Rex Insight */}
-      <InsightCard insight={insight} />
+      {/* Secondary — Rex analytics (sentiment + correlation) */}
+      <div className="space-y-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Rex Analytics
+        </h2>
+        <motion.div
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2"
+        >
+          <SentimentCard
+            data={sentiment.data}
+            loading={sentiment.loading}
+            error={sentiment.error}
+            onRetry={sentiment.reload}
+          />
+          <CorrelationCard
+            data={correlations.data}
+            loading={correlations.loading}
+            error={correlations.error}
+            onRetry={correlations.reload}
+          />
+        </motion.div>
+      </div>
     </div>
   );
 }

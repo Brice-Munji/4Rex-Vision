@@ -7,13 +7,15 @@ import "server-only";
  * integration itself. The Smart Journal will later read this to stamp trades
  * with the market conditions at entry time.
  *
- * Exposes: current_session, news_risk_level, pair_sentiment, correlation_flags.
+ * Exposes: next_high_impact, current_session, affected_pairs, news_risk_level
+ * (plus pair_sentiment & correlation_flags for continuity).
  */
 
 import { computeSessions } from "./sessions";
-import { getUpcomingNews } from "./news";
+import { getEconomicCalendar } from "./calendar";
 import { getCorrelations } from "./correlations";
 import { getPairSentiment } from "./sentiment";
+import { affectedPairsFor } from "./insight";
 import type { MarketContext } from "./types";
 
 function relationNote(value: number): string {
@@ -26,12 +28,12 @@ function relationNote(value: number): string {
 
 /** Assemble the full market-context snapshot for the current moment. */
 export async function getMarketContext(now: Date = new Date()): Promise<MarketContext> {
-  const [sentiment, correlations] = await Promise.all([
+  const [sentiment, correlations, calendar] = await Promise.all([
     getPairSentiment(now),
     getCorrelations(now),
+    getEconomicCalendar(now),
   ]);
   const sessions = computeSessions(now);
-  const news = getUpcomingNews(now);
 
   const pair_sentiment = Object.fromEntries(
     sentiment.pairs.map((p) => [p.pair, { label: p.label, strength: p.strength }])
@@ -45,14 +47,28 @@ export async function getMarketContext(now: Date = new Date()): Promise<MarketCo
       note: relationNote(c.value),
     }));
 
+  const nextHigh =
+    calendar.events.find((e) => e.impact === "High" && e.minutesUntil >= 0) ?? null;
+  const activeSession = sessions.sessions.find((s) => s.active);
+
   return {
+    next_high_impact: nextHigh
+      ? {
+          currency: nextHigh.currency,
+          event: nextHigh.event,
+          impact: nextHigh.impact,
+          time_utc: nextHigh.time_utc,
+          minutesUntil: nextHigh.minutesUntil,
+        }
+      : null,
     current_session: {
       name: sessions.mostActive,
-      activity:
-        sessions.sessions.find((s) => s.active)?.activity ?? "Low",
+      status: activeSession?.status ?? "Closed",
+      activity: activeSession?.activity ?? "Low",
       overlap: sessions.overlap,
     },
-    news_risk_level: news.riskLevel,
+    affected_pairs: nextHigh ? affectedPairsFor(nextHigh.currency) : [],
+    news_risk_level: calendar.riskLevel,
     pair_sentiment,
     correlation_flags,
     generatedAt: now.toISOString(),
