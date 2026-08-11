@@ -30,8 +30,11 @@ const googleProviders = googleConfigured
         allowDangerousEmailAccountLinking: true,
         // Map Google's OpenID profile onto our User columns (no `name`/`image`
         // columns exist — the Prisma adapter would reject them). New Google
-        // users are email-verified at creation and skip the onboarding gate so
-        // the dashboard opens immediately on first sign-in.
+        // users are email-verified at creation but must complete onboarding, so
+        // first-time sign-ups land on /onboarding (the middleware enforces the
+        // gate off `onboardingComplete`). This value is only written by the
+        // adapter's createUser — i.e. on first-time account creation — so
+        // existing Google users keep their stored value and are unaffected.
         profile(profile) {
           return {
             id: profile.sub,
@@ -42,7 +45,7 @@ const googleProviders = googleConfigured
             emailVerified: profile.email_verified ? new Date() : null,
             plan: "FREE",
             role: "USER",
-            onboardingComplete: true,
+            onboardingComplete: false,
           } as any;
         },
       }),
