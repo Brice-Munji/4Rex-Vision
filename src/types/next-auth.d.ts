@@ -1,4 +1,4 @@
-import { Plan } from "@prisma/client";
+import { Plan, Role } from "@prisma/client";
 import { DefaultSession } from "next-auth";
 
 declare module "next-auth" {
@@ -9,6 +9,7 @@ declare module "next-auth" {
       lastName: string | null;
       avatar: string | null;
       plan: Plan;
+      role: Role;
       emailVerified: Date | null;
       onboardingComplete: boolean;
     } & DefaultSession["user"];
@@ -19,6 +20,7 @@ declare module "next-auth" {
     lastName?: string | null;
     avatar?: string | null;
     plan?: Plan;
+    role?: Role;
     emailVerified?: Date | null;
     onboardingComplete?: boolean;
     rememberMe?: boolean;
@@ -32,6 +34,7 @@ declare module "next-auth/jwt" {
     lastName?: string | null;
     avatar?: string | null;
     plan?: Plan;
+    role?: Role;
     emailVerified?: Date | null;
     onboardingComplete?: boolean;
     expiresAt?: number;

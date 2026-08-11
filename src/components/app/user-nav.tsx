@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   LayoutDashboard,
   User as UserIcon,
@@ -11,6 +12,7 @@ import {
   LogOut,
   ChevronDown,
   Loader2,
+  ShieldCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -44,6 +46,8 @@ const menu = [
 
 export function UserNav({ user }: UserNavProps) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
   const [loggingOut, setLoggingOut] = React.useState(false);
 
   const fullName =
@@ -108,6 +112,18 @@ export function UserNav({ user }: UserNavProps) {
             </Link>
           </DropdownMenuItem>
         ))}
+
+        {isSuperAdmin && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/super-admin" className="text-[#3b82f6] focus:text-[#3b82f6] [&_svg]:text-[#3b82f6]">
+                <ShieldCheck />
+                Command Center
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
 
         <DropdownMenuSeparator />
 

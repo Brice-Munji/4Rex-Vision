@@ -2,12 +2,15 @@ import { prisma } from "@/lib/prisma";
 import { PLAN_DAILY_LIMITS } from "@/lib/constants";
 import type { User } from "@prisma/client";
 
-function isSameUtcDay(a: Date, b: Date) {
-  return (
-    a.getUTCFullYear() === b.getUTCFullYear() &&
-    a.getUTCMonth() === b.getUTCMonth() &&
-    a.getUTCDate() === b.getUTCDate()
-  );
+/** The free allowance is a rolling 24-hour window. */
+export const USAGE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The counting window is active while it's been under 24h since the last
+ * analysis (`analysisCountDate`). Once 24h elapse, the allowance resets.
+ */
+function windowActive(windowStart: Date, now = Date.now()): boolean {
+  return now - windowStart.getTime() < USAGE_WINDOW_MS;
 }
 
 export interface UsageSummary {
@@ -22,11 +25,9 @@ type UsageUser = Pick<
   "id" | "plan" | "dailyAnalysisCount" | "analysisCountDate"
 >;
 
-/** ISO timestamp of the next UTC midnight — when the daily allowance resets. */
+/** ISO timestamp when the allowance resets — 24h after `from`. */
 export function nextResetIso(from: Date = new Date()): string {
-  return new Date(
-    Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate() + 1)
-  ).toISOString();
+  return new Date(from.getTime() + USAGE_WINDOW_MS).toISOString();
 }
 
 export interface AnalysisGate extends UsageSummary {
@@ -43,10 +44,16 @@ export interface AnalysisGate extends UsageSummary {
  */
 export async function evaluateAnalysisGate(user: UsageUser): Promise<AnalysisGate> {
   const summary = await getUsageSummary(user);
+  const windowStart = new Date(user.analysisCountDate);
+  // If the window is still active, the allowance resets 24h after it started
+  // (the last analysis); otherwise a fresh 24h window begins on the next run.
+  const resetAt = windowActive(windowStart)
+    ? nextResetIso(windowStart)
+    : nextResetIso();
   return {
     ...summary,
     allowed: summary.unlimited || summary.remaining > 0,
-    resetAt: nextResetIso(),
+    resetAt,
   };
 }
 
@@ -64,8 +71,10 @@ export async function consumeAnalysis(userId: string): Promise<UsageSummary> {
   const limit = PLAN_DAILY_LIMITS[user.plan];
   const unlimited = !Number.isFinite(limit);
 
-  const sameDay = isSameUtcDay(new Date(user.analysisCountDate), new Date());
-  const current = sameDay ? user.dailyAnalysisCount : 0;
+  // Continue the active window, or start a fresh one. The window start is
+  // stamped to "now" so the 24h countdown runs from the most recent analysis.
+  const active = windowActive(new Date(user.analysisCountDate));
+  const current = active ? user.dailyAnalysisCount : 0;
   const next = current + 1;
 
   await prisma.user.update({
@@ -94,11 +103,12 @@ export async function getUsageSummary(user: Pick<User, "id" | "plan" | "dailyAna
   const unlimited = !Number.isFinite(limit);
 
   let used = user.dailyAnalysisCount;
-  if (!isSameUtcDay(new Date(user.analysisCountDate), new Date())) {
-    // New day — reset the stored counter.
+  if (!windowActive(new Date(user.analysisCountDate))) {
+    // The 24h window elapsed — reset the counter (the window start is left as
+    // is; the next analysis stamps a fresh window).
     await prisma.user.update({
       where: { id: user.id },
-      data: { dailyAnalysisCount: 0, analysisCountDate: new Date() },
+      data: { dailyAnalysisCount: 0 },
     });
     used = 0;
   }

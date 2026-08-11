@@ -21,6 +21,11 @@ const columns = [
   },
 ];
 
+// Real destinations for footer links (others remain placeholders for now).
+const LINK_HREFS: Record<string, string> = {
+  "Terms of Service": "/terms",
+};
+
 const socials = [
   { icon: Twitter, label: "Twitter", href: "#" },
   { icon: Github, label: "GitHub", href: "#" },
@@ -69,7 +74,7 @@ export function Footer() {
                 {col.links.map((link) => (
                   <li key={link}>
                     <Link
-                      href="#"
+                      href={LINK_HREFS[link] ?? "#"}
                       className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link}

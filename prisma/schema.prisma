@@ -16,6 +16,44 @@ enum Plan {
   ENTERPRISE
 }
 
+enum Role {
+  USER
+  SUPER_ADMIN
+}
+
+/// Where a user's active subscription originated. Payment = paid checkout,
+/// ADMIN = granted from the Owner Command Center, PROMO = promotional grant.
+enum SubscriptionSource {
+  PAYMENT
+  ADMIN
+  PROMO
+}
+
+/// Every privileged action performed from the super-admin dashboard is logged
+/// with one of these types for the audit trail.
+enum AdminActionType {
+  GRANT_PRO
+  EXTEND_PRO
+  REVOKE_PRO
+  RESET_USAGE
+  SUSPEND_USER
+  UNSUSPEND_USER
+  CHANGE_SETTINGS
+  SEND_ANNOUNCEMENT
+}
+
+enum NotificationType {
+  payment_success
+  pro_activated
+  pro_granted
+  pro_revoked
+  subscription_expiring
+  analysis_saved
+  journal_outcome
+  system_announcement
+  account_security
+}
+
 enum SubscriptionStatus {
   ACTIVE
   TRIALING
@@ -63,9 +101,17 @@ model User {
   avatar        String?
   emailVerified DateTime?
 
+  // Access control
+  role      Role     @default(USER)
+  suspended Boolean  @default(false)
+
   // Plan & subscription
-  plan               Plan               @default(FREE)
-  subscriptionStatus SubscriptionStatus @default(INACTIVE)
+  plan               Plan                @default(FREE)
+  subscriptionStatus SubscriptionStatus  @default(INACTIVE)
+  subscriptionSource SubscriptionSource?
+
+  // Presence (updated on authenticated activity — powers Active Users Today)
+  lastActiveAt DateTime?
 
   // Subscription billing
   billingCycle         BillingCycle?
@@ -98,6 +144,56 @@ model User {
   verificationTokens  VerificationToken[]
   passwordResetTokens PasswordResetToken[]
   transactions        Transaction[]
+  analysisEvents      AnalysisUsage[]
+  notifications       Notification[]
+  journalEntries      JournalEntry[]
+  adminActionsMade    AdminAction[]        @relation("AdminActor")
+  adminActionsTarget  AdminAction[]        @relation("AdminTarget")
+}
+
+/// One row per completed chart analysis. Additive usage telemetry (never gates
+/// analysis) that powers the Analysis Activity + Analytics dashboards: per-user
+/// counts by day, most-analyzed pair, and average confidence.
+model AnalysisUsage {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  pair       String? // e.g. "AUDUSD" — null when not confidently extracted
+  timeframe  String? // e.g. "1H"
+  confidence Int? // 0–100
+  provider   String? // vision provider used, e.g. "gemini"
+
+  // History record (powers the user-facing Analysis History). Additive &
+  // nullable so older telemetry rows and the admin dashboard are unaffected.
+  direction String? // "Bullish" | "Bearish" | "Neutral"
+  headline  String? // Rex's one-line verdict
+  summary   String? @db.Text // rex_summary — the bias/verdict explanation
+  imageUrl  String? @db.Text // chart thumbnail (data URL)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([pair])
+}
+
+/// Audit trail of every privileged action taken from the super-admin dashboard.
+model AdminAction {
+  id       String          @id @default(cuid())
+  actorId  String
+  actor    User            @relation("AdminActor", fields: [actorId], references: [id], onDelete: Cascade)
+  targetId String?
+  target   User?           @relation("AdminTarget", fields: [targetId], references: [id], onDelete: SetNull)
+
+  type    AdminActionType
+  details String? // human-readable summary, e.g. "Granted Pro · 30 days · reason: VIP"
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([targetId])
+  @@index([createdAt])
 }
 
 /// Provider-agnostic payment record. One row per checkout attempt; the
@@ -169,6 +265,103 @@ model VerificationToken {
   @@index([userId])
 }
 
+/// Persistent, per-user notifications powering the bell menu, /notifications
+/// page and near real-time (polled) updates.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  isRead    Boolean          @default(false)
+  actionUrl String? // where clicking the notification takes the user
+  metadata  Json? // metadata_json — arbitrary structured context
+
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([userId, isRead])
+}
+
+/// Smart Journal — a Rex Pro trade journal. One row per logged trade. Journal
+/// data is never deleted; when Pro lapses the journal becomes read-only.
+model JournalEntry {
+  id         String  @id @default(cuid())
+  userId     String
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysisId String? // reference to the originating AnalysisUsage row
+
+  pair       String
+  timeframe  String?
+  direction  String? // "Bullish" | "Bearish" | "Neutral"
+  confidence Int? // 0–100 (imported from the analysis)
+
+  entryPrice Float?
+  stopLoss   Float?
+  takeProfit Float?
+  lotSize    Float?
+  riskAmount Float?
+
+  resultType   String  @default("OPEN") // OPEN | WIN | LOSS | BREAKEVEN
+  resultR      Float? // R multiple
+  resultAmount Float?
+
+  traderNote String? @db.Text
+  newsRisk   String? // LOW | MEDIUM | HIGH
+
+  createdAt DateTime  @default(now())
+  closedAt  DateTime?
+  updatedAt DateTime  @updatedAt
+
+  tags     JournalTag[]
+  emotions JournalEmotion[]
+  outcome  JournalOutcome?
+
+  @@index([userId])
+  @@index([userId, resultType])
+  @@index([createdAt])
+}
+
+model JournalTag {
+  id      String       @id @default(cuid())
+  entryId String
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  label   String
+
+  @@unique([entryId, label])
+  @@index([entryId])
+}
+
+model JournalEmotion {
+  id      String       @id @default(cuid())
+  entryId String
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  emotion String
+
+  @@unique([entryId, emotion])
+  @@index([entryId])
+}
+
+/// "What Happened Next" — the measured outcome of a trade vs its original plan.
+model JournalOutcome {
+  id      String       @id @default(cuid())
+  entryId String       @unique
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  targetReached    Boolean?
+  mfe              Float? // maximum favorable excursion (price)
+  mae              Float? // maximum adverse excursion (price)
+  timeToTargetMins Int?
+  accuracyScore    Int? // 0–100
+  note             String?  @db.Text
+
+  checkedAt DateTime @default(now())
+}
+
 // Password reset (token hashed before storage)
 model PasswordResetToken {
   id      String   @id @default(cuid())
@@ -178,4 +371,17 @@ model PasswordResetToken {
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// Aggregated Rex sentiment per pair — a lightweight cache that powers the
+// Market Intelligence "Rex Sentiment by Pair" card. Derived from AnalysisUsage
+// (recent Rex analyses), NOT external APIs. Recomputed whenever an analysis
+// completes. One global row per normalized pair (e.g. "EURUSD").
+model PairSentiment {
+  pair      String   @id // normalized ticker, e.g. "EURUSD"
+  bullish   Int      @default(0) // count of Bullish analyses in the window
+  bearish   Int      @default(0) // count of Bearish analyses in the window
+  neutral   Int      @default(0) // count of Neutral analyses in the window
+  samples   Int      @default(0) // total directional analyses in the window
+  updatedAt DateTime @updatedAt
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getProviderById } from "./registry";
+import { notifyPaymentSuccess } from "@/lib/notifications/service";
 import type { PaymentOutcome } from "./types";
 
 export type SettleOutcome = PaymentOutcome | "error";
@@ -46,6 +47,7 @@ export async function settleByReference(reference: string): Promise<SettleOutcom
 
   // SUCCESS — activate the subscription (only place a paid plan is switched on).
   const now = new Date();
+  const periodEnd = addMonth(now);
   await prisma.$transaction([
     prisma.transaction.update({
       where: { reference },
@@ -58,13 +60,16 @@ export async function settleByReference(reference: string): Promise<SettleOutcom
         subscriptionStatus: "ACTIVE",
         billingCycle: "MONTHLY",
         subscriptionStart: now,
-        currentPeriodEnd: addMonth(now),
+        currentPeriodEnd: periodEnd,
         cancelAtPeriodEnd: false,
         paymentProvider: tx.provider,
         transactionReference: reference,
       },
     }),
   ]);
+
+  // Notify the user their Pro subscription is now active.
+  await notifyPaymentSuccess(tx.userId, periodEnd);
 
   return "success";
 }

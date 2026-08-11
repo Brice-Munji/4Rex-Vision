@@ -26,6 +26,7 @@ export const authConfig = {
         token.lastName = (user as any).lastName ?? null;
         token.avatar = (user as any).avatar ?? null;
         token.plan = (user as any).plan ?? "FREE";
+        token.role = (user as any).role ?? "USER";
         token.emailVerified = (user as any).emailVerified ?? null;
         token.onboardingComplete = (user as any).onboardingComplete ?? false;
 
@@ -65,6 +66,7 @@ export const authConfig = {
         session.user.lastName = (token.lastName as string | null) ?? null;
         session.user.avatar = (token.avatar as string | null) ?? null;
         session.user.plan = (token.plan as any) ?? "FREE";
+        session.user.role = (token.role as any) ?? "USER";
         session.user.emailVerified =
           (token.emailVerified as Date | null) ?? null;
         session.user.onboardingComplete =

@@ -1,0 +1,32 @@
+/* True-dark Owner Command Center palette — fully scoped to /super-admin so it
+   never affects the trader dashboard or the marketing site. */
+.admin-scope {
+  --a-bg: #050505;
+  --a-surface: #111111;
+  --a-surface-2: #161616;
+  --a-elev: #1a1a1a;
+  --a-border: #1f1f1f;
+  --a-text: #f5f5f5;
+  --a-muted: #a3a3a3;
+  --a-accent: #3b82f6;
+
+  background-color: var(--a-bg);
+  color: var(--a-text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+.admin-scope ::selection {
+  background: rgba(59, 130, 246, 0.3);
+}
+.admin-scope ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.admin-scope ::-webkit-scrollbar-thumb {
+  background: #1f1f1f;
+  border-radius: 8px;
+  border: 2px solid #050505;
+}
+.admin-scope ::-webkit-scrollbar-thumb:hover {
+  background: #2a2a2a;
+}
