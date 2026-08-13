@@ -50,14 +50,7 @@ export async function readChartWithGemini(
         ],
         generationConfig: {
           temperature: 0.2,
-          // gemini-2.5-flash is a "thinking" model where maxOutputTokens is
-          // shared between internal reasoning and the visible answer. With the
-          // large structured chart JSON, thinking tokens could exhaust the
-          // budget → finishReason MAX_TOKENS → empty output → the whole vision
-          // call failed ("temporarily unavailable"). Disable thinking so the
-          // full budget goes to the JSON, and raise the ceiling for headroom.
-          thinkingConfig: { thinkingBudget: 0 },
-          maxOutputTokens: 8192,
+          maxOutputTokens: 4000,
           responseMimeType: "application/json",
         },
       }),
