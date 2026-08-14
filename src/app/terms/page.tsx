@@ -8,7 +8,7 @@ import { LegalMarkdown } from "@/components/legal/legal-markdown";
 import { TERMS_MARKDOWN, TERMS_LAST_UPDATED } from "@/lib/legal/terms";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions · 4RexVision AI",
+  title: "Terms & Conditions · 4RexVision",
   description:
     "The terms that govern your use of 4RexVision — AI-powered forex analysis and trading-journal tools. See beyond the charts.",
 };

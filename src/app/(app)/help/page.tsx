@@ -4,7 +4,7 @@ import { HelpCircle, BookOpen, MessageCircle, Mail, ArrowUpRight } from "lucide-
 import { PageHeader } from "@/components/dashboard/page-header";
 
 export const metadata: Metadata = {
-  title: "Help · 4RexVision AI",
+  title: "Help · 4RexVision",
 };
 
 const resources = [

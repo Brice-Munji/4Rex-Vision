@@ -5,7 +5,7 @@ import { getEntry } from "@/lib/journal/service";
 import { TradeDetail } from "@/components/journal/trade-detail";
 
 export const metadata: Metadata = {
-  title: "Trade · Smart Journal · 4RexVision AI",
+  title: "Trade · Smart Journal · 4RexVision",
 };
 
 export const dynamic = "force-dynamic";

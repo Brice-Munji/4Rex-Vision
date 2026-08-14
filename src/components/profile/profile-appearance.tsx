@@ -39,7 +39,7 @@ export function ProfileAppearance({ user }: { user: User }) {
     <div className="rounded-3xl glass p-6 sm:p-8">
       <h2 className="text-lg font-semibold">Appearance</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Choose how 4RexVision AI looks on this device.
+        Choose how 4RexVision looks on this device.
       </p>
 
       <div className="mt-6">

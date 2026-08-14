@@ -60,7 +60,7 @@ const RECIPIENTS: RecipientEnvConfig[] = [
 
 /** The configured account owner, shared across every rail. */
 function ownerName(): string {
-  return process.env.PAYMENT_OWNER_NAME?.trim() || "4RexVision AI";
+  return process.env.PAYMENT_OWNER_NAME?.trim() || "4RexVision";
 }
 
 /** Read + trim the receiving account for a rail (null when unset). */

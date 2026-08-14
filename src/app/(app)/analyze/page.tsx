@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { RexAnalyzer } from "@/components/rex/rex-analyzer";
 
 export const metadata: Metadata = {
-  title: "Analyze Chart · 4RexVision AI",
+  title: "Analyze Chart · 4RexVision",
 };
 
 export default async function AnalyzePage() {

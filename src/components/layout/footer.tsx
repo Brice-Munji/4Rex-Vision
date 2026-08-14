@@ -60,7 +60,7 @@ export function Footer() {
                   placeholder="you@example.com"
                   className="h-11 w-full rounded-xl border border-input bg-card/50 px-4 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-sky-500/60 focus:ring-2 focus:ring-sky-500/20"
                 />
-                <Button type="submit" size="icon" aria-label="Subscribe" className="shrink-0">
+                <Button type="submit" size="icon" aria-label="Subscribe" className="shrink-0 hover-zoom">
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </form>
@@ -88,7 +88,7 @@ export function Footer() {
 
         <div className="mt-14 flex flex-col items-center justify-between gap-6 border-t border-border/60 pt-8 sm:flex-row">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} 4RexVision AI. All rights reserved.
+            © {new Date().getFullYear()} 4RexVision. All rights reserved.
           </p>
           <div className="flex items-center gap-2">
             {socials.map((s) => (

@@ -5,7 +5,7 @@ import { getSuperAdmin } from "@/lib/admin/guard";
 import { AdminShell } from "@/components/super-admin/admin-shell";
 
 export const metadata: Metadata = {
-  title: "Owner Command Center · 4RexVision AI",
+  title: "Owner Command Center · 4RexVision",
   robots: { index: false, follow: false },
 };
 

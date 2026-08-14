@@ -60,13 +60,13 @@ export function Hero() {
               transition={{ duration: 0.6 }}
               className="mt-9 flex flex-col gap-3 sm:flex-row"
             >
-              <Button size="lg" className="h-14" asChild>
+              <Button size="lg" className="h-14 hover-zoom" asChild>
                 <Link href="/register">
                   Start Free
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button size="lg" variant="secondary" className="h-14" asChild>
+              <Button size="lg" variant="secondary" className="h-14 hover-zoom" asChild>
                 <Link href="#how-it-works">
                   <Play className="h-4 w-4" />
                   Watch Demo
@@ -100,11 +100,12 @@ export function Hero() {
             </motion.div>
           </motion.div>
 
-          {/* mockup */}
+          {/* mockup — hidden on mobile, shown from large screens up */}
           <motion.div
             initial={{ opacity: 0, scale: 0.94, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="hidden lg:block"
           >
             <ProductMockup />
           </motion.div>

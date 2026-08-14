@@ -139,7 +139,7 @@ export function Pricing() {
                   asChild
                   variant={plan.featured ? "default" : "secondary"}
                   size="lg"
-                  className={cn("mt-8 w-full", plan.cta === "Unlock Rex Pro" && "h-14")}
+                  className={cn("mt-8 w-full hover-zoom", plan.cta === "Unlock Rex Pro" && "h-14")}
                 >
                   <Link href={plan.href}>{plan.cta}</Link>
                 </Button>

@@ -19,7 +19,7 @@ import { LockedFeatureGrid } from "@/components/dashboard/locked-feature-card";
 import { DashSectionHeader } from "@/components/dashboard/section-header";
 
 export const metadata: Metadata = {
-  title: "Command Center · 4RexVision AI",
+  title: "Command Center · 4RexVision",
 };
 
 export const dynamic = "force-dynamic";

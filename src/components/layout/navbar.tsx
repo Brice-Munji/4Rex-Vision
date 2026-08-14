@@ -43,7 +43,7 @@ export function Navbar() {
               : "border border-transparent"
           )}
         >
-          <Link href="#" aria-label="4RexVision AI home">
+          <Link href="#" aria-label="4RexVision home">
             <Logo />
           </Link>
 
@@ -61,10 +61,10 @@ export function Navbar() {
 
           <div className="hidden items-center gap-2 md:flex">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="ghost" size="sm" className="hover-zoom" asChild>
               <Link href="/login">Login</Link>
             </Button>
-            <Button size="sm" asChild>
+            <Button size="sm" className="hover-zoom" asChild>
               <Link href="/register">Get Started</Link>
             </Button>
           </div>
@@ -74,6 +74,7 @@ export function Navbar() {
             <Button
               variant="ghost"
               size="icon"
+              className="hover-zoom"
               aria-label="Toggle menu"
               onClick={() => setOpen((v) => !v)}
             >
@@ -102,12 +103,12 @@ export function Navbar() {
                 </Link>
               ))}
               <div className="my-1 h-px bg-border" />
-              <Button variant="secondary" asChild>
+              <Button variant="secondary" className="hover-zoom" asChild>
                 <Link href="/login" onClick={() => setOpen(false)}>
                   Login
                 </Link>
               </Button>
-              <Button asChild>
+              <Button className="hover-zoom" asChild>
                 <Link href="/register" onClick={() => setOpen(false)}>
                   Get Started
                 </Link>

@@ -30,13 +30,13 @@ export function CTA() {
             </p>
 
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button size="lg" asChild>
+              <Button size="lg" className="hover-zoom" asChild>
                 <Link href="/register">
                   Start Free
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button size="lg" variant="secondary" asChild>
+              <Button size="lg" variant="secondary" className="hover-zoom" asChild>
                 <Link href="#features">Explore Features</Link>
               </Button>
             </div>

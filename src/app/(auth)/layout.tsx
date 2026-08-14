@@ -38,7 +38,7 @@ export default function AuthLayout({
           </div>
 
           <p className="text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} 4RexVision AI · See Beyond the Charts.
+            © {new Date().getFullYear()} 4RexVision · See Beyond the Charts.
           </p>
         </div>
       </div>

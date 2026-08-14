@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { NotificationsView } from "@/components/notifications/notifications-view";
 
 export const metadata: Metadata = {
-  title: "Notifications · 4RexVision AI",
+  title: "Notifications · 4RexVision",
 };
 
 export default function NotificationsPage() {

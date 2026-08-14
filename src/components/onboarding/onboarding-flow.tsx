@@ -157,7 +157,7 @@ export function OnboardingFlow({ firstName }: { firstName?: string | null }) {
                 </motion.div>
                 <h1 className="mt-8 text-balance text-4xl font-bold tracking-tight md:text-5xl">
                   Welcome to{" "}
-                  <span className="text-gradient">4RexVision AI</span>
+                  <span className="text-gradient">4RexVision</span>
                   {firstName ? `, ${firstName}` : ""}
                 </h1>
                 <p className="mx-auto mt-4 max-w-md text-lg text-muted-foreground">

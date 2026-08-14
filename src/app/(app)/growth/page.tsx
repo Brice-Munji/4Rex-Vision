@@ -11,7 +11,7 @@ import { Achievements } from "@/components/dashboard/achievements";
 import { ContinueMomentum } from "@/components/dashboard/continue-momentum";
 
 export const metadata: Metadata = {
-  title: "AI Growth · 4RexVision AI",
+  title: "AI Growth · 4RexVision",
 };
 
 export default async function GrowthPage() {

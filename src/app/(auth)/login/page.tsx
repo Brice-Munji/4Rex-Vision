@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
-  title: "Sign in · 4RexVision AI",
+  title: "Sign in · 4RexVision",
 };
 
 export default function LoginPage() {

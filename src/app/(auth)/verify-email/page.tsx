@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { VerifyClient } from "./verify-client";
 
 export const metadata: Metadata = {
-  title: "Verify email · 4RexVision AI",
+  title: "Verify email · 4RexVision",
 };
 
 export default function VerifyEmailPage() {
