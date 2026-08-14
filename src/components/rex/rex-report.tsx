@@ -21,6 +21,7 @@ import { CorrelationCheckCard } from "./correlation-check";
 import type { RexReport as RexReportType } from "@/lib/rex/types";
 import type { Plan } from "@prisma/client";
 import { SaveToJournalButton } from "@/components/journal/save-to-journal";
+import { RexTradeSetupCard } from "@/components/rex/rex-trade-setup";
 
 export function RexReport({
   report,
@@ -122,6 +123,9 @@ export function RexReport({
           </div>
         )}
       </motion.div>
+
+      {/* Rex Trade Setup (PRO) — turn the completed analysis into trade zones */}
+      <RexTradeSetupCard report={report} plan={plan} />
 
       {/* Step 3 — vision confidence */}
       <VisionConfidenceCard vision={report.visionConfidence} />
