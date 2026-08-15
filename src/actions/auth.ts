@@ -13,6 +13,11 @@ import {
   hashToken,
 } from "@/lib/tokens";
 import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/mail";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
+
+const RL_WINDOW = 1000 * 60 * 15; // 15 minutes
+const TOO_MANY_REQUESTS =
+  "Too many attempts. Please wait a few minutes and try again.";
 
 export type ActionState = {
   ok: boolean;
@@ -74,6 +79,16 @@ export async function requestPasswordReset(
     };
   }
 
+  // Rate limit by IP (abuse) and by email (protect a victim's inbox). Uniform
+  // response either way, so this never reveals whether an account exists.
+  const ip = await clientIp();
+  const email = parsed.data.email.toLowerCase();
+  const byIp = rateLimit(`pwreset:req:ip:${ip}`, 8, RL_WINDOW);
+  const byEmail = rateLimit(`pwreset:req:email:${email}`, 4, RL_WINDOW);
+  if (!byIp.ok || !byEmail.ok) {
+    return { ok: false, message: TOO_MANY_REQUESTS };
+  }
+
   const user = await prisma.user.findUnique({
     where: { email: parsed.data.email },
   });
@@ -98,6 +113,12 @@ export async function resetPassword(values: unknown): Promise<ActionState> {
       fieldErrors[issue.path[0] as string] = issue.message;
     }
     return { ok: false, message: "Please fix the errors below.", fieldErrors };
+  }
+
+  // Slow token brute-forcing: cap reset attempts per IP.
+  const ip = await clientIp();
+  if (!rateLimit(`pwreset:submit:ip:${ip}`, 10, RL_WINDOW).ok) {
+    return { ok: false, message: TOO_MANY_REQUESTS };
   }
 
   const tokenHash = hashToken(parsed.data.token);

@@ -37,7 +37,7 @@ export async function sendPasswordResetEmail(to: string, token: string) {
   await sendEmail({
     to,
     subject: "Reset your 4RexVision password",
-    text: `We received a request to reset your password.\n\nReset it here:\n${link}\n\nThis link expires in 1 hour. If you didn't request this, you can safely ignore this email.`,
+    text: `We received a request to reset your password.\n\nReset it here:\n${link}\n\nThis link expires in 5 minutes and can be used only once. If you didn't request this, you can safely ignore this email.`,
   });
   return link;
 }
