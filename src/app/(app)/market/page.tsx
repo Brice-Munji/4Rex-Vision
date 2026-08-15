@@ -5,7 +5,7 @@ import { MarketIntelligence } from "@/components/market/market-intelligence";
 import { MarketLocked } from "@/components/market/market-locked";
 
 export const metadata: Metadata = {
-  title: "Market Intelligence · 4RexVision AI",
+  title: "Market Intelligence · 4RexVision",
 };
 
 export const dynamic = "force-dynamic";

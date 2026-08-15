@@ -12,7 +12,7 @@ import { Testimonials } from "@/components/billing/testimonials";
 import { EnterpriseContact } from "@/components/billing/enterprise-contact";
 
 export const metadata: Metadata = {
-  title: "Pricing · 4RexVision AI",
+  title: "Pricing · 4RexVision",
   description:
     "Unlock your professional AI trading partner. Simple, transparent pricing — Explorer, Vision Pro and Vision Elite.",
 };

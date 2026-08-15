@@ -10,6 +10,9 @@ export default async function AppLayout({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  // Suspended accounts lose access to the app immediately (next navigation),
+  // even if they still hold a valid session cookie.
+  if (user.suspended) redirect("/suspended");
   if (!user.onboardingComplete) redirect("/onboarding");
 
   return (

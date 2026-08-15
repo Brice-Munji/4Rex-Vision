@@ -5,7 +5,7 @@ import { ProfileTabs } from "@/components/profile/profile-tabs";
 import { PlanBadge } from "@/components/app/plan-badge";
 
 export const metadata: Metadata = {
-  title: "Profile · 4RexVision AI",
+  title: "Profile · 4RexVision",
 };
 
 export default async function ProfilePage() {

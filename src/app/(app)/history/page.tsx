@@ -8,7 +8,7 @@ import { getAnalysisHistory } from "@/lib/rex/history";
 import { ComingSoon } from "@/components/dashboard/coming-soon";
 
 export const metadata: Metadata = {
-  title: "Analysis History · 4RexVision AI",
+  title: "Analysis History · 4RexVision",
 };
 
 // Always render fresh so a just-completed analysis is present on first paint.

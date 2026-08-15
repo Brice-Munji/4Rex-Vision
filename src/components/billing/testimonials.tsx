@@ -34,7 +34,7 @@ export function Testimonials() {
         Trusted by serious traders
       </h2>
       <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
-        Join thousands using 4RexVision AI to see beyond the charts.
+        Join thousands using 4RexVision to see beyond the charts.
       </p>
       <div className="mt-10 grid gap-5 md:grid-cols-3">
         {testimonials.map((t, i) => (

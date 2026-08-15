@@ -15,7 +15,7 @@ import { BillingActivity } from "@/components/billing/billing-activity";
 import type { PaymentMethodId } from "@/lib/payments/types";
 
 export const metadata: Metadata = {
-  title: "Subscription & Billing · 4RexVision AI",
+  title: "Subscription & Billing · 4RexVision",
 };
 
 export default async function BillingPage() {

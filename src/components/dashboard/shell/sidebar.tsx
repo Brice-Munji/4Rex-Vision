@@ -45,13 +45,13 @@ export function Sidebar({ user, collapsed, onToggle, onNavigate }: SidebarProps)
         )}
       >
         {collapsed ? (
-          <Link href="/dashboard" aria-label="4RexVision AI" onClick={onNavigate}>
+          <Link href="/dashboard" aria-label="4RexVision" onClick={onNavigate}>
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-sm">
               <Sparkles className="h-5 w-5 text-primary-foreground" />
             </div>
           </Link>
         ) : (
-          <Link href="/dashboard" aria-label="4RexVision AI" onClick={onNavigate}>
+          <Link href="/dashboard" aria-label="4RexVision" onClick={onNavigate}>
             <Logo />
           </Link>
         )}

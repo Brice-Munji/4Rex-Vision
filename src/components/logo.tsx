@@ -7,23 +7,21 @@ export function Logo({ className }: { className?: string }) {
         {/* Light mode: dark "R" monogram. Dark mode: light "R" monogram. */}
         <img
           src="/images/logo-mark-light.png"
-          alt="4RexVision AI"
+          alt="4RexVision"
           width={36}
           height={36}
           className="h-full w-full object-contain dark:hidden"
         />
         <img
           src="/images/logo-mark-dark.png"
-          alt="4RexVision AI"
+          alt="4RexVision"
           width={36}
           height={36}
           aria-hidden="true"
           className="hidden h-full w-full object-contain dark:block"
         />
       </span>
-      <span className="text-lg font-semibold tracking-tight">
-        4RexVision <span className="text-gradient">AI</span>
-      </span>
+      <span className="text-lg font-semibold tracking-tight">4RexVision</span>
     </div>
   );
 }

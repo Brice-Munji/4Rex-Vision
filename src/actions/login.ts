@@ -2,8 +2,12 @@
 
 import { AuthError } from "next-auth";
 import { signIn, signOut } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations";
 import type { ActionState } from "@/actions/auth";
+
+const SUSPENDED_MESSAGE =
+  "This account has been suspended. Please contact support if you think this is a mistake.";
 
 export async function loginUser(values: unknown): Promise<ActionState> {
   const parsed = loginSchema.safeParse(values);
@@ -13,6 +17,15 @@ export async function loginUser(values: unknown): Promise<ActionState> {
       fieldErrors[issue.path[0] as string] = issue.message;
     }
     return { ok: false, message: "Please fix the errors below.", fieldErrors };
+  }
+
+  // Give suspended users a clear message (authorize() also blocks them).
+  const existing = await prisma.user.findUnique({
+    where: { email: parsed.data.email.toLowerCase() },
+    select: { suspended: true },
+  });
+  if (existing?.suspended) {
+    return { ok: false, message: SUSPENDED_MESSAGE };
   }
 
   try {

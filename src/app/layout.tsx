@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "4RexVision AI — See Beyond the Charts.",
+  title: "4RexVision — See Beyond the Charts.",
   description:
     "Transform trading screenshots into intelligent market analysis using AI-powered chart vision, technical analysis and economic intelligence.",
   keywords: [
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     "trading journal",
   ],
   openGraph: {
-    title: "4RexVision AI — See Beyond the Charts.",
+    title: "4RexVision — See Beyond the Charts.",
     description:
       "Transform trading screenshots into intelligent market analysis using AI-powered chart vision.",
     type: "website",

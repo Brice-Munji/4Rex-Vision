@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ResetForm } from "./reset-form";
 
 export const metadata: Metadata = {
-  title: "Reset password · 4RexVision AI",
+  title: "Reset password · 4RexVision",
 };
 
 export default function ResetPasswordPage() {

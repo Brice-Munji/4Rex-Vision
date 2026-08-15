@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 
 export const metadata: Metadata = {
-  title: "Welcome · 4RexVision AI",
+  title: "Welcome · 4RexVision",
 };
 
 export default async function OnboardingPage() {

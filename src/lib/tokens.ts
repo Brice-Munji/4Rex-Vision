@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 
 const VERIFICATION_TTL = 1000 * 60 * 60 * 24; // 24h
-const RESET_TTL = 1000 * 60 * 60; // 1h
+const RESET_TTL = 1000 * 60 * 5; // 5 minutes — password-reset links are short-lived
 
 /** Hash a raw token before persisting it (never store raw tokens). */
 export function hashToken(raw: string): string {

@@ -7,7 +7,7 @@ import { JournalDashboard } from "@/components/journal/journal-dashboard";
 import { getJournalAccess } from "@/lib/journal/access";
 
 export const metadata: Metadata = {
-  title: "Smart Journal · 4RexVision AI",
+  title: "Smart Journal · 4RexVision",
 };
 
 export const dynamic = "force-dynamic";

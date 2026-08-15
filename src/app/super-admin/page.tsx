@@ -17,7 +17,7 @@ export default async function OverviewPage() {
     <div>
       <AdminPageHeader
         title="Overview"
-        description="Full operational snapshot of the 4RexVision AI platform."
+        description="Full operational snapshot of the 4RexVision platform."
       />
 
       <KpiGrid kpis={kpis} />

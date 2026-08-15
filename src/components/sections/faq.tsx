@@ -11,8 +11,8 @@ import {
 
 const faqs = [
   {
-    q: "What is 4RexVision AI?",
-    a: "4RexVision AI is an intelligence platform that turns trading chart screenshots into professional market analysis. Our AI reads price action, detects patterns and correlates economic data to deliver an institutional-grade breakdown in seconds.",
+    q: "What is 4RexVision?",
+    a: "4RexVision is an intelligence platform that turns trading chart screenshots into professional market analysis. Our AI reads price action, detects patterns and correlates economic data to deliver an institutional-grade breakdown in seconds.",
   },
   {
     q: "How does the AI analyze my charts?",
@@ -20,10 +20,10 @@ const faqs = [
   },
   {
     q: "Which markets and assets are supported?",
-    a: "Forex, crypto, indices, commodities and stocks are all supported. If it produces a chart, 4RexVision AI can read it. Any timeframe works, from 1-minute scalps to weekly swing setups.",
+    a: "Forex, crypto, indices, commodities and stocks are all supported. If it produces a chart, 4RexVision can read it. Any timeframe works, from 1-minute scalps to weekly swing setups.",
   },
   {
-    q: "Is 4RexVision AI giving me financial advice?",
+    q: "Is 4RexVision giving me financial advice?",
     a: "No. We provide educational analysis and probabilistic insights to support your own decision-making. Every output includes transparent reasoning so you stay in control. Always trade responsibly and within your risk tolerance.",
   },
   {
@@ -59,7 +59,7 @@ export function FAQ() {
         <SectionHeading
           eyebrow="FAQ"
           title="Frequently asked questions"
-          description="Everything you need to know about 4RexVision AI. Can't find an answer? Reach out to our team."
+          description="Everything you need to know about 4RexVision. Can't find an answer? Reach out to our team."
         />
 
         <Reveal className="mx-auto mt-14 max-w-3xl">

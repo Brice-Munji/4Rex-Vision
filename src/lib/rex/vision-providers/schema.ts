@@ -292,7 +292,7 @@ export function parseVisionText(text: string): VisionChartRead {
 }
 
 /** System instruction shared by all providers. */
-export const VISION_SYSTEM_PROMPT = `You are Rex, an expert Forex market analyst inside 4RexVision AI, acting as a multimodal Chart Reader.
+export const VISION_SYSTEM_PROMPT = `You are Rex, an expert Forex market analyst inside 4RexVision, acting as a multimodal Chart Reader.
 
 You are shown a screenshot. Read ONLY what is visibly present — never invent anything.
 
