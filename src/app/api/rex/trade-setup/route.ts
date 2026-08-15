@@ -27,6 +27,8 @@ export async function POST(req: Request) {
     currentPrice: typeof body.currentPrice === "string" ? body.currentPrice : null,
     priceLevels: Array.isArray(body.priceLevels) ? body.priceLevels : [],
     economicImpacts: Array.isArray(body.economicImpacts) ? body.economicImpacts : [],
+    trend: body.trend ?? null,
+    evidence: Array.isArray(body.evidence) ? body.evidence : [],
   });
 
   return NextResponse.json({ setup }, { headers: { "Cache-Control": "no-store" } });

@@ -34,6 +34,8 @@ import {
   type SetupQuality,
   type TradeSetupInput,
   type TradeSetupResult,
+  type DirectionalSetup,
+  type NeutralSetup,
 } from "@/lib/rex/trade-setup";
 
 /* Fixed premium dark palette — the modal is always a dark trading surface,
@@ -51,6 +53,15 @@ function buildInput(report: RexReportType): TradeSetupInput {
     currentPrice: report.currentPrice ?? null,
     priceLevels: (report.priceLevels ?? []).map((l) => ({ type: l.type, value: l.value })),
     economicImpacts: (report.economic ?? []).map((e) => e.impact),
+    // APA structure signals — the setup is derived from these, not from news.
+    trend: report.trend
+      ? { direction: report.trend.direction, strength: report.trend.strength }
+      : null,
+    evidence: (report.evidence ?? []).map((e) => ({
+      key: e.key,
+      label: e.label,
+      explanation: e.explanation,
+    })),
   };
 }
 
@@ -166,17 +177,20 @@ function SetupModal({
   }, [open, report]);
 
   const setup = state.status === "done" ? state.result : null;
+  const directional = setup && setup.kind === "directional" ? setup : null;
 
   async function saveToJournal() {
-    if (!setup || !setup.available) return;
+    if (!directional) return;
     setSaving(true);
     try {
       const note = [
-        `Rex Trade Setup — ${setup.bias} · Quality ${setup.quality} · R:R ${setup.riskReward} · News risk ${setup.newsRisk}`,
-        `Entry zone: ${setup.entryZone}`,
-        `Invalidation: ${setup.invalidationZone}`,
-        `Target 1: ${setup.target1}`,
-        `Target 2: ${setup.target2}`,
+        `Rex Trade Setup (APA) — ${directional.bias} · Quality ${directional.quality} · R:R ${directional.riskReward}`,
+        `Entry zone: ${directional.entryZone}`,
+        `Invalidation: ${directional.invalidationZone}`,
+        `Target 1: ${directional.target1}`,
+        `Target 2: ${directional.target2}`,
+        `Confluence: ${directional.confluence.join(", ") || "—"}`,
+        `News risk (warning only): ${directional.newsRisk}`,
         "",
         SETUP_DISCLAIMER,
       ].join("\n");
@@ -188,13 +202,13 @@ function SetupModal({
           analysisId: report.id ?? null, // links the original analysis + chart screenshot
           pair: report.analysisContext?.instrument ?? report.pair,
           timeframe: report.timeframe,
-          direction: setup.bias,
+          direction: directional.bias,
           confidence: report.overallConfidence ?? null,
-          entryPrice: setup.entryMid,
-          stopLoss: setup.invalidationMid,
-          takeProfit: setup.target1Mid,
+          entryPrice: directional.entryMid,
+          stopLoss: directional.invalidationMid,
+          takeProfit: directional.target1Mid,
           traderNote: note,
-          tags: ["Rex Setup", `Setup ${setup.quality}`],
+          tags: ["Rex Setup", `Setup ${directional.quality}`],
           emotions: [],
         }),
       });
@@ -203,7 +217,7 @@ function SetupModal({
         setSaved(true);
         toast.success("Trade setup saved to Smart Journal", {
           position: "top-right",
-          description: `${report.pair} · ${setup.bias} · ${setup.quality}`,
+          description: `${report.pair} · ${directional.bias} · ${directional.quality}`,
         });
         router.refresh();
       } else if (data.error === "forbidden") {
@@ -222,7 +236,7 @@ function SetupModal({
     <ModalShell open={open} onClose={onClose} labelledBy="rex-setup-title" busy={saving}>
       <ModalHeader
         title="Rex Trade Setup"
-        subtitle="Educational trade-planning zones from your analysis."
+        subtitle="Advanced Price Action trade-planning zones, aligned to your analysis bias."
         onClose={onClose}
       />
 
@@ -238,16 +252,20 @@ function SetupModal({
           </div>
         )}
 
-        {setup && !setup.available && (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] px-5 py-8 text-center">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-400">
-              <Ban className="h-5 w-5" />
-            </span>
-            <p className="max-w-sm text-sm font-medium text-[#F5F5F5]">{setup.reason}</p>
+        {setup && setup.kind === "none" && (
+          <div className="space-y-4">
+            <NewsWarning level={setup.newsRisk} />
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] px-5 py-8 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-400">
+                <Ban className="h-5 w-5" />
+              </span>
+              <p className="max-w-sm text-sm font-medium text-[#F5F5F5]">{setup.reason}</p>
+            </div>
           </div>
         )}
 
-        {setup && setup.available && <SetupBody setup={setup} />}
+        {setup && setup.kind === "neutral" && <NeutralBody setup={setup} />}
+        {setup && setup.kind === "directional" && <DirectionalBody setup={setup} />}
       </div>
 
       {/* Footer */}
@@ -261,7 +279,7 @@ function SetupModal({
           >
             Close
           </button>
-          {setup && setup.available && (
+          {directional && (
             <button
               type="button"
               onClick={saveToJournal}
@@ -305,25 +323,44 @@ const NEWS_META: Record<SetupNewsRisk, string> = {
   Low: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
 };
 
-function SetupBody({ setup }: { setup: Extract<TradeSetupResult, { available: true }> }) {
+const NEWS_MESSAGE: Record<SetupNewsRisk, string> = {
+  High: "Major economic event approaching — expect volatility. This is a risk warning only; it does not change the technical setup.",
+  Medium: "Medium-impact news is on the calendar. Warning only — the APA setup is unchanged.",
+  Low: "No high-impact news nearby. The setup is driven purely by price-action structure.",
+};
+
+/** News is a RISK WARNING only — never a reason to trade or a direction driver. */
+function NewsWarning({ level }: { level: SetupNewsRisk }) {
+  return (
+    <div className={cn("flex items-start gap-2.5 rounded-2xl border px-4 py-3", NEWS_META[level])}>
+      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wide">News {level}</p>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-[#A3A3A3]">{NEWS_MESSAGE[level]}</p>
+      </div>
+    </div>
+  );
+}
+
+function DirectionalBody({ setup }: { setup: DirectionalSetup }) {
   const bias = BIAS_META[setup.bias];
   const BiasIcon = bias.icon;
   return (
     <div className="space-y-5">
-      {/* Top badges */}
+      {/* News is a warning only — shown first, never affects the setup below */}
+      <NewsWarning level={setup.newsRisk} />
+
+      {/* Top badges (no news here — direction/quality come from APA only) */}
       <div className="flex flex-wrap items-center gap-2">
         <span className={cn("inline-flex items-center gap-1.5 rounded-full border border-[#1F1F1F] bg-[#111111] px-3 py-1 text-sm font-semibold", bias.text)}>
           <BiasIcon className="h-4 w-4" />
-          {bias.label}
+          {setup.bias} setup
         </span>
         <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-bold", QUALITY_META[setup.quality])}>
           Setup {setup.quality}
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-[#1F1F1F] bg-[#111111] px-3 py-1 text-sm font-semibold text-[#F5F5F5]">
           <Gauge className="h-4 w-4 text-primary" /> R:R {setup.riskReward}
-        </span>
-        <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide", NEWS_META[setup.newsRisk])}>
-          <ShieldAlert className="h-3.5 w-3.5" /> News {setup.newsRisk}
         </span>
       </div>
 
@@ -334,6 +371,75 @@ function SetupBody({ setup }: { setup: Extract<TradeSetupResult, { available: tr
         <ZoneRow icon={Target} accent="text-emerald-400" label="Target zone 1" value={setup.target1} />
         <ZoneRow icon={Target} accent="text-emerald-400" label="Target zone 2" value={setup.target2} />
       </div>
+
+      {/* APA confluence the grade is built on */}
+      {setup.confluence.length > 0 && (
+        <div className={cn("rounded-2xl p-4", PANEL)}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A3A3A3]">
+            APA confluence
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {setup.confluence.map((f) => (
+              <span
+                key={f}
+                className="inline-flex items-center gap-1 rounded-full border border-[#1F1F1F] bg-[#0A0A0A] px-2.5 py-1 text-[11px] font-medium text-[#8fbaff]"
+              >
+                <Check className="h-3 w-3" /> {f}
+              </span>
+            ))}
+          </div>
+          <p className="mt-3 text-[12px] leading-relaxed text-[#A3A3A3]">{setup.rationale}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NeutralBody({ setup }: { setup: NeutralSetup }) {
+  return (
+    <div className="space-y-5">
+      <NewsWarning level={setup.newsRisk} />
+
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] px-5 py-6 text-center">
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-400">
+          <Minus className="h-5 w-5" />
+        </span>
+        <p className="text-base font-bold text-[#F5F5F5]">Neutral Market</p>
+        <p className="text-sm text-[#A3A3A3]">No directional setup available.</p>
+      </div>
+
+      {(setup.upperZone || setup.lowerZone) && (
+        <div className="space-y-2.5">
+          {setup.upperZone && (
+            <ZoneRow icon={ArrowUpRight} accent="text-emerald-400" label="Upper breakout / watch" value={setup.upperZone} />
+          )}
+          {setup.lowerZone && (
+            <ZoneRow icon={TrendingDown} accent="text-rose-400" label="Lower breakout / watch" value={setup.lowerZone} />
+          )}
+          {setup.keyResistance && (
+            <ZoneRow icon={Target} accent="text-[#A3A3A3]" label="Key resistance" value={setup.keyResistance} />
+          )}
+          {setup.keySupport && (
+            <ZoneRow icon={Target} accent="text-[#A3A3A3]" label="Key support" value={setup.keySupport} />
+          )}
+        </div>
+      )}
+
+      {setup.requiredConfirmation.length > 0 && (
+        <div className={cn("rounded-2xl p-4", PANEL)}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A3A3A3]">
+            APA confirmation required first
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {setup.requiredConfirmation.map((r, i) => (
+              <li key={i} className="flex items-start gap-2 text-[12px] leading-relaxed text-[#F5F5F5]">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
+                {r}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
