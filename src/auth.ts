@@ -79,6 +79,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;
 
+        // Suspended accounts cannot sign in.
+        if (user.suspended) return null;
+
         return {
           id: user.id,
           email: user.email,
@@ -95,6 +98,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
     ...googleProviders,
   ],
+  callbacks: {
+    ...authConfig.callbacks,
+    /**
+     * Deny sign-in for suspended accounts (both providers). For credentials the
+     * `authorize` above already returns null; this is the backstop and the
+     * enforcement point for Google OAuth. Returning false stops the sign-in.
+     */
+    async signIn({ user }) {
+      try {
+        const id = (user as { id?: string })?.id;
+        const email = user?.email?.toLowerCase();
+        let dbUser = id
+          ? await prisma.user.findUnique({ where: { id }, select: { suspended: true } })
+          : null;
+        if (!dbUser && email) {
+          dbUser = await prisma.user.findUnique({
+            where: { email },
+            select: { suspended: true },
+          });
+        }
+        if (dbUser?.suspended) return false;
+      } catch {
+        // Never hard-fail sign-in on a lookup error.
+      }
+      return true;
+    },
+  },
   events: {
     /**
      * After any Google sign-in, guarantee the account is marked verified and
