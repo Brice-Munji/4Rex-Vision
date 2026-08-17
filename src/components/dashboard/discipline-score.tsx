@@ -6,7 +6,7 @@ import { DISCIPLINE } from "@/lib/billing-data";
 
 export function DisciplineScore() {
   return (
-    <div className="rounded-3xl glass p-6 sm:p-8">
+    <div className="allow-anim rounded-3xl glass p-6 sm:p-8">
       <div className="flex items-center gap-2">
         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
           <Shield className="h-5 w-5" />

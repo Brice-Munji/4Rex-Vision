@@ -100,3 +100,36 @@
   background: hsl(var(--muted-foreground) / 0.5);
   background-clip: content-box;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Dashboard "animations off" mode.
+   `data-noanim` is set on <html> by the authenticated app shell (right after
+   login / sign-up). It near-instantly collapses every CSS transition/animation
+   (hover effects, pulse/ping/spin, skeleton shimmer, tailwindcss-animate, etc.)
+   while still firing transition/animation end events so components don't wedge.
+   framer-motion is disabled separately via MotionGlobalConfig.skipAnimations.
+
+   Exception: analytics/graphs opt back in with the `allow-anim` class.
+   ────────────────────────────────────────────────────────────────────────── */
+html[data-noanim] *,
+html[data-noanim] *::before,
+html[data-noanim] *::after {
+  animation-duration: 0.001ms !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+/* Graphs / analytics keep their animations. */
+html[data-noanim] .allow-anim,
+html[data-noanim] .allow-anim *,
+html[data-noanim] .allow-anim *::before,
+html[data-noanim] .allow-anim *::after {
+  animation-duration: revert !important;
+  animation-delay: revert !important;
+  animation-iteration-count: revert !important;
+  transition-duration: revert !important;
+  transition-delay: revert !important;
+}

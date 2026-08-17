@@ -42,7 +42,7 @@ export function AreaChart({
   const gid = React.useId();
 
   return (
-    <div className="relative w-full">
+    <div className="allow-anim relative w-full">
       <svg
         viewBox={`0 0 ${w} ${h}`}
         className="w-full"

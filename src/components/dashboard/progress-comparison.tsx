@@ -7,7 +7,7 @@ import { PROGRESS_COMPARISON } from "@/lib/billing-data";
 
 export function ProgressComparison() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="allow-anim grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {PROGRESS_COMPARISON.map((s, i) => (
         <motion.div
           key={s.key}
