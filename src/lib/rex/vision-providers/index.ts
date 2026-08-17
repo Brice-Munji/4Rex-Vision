@@ -1,6 +1,8 @@
 import "server-only";
 import { readChartWithOpenAI, isOpenAIConfigured } from "./openai";
 import { readChartWithGemini, isGeminiConfigured } from "./gemini";
+import { readChartWithMistral, isMistralConfigured } from "./mistral";
+import { readChartWithNvidia, isNvidiaConfigured } from "./nvidia";
 import { readChartWithAnthropic, isAnthropicConfigured } from "./anthropic";
 import type { VisionChartRead } from "./schema";
 
@@ -9,7 +11,7 @@ export { normalizeVisionRead, parseVisionText } from "./schema";
 
 export type MediaType = "image/png" | "image/jpeg" | "image/webp";
 
-export type VisionProviderName = "openai" | "gemini" | "anthropic";
+export type VisionProviderName = "openai" | "gemini" | "mistral" | "nvidia" | "anthropic";
 
 export interface VisionProvider {
   name: VisionProviderName;
@@ -17,10 +19,17 @@ export interface VisionProvider {
   read: (base64: string, mediaType: MediaType) => Promise<VisionChartRead | null>;
 }
 
-/** Providers in priority order (spec: OpenAI → Gemini → Anthropic fallback). */
+/**
+ * Providers in priority order. OpenAI → Gemini are the primaries; Mistral and
+ * NVIDIA NIM are OpenAI-compatible fallbacks that kick in when the primaries
+ * fail/aren't configured; Anthropic is the final fallback. Only providers with
+ * a configured API key participate.
+ */
 const PROVIDERS: VisionProvider[] = [
   { name: "openai", configured: isOpenAIConfigured, read: readChartWithOpenAI },
   { name: "gemini", configured: isGeminiConfigured, read: readChartWithGemini },
+  { name: "mistral", configured: isMistralConfigured, read: readChartWithMistral },
+  { name: "nvidia", configured: isNvidiaConfigured, read: readChartWithNvidia },
   { name: "anthropic", configured: isAnthropicConfigured, read: readChartWithAnthropic },
 ];
 
