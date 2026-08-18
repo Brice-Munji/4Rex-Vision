@@ -82,6 +82,11 @@ export const CURRENCY_PAIRS = [
   "USDCAD",
   "USDCHF",
   "NZDUSD",
+  "XAUUSD",
+  "GBPCAD",
+  "EURCAD",
+  "GBPNZD",
+  "NZDCAD",
 ] as const;
 
 export const THEME_OPTIONS: {
