@@ -26,6 +26,7 @@ import { notifyAnalysisSaved } from "@/lib/notifications/service";
 import { normalizeInstrument, unsupportedReason } from "@/lib/rex/instruments";
 import { rex } from "@/lib/rex/mock-pipeline";
 import { CLOSING_NOTE } from "@/lib/rex/scenarios";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { detectDivergence } from "@/lib/rex/correlation";
 import {
   assessPairExtraction,
@@ -69,6 +70,8 @@ export type AnalyzeResult =
     }
   /** Vision providers are configured but the request failed — show a soft error. */
   | { status: "unavailable"; message: string }
+  /** Too many requests in a short window (anti-spam) — no credit consumed. */
+  | { status: "rate_limited"; message: string }
   /** Strict validation: the pair could not be confidently extracted. Never guess. */
   | { status: "pair_not_detected"; title: string; message: string }
   /** Explorer daily limit reached — blocked BEFORE any AI processing. */
@@ -311,7 +314,32 @@ function buildReportFromAI(
   };
 }
 
+/**
+ * Public entrypoint. Wraps the implementation in a guard so ANY unexpected
+ * failure (database down, provider crash, etc.) fails gracefully: the technical
+ * detail is logged server-side and the client receives a friendly message with
+ * no stack trace / DB details / provider secrets.
+ */
 export async function analyzeChart(
+  input: AnalyzeInput
+): Promise<AnalyzeResult> {
+  try {
+    return await analyzeChartImpl(input);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "[rex.analyze] unexpected error:",
+      err instanceof Error ? `${err.name}: ${err.message}` : err
+    );
+    return {
+      status: "unavailable",
+      message:
+        "Something went wrong while analyzing your chart. Please try again in a moment.",
+    };
+  }
+}
+
+async function analyzeChartImpl(
   input: AnalyzeInput
 ): Promise<AnalyzeResult> {
   const session = await auth();
@@ -354,6 +382,26 @@ export async function analyzeChart(
         unlimited: gate.unlimited,
       },
       resetAt: gate.resetAt,
+    };
+  }
+
+  // ── ANTI-SPAM RATE LIMIT ──────────────────────────────────────────────────
+  // Short-window throttle on top of the daily allowance so users (incl. Pro /
+  // unlimited) cannot spam the Vision providers. Enforced server-side — the
+  // client cannot bypass it. No credit is consumed when throttled.
+  const ip = await clientIp();
+  const perUser = gateUser.plan === "FREE" ? 6 : 20; // requests / minute
+  const rlUser = rateLimit(`analyze:user:${gateUser.id}`, perUser, 60_000);
+  const rlIp = rateLimit(`analyze:ip:${ip}`, 40, 60_000);
+  if (!rlUser.ok || !rlIp.ok) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[rex.analyze] rate-limited user=${gateUser.id} plan=${gateUser.plan} ip=${ip}`
+    );
+    return {
+      status: "rate_limited",
+      message:
+        "You're sending analyses too quickly. Please wait a few seconds and try again.",
     };
   }
 
