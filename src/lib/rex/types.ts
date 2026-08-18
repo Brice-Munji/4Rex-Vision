@@ -12,7 +12,16 @@
 
 export type TrendDirection = "Uptrend" | "Downtrend" | "Sideways";
 export type TrendStrength = "Weak" | "Moderate" | "Strong";
-export type Timeframe = "M15" | "M30" | "H1" | "H4" | "Daily" | "Weekly";
+export type Timeframe =
+  | "M1"
+  | "M5"
+  | "M15"
+  | "M30"
+  | "H1"
+  | "H4"
+  | "Daily"
+  | "Weekly"
+  | "Monthly";
 export type MarketBias = "Bullish" | "Bearish" | "Neutral";
 export type SuggestedDirection =
   | "Buy Favored"

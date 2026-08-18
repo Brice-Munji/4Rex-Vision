@@ -35,13 +35,15 @@ const QUOTES = new Set(FX);
 
 /* ------------------------------ Timeframe UI ----------------------------- */
 
+// Unambiguous banner labels: minutes/hours are lowercase so "1m" (1 minute) is
+// never confused with "1M" (1 month); day/week/month use distinct forms.
 const TF_DISPLAY: Record<string, string> = {
-  M1: "1M", M5: "5M", M15: "15M", M30: "30M",
-  H1: "1H", H4: "4H",
-  Daily: "D1", Weekly: "W1", Monthly: "MN",
+  M1: "1m", M5: "5m", M15: "15m", M30: "30m",
+  H1: "1h", H4: "4h",
+  Daily: "1D", Weekly: "1W", Monthly: "1MN",
 };
 
-/** Human/banner form of a timeframe: "H1" → "1H", "Daily" → "D1". */
+/** Human/banner form of a timeframe: "H1" → "1h", "Daily" → "1D". */
 export function displayTimeframe(
   tf: ReadTimeframe | Timeframe | "Unknown" | null | undefined
 ): string {
