@@ -73,6 +73,7 @@ export interface VisionChartRead {
   instrument: string | null;
   symbol: string | null;
   instrumentConfidence: number; // 0-100
+  timeframeRaw: string | null; // literal label transcribed from the chart, e.g. "1m", "H1", "240"
   timeframe: VisionTimeframe;
   timeframeConfidence: number; // 0-100
   currentPrice: string | null;
@@ -155,6 +156,82 @@ function bool(v: unknown, fallback = false): boolean {
 }
 
 /**
+ * Deterministic minute/hour bucketing into the canonical timeframe set. The
+ * canonical set is coarse (M1/M5/M15/M30/H1/H4), so odd values snap to the
+ * nearest sensible bucket.
+ */
+function minutesToTf(min: number): VisionTimeframe {
+  if (min >= 60) return hoursToTf(Math.round(min / 60));
+  if (min <= 1) return "M1";
+  if (min <= 5) return "M5";
+  if (min <= 15) return "M15";
+  return "M30";
+}
+function hoursToTf(h: number): VisionTimeframe {
+  if (h <= 1) return "H1";
+  if (h >= 24) return "Daily";
+  return "H4"; // 2h/3h/4h → H4
+}
+
+/**
+ * Map the LITERAL on-chart timeframe label to a canonical timeframe, so the
+ * timeframe is decided by what's printed on the chart — not by the model's own
+ * (error-prone) classification. This is what stops a 1-minute chart ("1m") from
+ * being reported as 1-hour ("H1").
+ *
+ * Disambiguation is by POSITION, matching how the platforms print labels:
+ *   - "M1" (letter-then-number)  → MetaTrader MINUTE  → M1
+ *   - "1m" / "1min"              → TradingView MINUTE → M1
+ *   - "1M" (number-then-uppercase M) → TradingView MONTH → Monthly
+ *   - "H1" / "1h" / "60"         → HOUR                → H1
+ * Returns null when no confident mapping is possible (caller falls back).
+ */
+export function mapTimeframeLabel(raw: string | null | undefined): VisionTimeframe | null {
+  if (!raw) return null;
+  let s = String(raw).trim();
+  if (!s) return null;
+  // Drop any leading "Timeframe:" / "TF =" prefix and take the last token if a
+  // symbol header was passed whole (e.g. "EURUSD, 1m" → "1m").
+  s = s.replace(/^(timeframe|tf|interval)\s*[:=]\s*/i, "").trim();
+  if (s.includes(",")) s = s.split(",").pop()!.trim();
+  if (/\s/.test(s) && !/^\d+\s*(m|min|h|hr|hour|d|w)/i.test(s)) {
+    s = s.split(/\s+/).pop()!.trim();
+  }
+  if (!s) return null;
+
+  const lower = s.toLowerCase();
+
+  // Word / single-letter period forms.
+  if (/^(daily|1?d|d1)$/.test(lower)) return "Daily";
+  if (/^(weekly|1?w|w1)$/.test(lower)) return "Weekly";
+  if (/^(monthly|mn|mn1|1?mo|mo)$/.test(lower)) return "Monthly";
+
+  let m: RegExpExecArray | null;
+
+  // MetaTrader-style prefixes: M1/M5/M15/M30, H1/H4  (letter, then number).
+  if ((m = /^m\s*(\d{1,3})$/i.exec(s))) return minutesToTf(parseInt(m[1], 10));
+  if ((m = /^h\s*(\d{1,2})$/i.exec(s))) return hoursToTf(parseInt(m[1], 10));
+
+  // Number + UPPERCASE unit (TradingView day/week/month): "1D", "1W", "1M".
+  // Case-sensitive and checked BEFORE the minutes suffix so uppercase "1M"
+  // (month) is never mistaken for lowercase "1m" (1 minute).
+  if (/^\d{1,2}\s*M$/.test(s)) return "Monthly";
+  if (/^\d{1,2}\s*D$/.test(s)) return "Daily";
+  if (/^\d{1,2}\s*W$/.test(s)) return "Weekly";
+
+  // Number + unit suffix: "1m", "15min", "4h", "1hr".
+  if ((m = /^(\d{1,4})\s*(m|min|mins|minute|minutes)$/i.exec(lower)))
+    return minutesToTf(parseInt(m[1], 10));
+  if ((m = /^(\d{1,2})\s*(h|hr|hrs|hour|hours)$/i.exec(lower)))
+    return hoursToTf(parseInt(m[1], 10));
+
+  // Bare number = a minutes interval (TradingView: 1,3,5,15,30,45,60,120,240).
+  if ((m = /^(\d{1,4})$/.exec(s))) return minutesToTf(parseInt(m[1], 10));
+
+  return null;
+}
+
+/**
  * Turn arbitrary provider JSON into a fully-formed VisionChartRead. Never
  * throws; unknown fields become null / defaults so a partial read still works.
  */
@@ -165,7 +242,14 @@ export function normalizeVisionRead(raw: unknown): VisionChartRead {
   const platform = pick(o.platform ?? o.chartSource, PLATFORMS, "Unknown");
   const instrument = str(o.instrument ?? o.pair ?? o.currencyPair);
   const symbol = str(o.symbol) ?? (instrument ? instrument.replace(/[^A-Za-z0-9]/g, "").toUpperCase() : null);
-  const tf = pick(o.timeframe, TFS, "Unknown");
+
+  // Timeframe: prefer the LITERAL label the model transcribed, mapped
+  // deterministically, over the model's own classification (which confuses
+  // minutes with hours). Fall back to the classified value, then "Unknown".
+  const classifiedTf = pick(o.timeframe, TFS, "Unknown");
+  const timeframeRaw = str(o.timeframeRaw ?? o.timeframeLabel ?? o.timeframeText);
+  const mappedTf = mapTimeframeLabel(timeframeRaw);
+  const tf: VisionTimeframe = mappedTf ?? classifiedTf;
 
   const confidenceItems: VisionConfidenceItem[] = arr(o.confidence).map((c) => {
     const co = (c && typeof c === "object" ? c : {}) as Record<string, unknown>;
@@ -227,8 +311,12 @@ export function normalizeVisionRead(raw: unknown): VisionChartRead {
     instrument,
     symbol,
     instrumentConfidence: pct(o.instrumentConfidence ?? o.pairConfidence, instrument ? 80 : 0),
+    timeframeRaw,
     timeframe: tf,
-    timeframeConfidence: pct(o.timeframeConfidence, tf !== "Unknown" ? 80 : 0),
+    // A label we could transcribe AND map deterministically is high-confidence.
+    timeframeConfidence: mappedTf
+      ? Math.max(90, pct(o.timeframeConfidence, 90))
+      : pct(o.timeframeConfidence, tf !== "Unknown" ? 80 : 0),
     currentPrice: str(o.currentPrice ?? o.price),
     priceConfidence: pct(o.priceConfidence, str(o.currentPrice) ? 80 : 0),
     bidAsk: str(o.bidAsk),
@@ -301,7 +389,10 @@ First, read the chart's metadata:
 - platform: the charting platform from its UI chrome — "TradingView", "MetaTrader 4", "MetaTrader 5", "cTrader", or "Unknown". platformConfidence: 0-100.
 - marketType: "Forex", "Crypto", "Commodities", "Indices", "Stocks", or "Unknown".
 - instrument: display form like "EUR/USD", "XAU/USD", "BTC/USD". symbol: the raw ticker as shown (e.g. "EURUSD", "NAS100"). instrumentConfidence: 0-100.
-- timeframe: one of M1/M5/M15/M30/H1/H4/Daily/Weekly/Monthly, or "Unknown" if the label isn't visible. Never infer it from candle spacing. timeframeConfidence: 0-100.
+- timeframeRaw: the EXACT timeframe label text as printed on the chart, copied literally with its original case (e.g. "1m", "5", "15m", "1h", "H1", "M1", "1D", "4H", "240"). This is a verbatim transcription, not an interpretation. Set to null only if no timeframe label is visible anywhere.
+- timeframe: the canonical timeframe that timeframeRaw represents — one of M1/M5/M15/M30/H1/H4/Daily/Weekly/Monthly, or "Unknown" if no label is visible. timeframeConfidence: 0-100.
+  CRITICAL — minutes are NOT hours: a MINUTES label ("1", "1m", "1min", "M1", "5", "15m", "30") maps to M1/M5/M15/M30 and must NEVER be reported as an hours timeframe. An HOURS label ("1h", "H1", "60", "4h", "H4", "240") maps to H1/H4. Reading a 1-minute chart as 1-hour is a serious error.
+  WHERE TO READ IT: On TradingView the active timeframe is highlighted in the top toolbar and repeated in the top-left symbol header (e.g. "EURUSD · 1m"). On MetaTrader 4/5 it shows as M1/M5/M15/M30/H1/H4/D1 in the top toolbar or the chart window title. On cTrader it appears next to the symbol. Read the PRINTED label only — never infer the timeframe from candle spacing or the visible time range.
 - currentPrice: the current/last price string exactly as shown, else null. priceConfidence: 0-100. bidAsk: visible bid/ask or null. chartTitle: any visible title/instrument name or null.
 - imageQuality: your read of clarity — "Excellent", "Good", "Fair" or "Poor".
 - confidence: your OVERALL confidence in this reading as a decimal 0-1 (e.g. 0.97).
