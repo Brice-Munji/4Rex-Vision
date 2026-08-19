@@ -7,7 +7,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Menu,
   X,
-  ShieldCheck,
   ExternalLink,
   PanelLeftClose,
   PanelLeftOpen,
@@ -160,9 +159,15 @@ function SidebarContent({
         )}
       >
         <Link href="/super-admin" className="flex items-center gap-2.5 overflow-hidden">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#3b82f6] shadow-sm">
-            <ShieldCheck className="h-5 w-5 text-white" />
-          </div>
+          {/* RexVision logo mark — admin portal is a fixed dark surface, so the
+              dark-background (light) variant is used here. */}
+          <img
+            src="/images/logo-mark-dark.png"
+            alt="4RexVision"
+            width={36}
+            height={36}
+            className="h-9 w-9 shrink-0 object-contain"
+          />
           {!collapsed && (
             <span className="whitespace-nowrap text-sm font-semibold text-[var(--a-text)]">
               4RexVision <span className="text-[var(--a-muted)]">Admin</span>
