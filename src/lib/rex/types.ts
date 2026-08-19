@@ -218,7 +218,9 @@ export interface AnalysisContext {
   symbol: string; // raw ticker, e.g. "AUDUSD"
   instrument: string; // display, e.g. "AUD/USD"
   timeframe: Timeframe;
-  timeframeLabel: string; // banner form, e.g. "1H"
+  timeframeLabel: string; // banner form, e.g. "1h" — "—" when not readable
+  /** False when the chart's timeframe couldn't be read (never hallucinate one). */
+  timeframeKnown: boolean;
   platform: TradingPlatform;
   currentPrice?: string | null;
 }

@@ -506,12 +506,17 @@ async function analyzeChartImpl(
     const lockedInstrument = instrument as string;
 
     // ── ANALYSIS LOCK — authoritative context (uploaded pair + timeframe) ──
-    const timeframe: Timeframe = (ai.timeframe === "Unknown" ? "H1" : ai.timeframe) as Timeframe;
+    // The timeframe is never hallucinated: when the model can't read it we keep
+    // a neutral internal default for ordering but mark it unknown so the UI and
+    // history show it as such (spec: don't invent a timeframe).
+    const timeframeKnown = ai.timeframe !== "Unknown";
+    const timeframe: Timeframe = (timeframeKnown ? ai.timeframe : "H1") as Timeframe;
     const context: AnalysisContext = {
       symbol: lockedSymbol,
       instrument: lockedInstrument,
       timeframe,
       timeframeLabel: displayTimeframe(ai.timeframe),
+      timeframeKnown,
       platform: mapPlatform(ai.platform),
       currentPrice: ai.currentPrice,
     };
@@ -588,7 +593,7 @@ async function analyzeChartImpl(
     await recordAnalysisEvent({
       userId: gateUser.id,
       pair: context.symbol,
-      timeframe: context.timeframe,
+      timeframe: context.timeframeKnown ? context.timeframe : null,
       confidence: report.overallConfidence,
       provider: vision.status === "ok" ? vision.provider : null,
       direction: report.bias.bias,
@@ -627,6 +632,7 @@ async function analyzeChartImpl(
     instrument: fbNorm?.instrument ?? report.pair,
     timeframe: report.timeframe,
     timeframeLabel: displayTimeframe(report.timeframe),
+    timeframeKnown: true, // sample scenario carries a concrete timeframe
     platform: "Unknown Trading Platform",
     currentPrice: report.currentPrice,
   };

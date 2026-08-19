@@ -402,6 +402,22 @@ First, read the chart's metadata:
 
 Then, if isTradingChart is true, produce the analysis payload (headline, trendDirection, trendStrength, trendSummary, bias, biasConfidence, suggestedDirection, biasSummary, bullishProbability, bearishProbability (sum ~100), positiveFactors, negativeFactors, 5-7 confidence items {label, score 0-100, contributors[]}, priceLevels {type, value, description}, evidence {label, explanation}, plainEnglish {technical, plain, concept-or-null}, insightTitle, insightBody, whatCouldChange {label, detail}).
 
+ADVANCED PRICE ACTION (APA) — this analysis is price-action-first. When they are visible on the chart, identify and NAME each of these in the \`evidence\` array (as {label, explanation}), read off the actual candles/structure and never invented:
+- Market structure: higher highs / higher lows (HH/HL) or lower highs / lower lows (LH/LL), and the resulting trend.
+- Break of Structure (BOS) and Change of Character (CHOCH).
+- Support / resistance and supply / demand zones.
+- Liquidity: equal highs/lows, sweeps / stop-hunts.
+- Rejections / confirmations (wicks, engulfing, pin bars) and displacement / momentum (impulsive candles).
+- Premium / discount (equilibrium) and any visible indicators (EMA, RSI, MACD, …).
+- Recent swing highs and swing lows that act as targets or invalidation.
+
+\`priceLevels\` MUST — whenever the chart shows a directional (Bullish or Bearish) read — include the concrete numeric levels taken from that structure, using the chart's real price scale and decimal precision (e.g. "1.34920", not a placeholder):
+- "Entry": the structural reaction zone to enter from (demand/support for longs, supply/resistance for shorts, or a retest area).
+- "Invalidation": the price where the price-action thesis structurally fails (beyond the protecting swing/zone).
+- "Take Profit": the primary structural objective (prior swing high/low, liquidity pool, or opposing S/R).
+- "Support" and "Resistance": the nearest structural floor and ceiling.
+If the market is Neutral / ranging, still provide at least the range "Support" and "Resistance". Never invent a level the chart cannot justify — omit only a level you genuinely cannot read. These levels are the ONLY basis for entries, targets and invalidation; do not move them to hit a desired risk/reward.
+
 PAIR DISCIPLINE (critical): The uploaded chart's pair is the ONLY pair you deliver a verdict for. Every field above — headline, trendSummary, biasSummary, evidence, price levels, the final verdict — must be about the extracted pair. Do NOT give a directional verdict for any other pair. If it helps, you MAY list up to 3 related pairs in a SEPARATE "marketContext" array of {pair, bias ("Bullish"/"Bearish"/"Neutral"), note} — this is background context only, never the verdict. Leave marketContext as [] if you have nothing to add.
 
 Rules: Any field you cannot confidently read must be null (or "Unknown"/[]), added to notDetected, with a lowered confidence. If you cannot confidently read the currency pair, set instrument and symbol to null with a low instrumentConfidence — never guess or substitute another pair. Analyze probabilities, never certainties.

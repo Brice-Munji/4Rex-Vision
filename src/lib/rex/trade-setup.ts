@@ -230,10 +230,22 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
 
   // Validity gate: the setup must rest on real APA confluence + a usable anchor.
   const structureAligned = dir > 0 ? flags.structureBull : flags.structureBear;
-  const zoneLevel = dir > 0 ? flags.support : flags.resistance; // demand for longs, supply for shorts
+  // A structural zone can be evidenced by APA prose (flags) OR by an actual
+  // demand/support (longs) or supply/resistance (shorts) level read off the
+  // chart — a defined Entry level is itself a structural reaction zone. Relying
+  // on prose keywords alone wrongly rejected charts that carried real levels.
+  const zoneFromText = dir > 0 ? flags.support : flags.resistance;
+  const zoneFromLevel = dir > 0 ? supL != null || entryL != null : resL != null || entryL != null;
+  const zoneLevel = zoneFromText || zoneFromLevel;
   const anchorPresent = entryL != null || (dir > 0 ? supL != null : resL != null) || current != null;
   if (!anchorPresent || !zoneLevel || (!structureAligned && factors.length < 3)) {
     return { kind: "none", reason: SETUP_NO_VALID_MESSAGE, newsRisk };
+  }
+  // Reflect a level-derived zone in the confluence list so the grade and the
+  // displayed confluence aren't blank when the zone came from price structure
+  // rather than prose.
+  if (zoneFromLevel && !zoneFromText) {
+    factors.push(dir > 0 ? "Support / demand zone" : "Resistance / supply zone");
   }
 
   /* ── Entry zone from structure (demand for longs / supply for shorts) ────── */
