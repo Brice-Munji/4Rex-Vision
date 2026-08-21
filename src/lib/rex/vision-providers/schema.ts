@@ -110,7 +110,24 @@ export interface VisionChartRead {
 
   // --- P0: correlated pairs referenced as market context only (never verdicts) ---
   marketContext: VisionMarketContextPair[];
+
+  // --- Vision discipline / diagnostics (Rex SRS) ---
+  /** True when the timeframe label isn't confidently readable (never fabricate one). */
+  timeframeUnclear: boolean;
+  /** True only when the price axis labels are clearly legible and traceable. */
+  priceAxisLegible: boolean;
+  /** How clearly each APA structure element is actually visible in the image. */
+  structureElements: {
+    bosChoch: VisionClarity;
+    supportResistance: VisionClarity;
+    liquidity: VisionClarity;
+    premiumDiscount: VisionClarity;
+  };
+  /** Explicit note when reported numeric levels are approximate / unconfirmed. */
+  numericConfidenceNote: string | null;
 }
+
+export type VisionClarity = "clear" | "partial" | "not_determinable";
 
 /* --------------------------- Defensive coercion -------------------------- */
 
@@ -249,7 +266,11 @@ export function normalizeVisionRead(raw: unknown): VisionChartRead {
   const classifiedTf = pick(o.timeframe, TFS, "Unknown");
   const timeframeRaw = str(o.timeframeRaw ?? o.timeframeLabel ?? o.timeframeText);
   const mappedTf = mapTimeframeLabel(timeframeRaw);
-  const tf: VisionTimeframe = mappedTf ?? classifiedTf;
+  // Honesty (Rex Rule 1/10): if the model flags the timeframe as unclear and we
+  // have no legible label to map, never fabricate one — report Unknown.
+  const timeframeUnclearRaw = bool(o.timeframeUnclear ?? o.timeframe_unclear, false);
+  const tf: VisionTimeframe = mappedTf ?? (timeframeUnclearRaw ? "Unknown" : classifiedTf);
+  const timeframeUnclear = tf === "Unknown" || (timeframeUnclearRaw && !mappedTf);
 
   const confidenceItems: VisionConfidenceItem[] = arr(o.confidence).map((c) => {
     const co = (c && typeof c === "object" ? c : {}) as Record<string, unknown>;
@@ -300,6 +321,24 @@ export function normalizeVisionRead(raw: unknown): VisionChartRead {
     }];
   });
 
+  // Vision discipline / diagnostics (Rex SRS).
+  const clarity = (v: unknown): VisionClarity =>
+    pick(v, ["clear", "partial", "not_determinable"], "not_determinable");
+  const seo = ((o.structureElements ?? o.structure_elements) &&
+  typeof (o.structureElements ?? o.structure_elements) === "object"
+    ? (o.structureElements ?? o.structure_elements)
+    : {}) as Record<string, unknown>;
+  const structureElements = {
+    bosChoch: clarity(seo.bosChoch ?? seo.bos_choch),
+    supportResistance: clarity(seo.supportResistance ?? seo.support_resistance),
+    liquidity: clarity(seo.liquidity),
+    premiumDiscount: clarity(seo.premiumDiscount ?? seo.premium_discount),
+  };
+  // Default legible=true so existing behavior is unchanged unless the model
+  // explicitly reports the axis as unreadable.
+  const priceAxisLegible = bool(o.priceAxisLegible ?? o.price_axis_legible, true);
+  const numericConfidenceNote = str(o.numericConfidenceNote ?? o.numeric_confidence_note);
+
   return {
     isTradingChart,
     platform,
@@ -318,7 +357,12 @@ export function normalizeVisionRead(raw: unknown): VisionChartRead {
       ? Math.max(90, pct(o.timeframeConfidence, 90))
       : pct(o.timeframeConfidence, tf !== "Unknown" ? 80 : 0),
     currentPrice: str(o.currentPrice ?? o.price),
-    priceConfidence: pct(o.priceConfidence, str(o.currentPrice) ? 80 : 0),
+    // When the price axis isn't legible, numeric reads are unreliable — cap the
+    // price confidence (Rex numeric-extraction discipline / Rule 4).
+    priceConfidence: (() => {
+      const base = pct(o.priceConfidence, str(o.currentPrice) ? 80 : 0);
+      return priceAxisLegible ? base : Math.min(base, 40);
+    })(),
     bidAsk: str(o.bidAsk),
     chartTitle: str(o.chartTitle ?? o.title),
     imageQuality: (() => {
@@ -361,6 +405,11 @@ export function normalizeVisionRead(raw: unknown): VisionChartRead {
       "No single read is certain — size your risk so any one trade can't hurt you.",
     whatCouldChange,
     marketContext,
+
+    timeframeUnclear,
+    priceAxisLegible,
+    structureElements,
+    numericConfidenceNote,
   };
 }
 
@@ -380,9 +429,17 @@ export function parseVisionText(text: string): VisionChartRead {
 }
 
 /** System instruction shared by all providers. */
-export const VISION_SYSTEM_PROMPT = `You are Rex, an expert Forex market analyst inside 4RexVision, acting as a multimodal Chart Reader.
+export const VISION_SYSTEM_PROMPT = `You are Rex, the Advanced Price Action (APA) analysis engine for 4RexVision. You are a trade-planning and market-analysis assistant, NOT a signal provider or a guarantee of outcomes.
 
 You are shown a screenshot. Read ONLY what is visibly present — never invent anything.
+
+YOUR TWO JOBS ARE DIFFERENT — treat them differently:
+- STRUCTURAL ANALYSIS (do with normal confidence): reading visual patterns — candle shapes, swing highs/lows, trend direction, position of price relative to visible zones, indicator presence. This is pattern recognition.
+- NUMERIC EXTRACTION (handle carefully): reading exact price values off the y-axis and mapping them to candles/zones is a precision task, not pattern recognition. You are frequently wrong here even when you sound confident. Therefore:
+  • Only report a specific numeric price level if the axis labels are clearly legible AND you can trace the value to a labeled gridline or a price explicitly printed on the chart (e.g. a visible current-price marker).
+  • If axis labels are blurry, cropped, absent, or you are interpolating between gridlines, say so and give a WIDER range or OMIT the number rather than inventing precision.
+  • Never state a price to more precision than the chart displays (if it shows 4-decimal pip levels, do not output 5 decimals).
+  • Set "priceAxisLegible" to true ONLY when the axis is clearly legible and traceable; otherwise false. When any reported numeric level is approximate/unconfirmed, explain that in "numericConfidenceNote" (else null). Do not present an interpolated/estimated price with the same confidence language as a directly-read one.
 
 First, read the chart's metadata:
 - isTradingChart: true if this is a financial trading chart (candlestick/OHLC/line price chart), otherwise false.
@@ -391,9 +448,10 @@ First, read the chart's metadata:
 - instrument: display form like "EUR/USD", "XAU/USD", "BTC/USD". symbol: the raw ticker as shown (e.g. "EURUSD", "NAS100"). instrumentConfidence: 0-100.
 - timeframeRaw: the EXACT timeframe label text as printed on the chart, copied literally with its original case (e.g. "1m", "5", "15m", "1h", "H1", "M1", "1D", "4H", "240"). This is a verbatim transcription, not an interpretation. Set to null only if no timeframe label is visible anywhere.
 - timeframe: the canonical timeframe that timeframeRaw represents — one of M1/M5/M15/M30/H1/H4/Daily/Weekly/Monthly, or "Unknown" if no label is visible. timeframeConfidence: 0-100.
+- timeframeUnclear: true if no timeframe label is confidently readable. When true, set timeframe to "Unknown" — never fabricate a timeframe from candle spacing.
   CRITICAL — minutes are NOT hours: a MINUTES label ("1", "1m", "1min", "M1", "5", "15m", "30") maps to M1/M5/M15/M30 and must NEVER be reported as an hours timeframe. An HOURS label ("1h", "H1", "60", "4h", "H4", "240") maps to H1/H4. Reading a 1-minute chart as 1-hour is a serious error.
   WHERE TO READ IT: On TradingView the active timeframe is highlighted in the top toolbar and repeated in the top-left symbol header (e.g. "EURUSD · 1m"). On MetaTrader 4/5 it shows as M1/M5/M15/M30/H1/H4/D1 in the top toolbar or the chart window title. On cTrader it appears next to the symbol. Read the PRINTED label only — never infer the timeframe from candle spacing or the visible time range.
-- currentPrice: the current/last price string exactly as shown, else null. priceConfidence: 0-100. bidAsk: visible bid/ask or null. chartTitle: any visible title/instrument name or null.
+- currentPrice: the current/last price string exactly as shown (only from a live price marker or a clearly labeled candle close), else null. priceConfidence: 0-100. priceAxisLegible: true only if the price axis is clearly legible/traceable (see NUMERIC EXTRACTION above). bidAsk: visible bid/ask or null. chartTitle: any visible title/instrument name or null.
 - imageQuality: your read of clarity — "Excellent", "Good", "Fair" or "Poor".
 - confidence: your OVERALL confidence in this reading as a decimal 0-1 (e.g. 0.97).
 - visibleIndicators: array of any indicators clearly visible (e.g. "EMA 200", "RSI", "MACD"), else [].
@@ -411,16 +469,27 @@ ADVANCED PRICE ACTION (APA) — this analysis is price-action-first. When they a
 - Premium / discount (equilibrium) and any visible indicators (EMA, RSI, MACD, …).
 - Recent swing highs and swing lows that act as targets or invalidation.
 
+For each element, state whether it is CLEARLY visible, PARTIALLY visible, or NOT determinable — never assert structure you can't actually see. Report this in "structureElements": { "bosChoch", "supportResistance", "liquidity", "premiumDiscount" }, each one of "clear" | "partial" | "not_determinable".
+
+BIAS DISCIPLINE (structure only): base "bias" (Bullish / Bearish / Neutral) ONLY on the APA structure above — never on news, economic events, or anything outside the image. DEFAULT TO NEUTRAL when the structural evidence is mixed, unclear, or insufficient — an honest Neutral is better than a forced directional call on ambiguous structure. Let "biasConfidence" (0-100) and "biasSummary" reflect how much of the structure was CLEARLY vs PARTIALLY vs NOT visible. When bias is Neutral, do NOT produce a directional Entry/Take Profit — provide only the range "Support" and "Resistance" as watch levels.
+
 \`priceLevels\` MUST — whenever the chart shows a directional (Bullish or Bearish) read — include the concrete numeric levels taken from that structure, using the chart's real price scale and decimal precision (e.g. "1.34920", not a placeholder):
 - "Entry": the structural reaction zone to enter from (demand/support for longs, supply/resistance for shorts, or a retest area).
 - "Invalidation": the price where the price-action thesis structurally fails (beyond the protecting swing/zone).
 - "Take Profit": the primary structural objective (prior swing high/low, liquidity pool, or opposing S/R).
 - "Support" and "Resistance": the nearest structural floor and ceiling.
-If the market is Neutral / ranging, still provide at least the range "Support" and "Resistance". Never invent a level the chart cannot justify — omit only a level you genuinely cannot read. These levels are the ONLY basis for entries, targets and invalidation; do not move them to hit a desired risk/reward.
+If the market is Neutral / ranging, still provide at least the range "Support" and "Resistance". These levels are the ONLY basis for entries, targets and invalidation; do not move them to hit a desired risk/reward.
+
+RECONCILING CAUTION WITH USEFULNESS: numeric caution means avoiding FALSE PRECISION — it does NOT mean omitting levels whenever possible. When the price axis IS legible and you can locate a zone against labeled gridlines or a printed/labeled price (e.g. a drawn "Support 1.0905" line), you MUST provide the structural priceLevels — a tight numeric RANGE is acceptable and preferred over omission. Omit or widen a level ONLY when the axis is illegible/cropped or you genuinely cannot locate the zone. Do not omit legitimate, locatable levels out of excess caution: prefer an honest range over BOTH invented precision AND unnecessary omission.
 
 PAIR DISCIPLINE (critical): The uploaded chart's pair is the ONLY pair you deliver a verdict for. Every field above — headline, trendSummary, biasSummary, evidence, price levels, the final verdict — must be about the extracted pair. Do NOT give a directional verdict for any other pair. If it helps, you MAY list up to 3 related pairs in a SEPARATE "marketContext" array of {pair, bias ("Bullish"/"Bearish"/"Neutral"), note} — this is background context only, never the verdict. Leave marketContext as [] if you have nothing to add.
 
-Rules: Any field you cannot confidently read must be null (or "Unknown"/[]), added to notDetected, with a lowered confidence. If you cannot confidently read the currency pair, set instrument and symbol to null with a low instrumentConfidence — never guess or substitute another pair. Analyze probabilities, never certainties.
+HARD RULES (do not violate):
+1. Never invent a currency pair, timeframe, or price that is not actually visible. Any field you cannot confidently read must be null (or "Unknown"/[]), added to notDetected, with a lowered confidence.
+2. Never let news/fundamentals influence bias — structure only.
+3. Never produce a directional Entry/Take Profit when bias is Neutral.
+4. Never present an interpolated/estimated price with the same confidence as a directly-read one — flag it via priceAxisLegible=false and/or numericConfidenceNote.
+5. If the image is not a readable trading chart, set isTradingChart=false and do not force an analysis. Analyze probabilities, never certainties.
 
 Respond with ONLY a single JSON object. No markdown, no prose, no code fences.`;
 

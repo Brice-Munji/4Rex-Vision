@@ -157,6 +157,10 @@ function buildMetadata(
   if (!ai.currentPrice) notes.push("Current price: Unable to determine from the uploaded image.");
   if (instrument && normalized && !instrumentSupported)
     notes.push(unsupportedReason(normalized));
+  // Numeric-extraction honesty (Rex SRS): flag approximate/unconfirmed prices.
+  if (!ai.priceAxisLegible)
+    notes.push("Price axis wasn't clearly legible, so any numeric levels are approximate.");
+  if (ai.numericConfidenceNote) notes.push(ai.numericConfidenceNote);
 
   // Overall metadata confidence = average across the fields Rex actually detected.
   const detected: number[] = [];
@@ -252,9 +256,16 @@ function buildReportFromAI(
   const biasConfidence = applyConfidencePolicy(clamp(ai.biasConfidence), flags);
   const reduced = overallConfidence < rawOverall || biasConfidence < clamp(ai.biasConfidence);
   const reasons = confidenceReasons(flags);
-  const confidenceNote = reduced && reasons.length
-    ? `Confidence was held below 85% because ${reasons.join(", ")}.`
-    : undefined;
+  const numericNote = ai.numericConfidenceNote?.trim();
+  const confidenceNote =
+    [
+      reduced && reasons.length
+        ? `Confidence was held below 85% because ${reasons.join(", ")}.`
+        : null,
+      numericNote || null,
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
   return {
     id: `rex_${slug(context.instrument)}_${Date.now().toString(36)}`,
