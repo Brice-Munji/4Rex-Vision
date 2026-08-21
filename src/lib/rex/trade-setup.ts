@@ -61,6 +61,17 @@ export interface DirectionalSetup {
   target2Mid: number;
   rr1: number;
   rr2: number;
+  // ── APA framing (educational — never a buy/sell command) ──────────────────
+  /** Target 1 is a nearer partial-profit area; Target 2 the extended objective. */
+  target1Label: string;
+  target2Label: string;
+  /** Structural invalidation is a ZONE/idea, not an exact stop; a temporary move
+   *  against the bias does not invalidate the setup unless this area breaks. */
+  invalidationExplainer: string;
+  /** How to treat pullbacks/retests around the entry and counter-moves en route. */
+  managementNote: string;
+  /** Lower-timeframe price-action confirmation to watch before acting (scalping). */
+  lowerTimeframeConfirmation: string[];
 }
 
 export interface NeutralSetup {
@@ -86,6 +97,9 @@ export const SETUP_DISCLAIMER =
   "Rex Trade Setup provides educational trade-planning zones based on price-action structure, not financial advice.";
 export const SETUP_NO_VALID_MESSAGE =
   "No valid setup — the chart doesn't show enough Advanced Price Action confluence for a high-quality trade.";
+/** Core APA framing for the invalidation zone (structural, not an exact stop). */
+export const STRUCTURAL_INVALIDATION_NOTE =
+  "A temporary move against the bias does not invalidate this setup unless price breaks the structural invalidation area.";
 
 /* ── helpers ───────────────────────────────────────────────────────────────── */
 
@@ -196,6 +210,22 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
   const current = parseNum(input.currentPrice ?? null);
   const dec = decimalsOf(levelStr("Entry") ?? input.currentPrice ?? levelStr("Support") ?? "0.00");
 
+  // Structural scale (Rule 9): all zone widths/buffers are derived from the
+  // ACTUAL spacing between detected levels — never a fixed % of price. We use
+  // the smallest meaningful gap between the levels the chart actually shows.
+  const structuralGaps = [
+    resL != null && supL != null ? Math.abs(resL - supL) : null,
+    entryL != null && supL != null ? Math.abs(entryL - supL) : null,
+    entryL != null && resL != null ? Math.abs(entryL - resL) : null,
+    tpL != null && entryL != null ? Math.abs(tpL - entryL) : null,
+    invL != null && entryL != null ? Math.abs(invL - entryL) : null,
+  ].filter((g): g is number => g != null && g > 0);
+  const priceScale = current ?? entryL ?? supL ?? resL ?? 1;
+  // Fallback only applies in the rare single-lonely-level case (no gap exists).
+  const structuralUnit = structuralGaps.length
+    ? Math.min(...structuralGaps)
+    : priceScale * 0.002;
+
   /* ── Neutral: no directional trade, watch zones only ─────────────────────── */
   if (bias === "Neutral") {
     const keyResistance = resL != null ? fmt(resL, dec) : null;
@@ -217,8 +247,8 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
     return {
       kind: "neutral",
       bias: "Neutral",
-      upperZone: resL != null ? zone(resL, resL * 1.0006, dec) : null,
-      lowerZone: supL != null ? zone(supL, supL * 0.9994, dec) : null,
+      upperZone: resL != null ? zone(resL, resL + structuralUnit * 0.08, dec) : null,
+      lowerZone: supL != null ? zone(supL, supL - structuralUnit * 0.08, dec) : null,
       keyResistance,
       keySupport,
       requiredConfirmation: required,
@@ -251,6 +281,10 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
   /* ── Entry zone from structure (demand for longs / supply for shorts) ────── */
   let entryLow: number;
   let entryHigh: number;
+  // Entry zone allows for a normal pullback/retest INTO the reaction area — its
+  // width is the distance between the two structural references, or a fraction of
+  // the structural unit when only a single reference exists (Rule 2 + Rule 9).
+  const entryBand = structuralUnit * 0.2;
   if (dir > 0) {
     // Bullish: demand zone from support up to the entry trigger.
     if (entryL != null && supL != null && supL < entryL) {
@@ -258,9 +292,8 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
       entryHigh = entryL;
     } else {
       const anchor = entryL ?? supL ?? current!;
-      const band = anchor * 0.001;
-      entryLow = anchor - band;
-      entryHigh = anchor + band;
+      entryLow = anchor - entryBand;
+      entryHigh = anchor + entryBand;
     }
   } else {
     // Bearish: supply zone from the entry trigger up to resistance.
@@ -269,26 +302,30 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
       entryHigh = resL;
     } else {
       const anchor = entryL ?? resL ?? current!;
-      const band = anchor * 0.001;
-      entryLow = anchor - band;
-      entryHigh = anchor + band;
+      entryLow = anchor - entryBand;
+      entryHigh = anchor + entryBand;
     }
   }
   const entryMid = (entryLow + entryHigh) / 2;
 
-  /* ── Invalidation = structural failure (below support / above resistance) ── */
+  /* ── Invalidation = STRUCTURAL failure (beyond support / resistance) ──────── */
+  // This is the point where the price-action thesis is structurally broken — not
+  // a tight stop. The buffer beyond the protecting level is derived from real
+  // structure (a fraction of the structural unit), so a normal wick/retest of the
+  // zone does NOT trip it (Rule 1).
+  const invBuffer = structuralUnit * 0.4;
   let invalMid: number;
   if (invL != null) {
     invalMid = invL;
   } else if (dir > 0) {
-    invalMid = (supL != null ? Math.min(supL, entryLow) : entryLow) * (1 - 0.0015);
+    invalMid = (supL != null ? Math.min(supL, entryLow) : entryLow) - invBuffer;
   } else {
-    invalMid = (resL != null ? Math.max(resL, entryHigh) : entryHigh) * (1 + 0.0015);
+    invalMid = (resL != null ? Math.max(resL, entryHigh) : entryHigh) + invBuffer;
   }
   // Enforce structural side: invalidation must sit beyond the zone in the loss direction.
-  if (dir > 0 && invalMid >= entryLow) invalMid = entryLow * (1 - 0.0015);
-  if (dir < 0 && invalMid <= entryHigh) invalMid = entryHigh * (1 + 0.0015);
-  const invBand = Math.max(Math.abs(entryMid - invalMid) * 0.08, entryMid * 0.0003);
+  if (dir > 0 && invalMid >= entryLow) invalMid = entryLow - invBuffer;
+  if (dir < 0 && invalMid <= entryHigh) invalMid = entryHigh + invBuffer;
+  const invBand = Math.max(Math.abs(entryMid - invalMid) * 0.08, structuralUnit * 0.05);
 
   const risk = Math.abs(entryMid - invalMid);
 
@@ -304,7 +341,7 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
   if (dir > 0 && t2 <= t1) t2 = t1 + Math.max(risk, Math.abs(t1 - entryMid) * 0.8);
   if (dir < 0 && t2 >= t1) t2 = t1 - Math.max(risk, Math.abs(t1 - entryMid) * 0.8);
 
-  const tBand = Math.max(risk * 0.1, entryMid * 0.0004);
+  const tBand = Math.max(risk * 0.1, structuralUnit * 0.05);
   const rr1 = risk > 0 ? Math.abs(t1 - entryMid) / risk : 0;
   const rr2 = risk > 0 ? Math.abs(t2 - entryMid) / risk : 0;
 
@@ -347,6 +384,35 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
     `prior ${dir > 0 ? "resistance / swing highs / liquidity above" : "support / swing lows / liquidity below"}. ` +
     `R:R is measured after the zones — not forced.`;
 
+  // Invalidation is a structural IDEA, not an exact stop (Rule 1 + Rule 8).
+  const invalidationExplainer =
+    `Structural invalidation — not an exact stop. The setup only fails if price ` +
+    `decisively breaks and ${dir > 0 ? "closes below" : "closes above"} the invalidation area. ` +
+    STRUCTURAL_INVALIDATION_NOTE;
+
+  // Pullbacks/retests around entry and counter-moves en route are normal (Rule 2 + Rule 3).
+  const managementNote =
+    `Expect price to pull back and retest around the entry zone before continuing — that is ` +
+    `normal price action, not a failed setup. Price rarely travels straight from entry to target: ` +
+    `plan for counter-moves and reactions at the liquidity/structure between the zones, and treat ` +
+    `Target 1 as a logical partial-profit area.`;
+
+  // Lower-timeframe confirmation for scalping (Rule 4 + Rule 5 — conditions, not commands).
+  const lowerTimeframeConfirmation =
+    dir > 0
+      ? [
+          "Drop to a lower timeframe (e.g. 1m/5m) as price taps the entry zone and wait for BULLISH confirmation before acting — do not enter on the first touch.",
+          "Look for a bullish rejection (wick/pin or bullish engulfing) off the demand/support zone.",
+          "Look for a lower-timeframe bullish CHoCH or BOS (price breaking a recent minor lower-high) to confirm structure is shifting up.",
+          "A successful retest that holds above the reclaimed level is added confirmation for continuation.",
+        ]
+      : [
+          "Drop to a lower timeframe (e.g. 1m/5m) as price taps the entry zone and wait for BEARISH confirmation before acting — do not enter on the first touch.",
+          "Look for a bearish rejection (wick/pin or bearish engulfing) off the supply/resistance zone.",
+          "Look for a lower-timeframe bearish CHoCH or BOS (price breaking a recent minor higher-low) to confirm structure is shifting down.",
+          "A failed retest that rejects below the reclaimed level is added confirmation for continuation.",
+        ];
+
   return {
     kind: "directional",
     bias: dir > 0 ? "Bullish" : "Bearish",
@@ -366,5 +432,10 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
     target2Mid: t2,
     rr1,
     rr2,
+    target1Label: "Partial-profit area (nearer objective)",
+    target2Label: "Extended objective",
+    invalidationExplainer,
+    managementNote,
+    lowerTimeframeConfirmation,
   };
 }
