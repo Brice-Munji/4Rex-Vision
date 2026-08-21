@@ -26,7 +26,7 @@ export function ProgressRing({
   const offset = circumference - (value / 100) * circumference;
 
   return (
-    <div className={cn("relative inline-flex items-center justify-center", className)}>
+    <div className={cn("allow-anim relative inline-flex items-center justify-center", className)}>
       <svg ref={ref} width={size} height={size} className="-rotate-90">
         <circle
           cx={size / 2}

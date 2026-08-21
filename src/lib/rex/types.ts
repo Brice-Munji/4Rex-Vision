@@ -12,7 +12,16 @@
 
 export type TrendDirection = "Uptrend" | "Downtrend" | "Sideways";
 export type TrendStrength = "Weak" | "Moderate" | "Strong";
-export type Timeframe = "M15" | "M30" | "H1" | "H4" | "Daily" | "Weekly";
+export type Timeframe =
+  | "M1"
+  | "M5"
+  | "M15"
+  | "M30"
+  | "H1"
+  | "H4"
+  | "Daily"
+  | "Weekly"
+  | "Monthly";
 export type MarketBias = "Bullish" | "Bearish" | "Neutral";
 export type SuggestedDirection =
   | "Buy Favored"
@@ -209,7 +218,9 @@ export interface AnalysisContext {
   symbol: string; // raw ticker, e.g. "AUDUSD"
   instrument: string; // display, e.g. "AUD/USD"
   timeframe: Timeframe;
-  timeframeLabel: string; // banner form, e.g. "1H"
+  timeframeLabel: string; // banner form, e.g. "1h" — "—" when not readable
+  /** False when the chart's timeframe couldn't be read (never hallucinate one). */
+  timeframeKnown: boolean;
   platform: TradingPlatform;
   currentPrice?: string | null;
 }

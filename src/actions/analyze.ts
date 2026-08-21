@@ -26,6 +26,7 @@ import { notifyAnalysisSaved } from "@/lib/notifications/service";
 import { normalizeInstrument, unsupportedReason } from "@/lib/rex/instruments";
 import { rex } from "@/lib/rex/mock-pipeline";
 import { CLOSING_NOTE } from "@/lib/rex/scenarios";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { detectDivergence } from "@/lib/rex/correlation";
 import {
   assessPairExtraction,
@@ -69,6 +70,8 @@ export type AnalyzeResult =
     }
   /** Vision providers are configured but the request failed — show a soft error. */
   | { status: "unavailable"; message: string }
+  /** Too many requests in a short window (anti-spam) — no credit consumed. */
+  | { status: "rate_limited"; message: string }
   /** Strict validation: the pair could not be confidently extracted. Never guess. */
   | { status: "pair_not_detected"; title: string; message: string }
   /** Explorer daily limit reached — blocked BEFORE any AI processing. */
@@ -311,7 +314,32 @@ function buildReportFromAI(
   };
 }
 
+/**
+ * Public entrypoint. Wraps the implementation in a guard so ANY unexpected
+ * failure (database down, provider crash, etc.) fails gracefully: the technical
+ * detail is logged server-side and the client receives a friendly message with
+ * no stack trace / DB details / provider secrets.
+ */
 export async function analyzeChart(
+  input: AnalyzeInput
+): Promise<AnalyzeResult> {
+  try {
+    return await analyzeChartImpl(input);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "[rex.analyze] unexpected error:",
+      err instanceof Error ? `${err.name}: ${err.message}` : err
+    );
+    return {
+      status: "unavailable",
+      message:
+        "Something went wrong while analyzing your chart. Please try again in a moment.",
+    };
+  }
+}
+
+async function analyzeChartImpl(
   input: AnalyzeInput
 ): Promise<AnalyzeResult> {
   const session = await auth();
@@ -354,6 +382,26 @@ export async function analyzeChart(
         unlimited: gate.unlimited,
       },
       resetAt: gate.resetAt,
+    };
+  }
+
+  // ── ANTI-SPAM RATE LIMIT ──────────────────────────────────────────────────
+  // Short-window throttle on top of the daily allowance so users (incl. Pro /
+  // unlimited) cannot spam the Vision providers. Enforced server-side — the
+  // client cannot bypass it. No credit is consumed when throttled.
+  const ip = await clientIp();
+  const perUser = gateUser.plan === "FREE" ? 6 : 20; // requests / minute
+  const rlUser = rateLimit(`analyze:user:${gateUser.id}`, perUser, 60_000);
+  const rlIp = rateLimit(`analyze:ip:${ip}`, 40, 60_000);
+  if (!rlUser.ok || !rlIp.ok) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[rex.analyze] rate-limited user=${gateUser.id} plan=${gateUser.plan} ip=${ip}`
+    );
+    return {
+      status: "rate_limited",
+      message:
+        "You're sending analyses too quickly. Please wait a few seconds and try again.",
     };
   }
 
@@ -458,12 +506,17 @@ export async function analyzeChart(
     const lockedInstrument = instrument as string;
 
     // ── ANALYSIS LOCK — authoritative context (uploaded pair + timeframe) ──
-    const timeframe: Timeframe = (ai.timeframe === "Unknown" ? "H1" : ai.timeframe) as Timeframe;
+    // The timeframe is never hallucinated: when the model can't read it we keep
+    // a neutral internal default for ordering but mark it unknown so the UI and
+    // history show it as such (spec: don't invent a timeframe).
+    const timeframeKnown = ai.timeframe !== "Unknown";
+    const timeframe: Timeframe = (timeframeKnown ? ai.timeframe : "H1") as Timeframe;
     const context: AnalysisContext = {
       symbol: lockedSymbol,
       instrument: lockedInstrument,
       timeframe,
       timeframeLabel: displayTimeframe(ai.timeframe),
+      timeframeKnown,
       platform: mapPlatform(ai.platform),
       currentPrice: ai.currentPrice,
     };
@@ -540,7 +593,7 @@ export async function analyzeChart(
     await recordAnalysisEvent({
       userId: gateUser.id,
       pair: context.symbol,
-      timeframe: context.timeframe,
+      timeframe: context.timeframeKnown ? context.timeframe : null,
       confidence: report.overallConfidence,
       provider: vision.status === "ok" ? vision.provider : null,
       direction: report.bias.bias,
@@ -579,6 +632,7 @@ export async function analyzeChart(
     instrument: fbNorm?.instrument ?? report.pair,
     timeframe: report.timeframe,
     timeframeLabel: displayTimeframe(report.timeframe),
+    timeframeKnown: true, // sample scenario carries a concrete timeframe
     platform: "Unknown Trading Platform",
     currentPrice: report.currentPrice,
   };

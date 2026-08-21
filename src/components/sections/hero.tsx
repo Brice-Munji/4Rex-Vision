@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Play, Sparkles } from "lucide-react";
+import { Play, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProductMockup } from "./product-mockup";
+import { StartFreeButton } from "./start-free-button";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -60,12 +61,7 @@ export function Hero() {
               transition={{ duration: 0.6 }}
               className="mt-9 flex flex-col gap-3 sm:flex-row"
             >
-              <Button size="lg" className="h-14 hover-zoom" asChild>
-                <Link href="/register">
-                  Start Free
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
+              <StartFreeButton className="h-14" />
               <Button size="lg" variant="secondary" className="h-14 hover-zoom" asChild>
                 <Link href="#how-it-works">
                   <Play className="h-4 w-4" />

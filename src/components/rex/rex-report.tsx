@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Sparkles, RotateCcw, AlertTriangle, Download, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PairBadge, TimeframeBadge, BiasPill } from "./rex-visuals";
+import { displayTimeframe } from "@/lib/rex/pair-integrity";
 import { VisionConfidenceCard } from "./vision-confidence";
 import { TrendCard } from "./trend-card";
 import { BiasCard } from "./bias-card";
@@ -72,7 +73,16 @@ export function RexReport({
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <PairBadge pair={report.pair} />
-              <TimeframeBadge timeframe={report.timeframe} />
+              {/* Never show a fabricated timeframe: mark it "Unknown" when the
+                  chart's timeframe couldn't be read. */}
+              <TimeframeBadge
+                timeframe={
+                  report.analysisContext && !report.analysisContext.timeframeKnown
+                    ? "Unknown"
+                    : report.analysisContext?.timeframeLabel ??
+                      displayTimeframe(report.timeframe)
+                }
+              />
               <BiasPill bias={report.bias.bias} />
               {report.chartSource !== "Unknown" && (
                 <span className="rounded-lg border border-border bg-card/40 px-2 py-0.5 text-xs font-medium text-muted-foreground">

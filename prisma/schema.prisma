@@ -149,6 +149,12 @@ model User {
   journalEntries      JournalEntry[]
   adminActionsMade    AdminAction[]        @relation("AdminActor")
   adminActionsTarget  AdminAction[]        @relation("AdminTarget")
+
+  // Admin dashboard filters/sorts users by these fields.
+  @@index([plan])
+  @@index([subscriptionStatus])
+  @@index([createdAt])
+  @@index([lastActiveAt])
 }
 
 /// One row per completed chart analysis. Additive usage telemetry (never gates
@@ -176,6 +182,8 @@ model AnalysisUsage {
   @@index([userId])
   @@index([createdAt])
   @@index([pair])
+  // Analysis History: newest-first per user.
+  @@index([userId, createdAt])
 }
 
 /// Audit trail of every privileged action taken from the super-admin dashboard.
@@ -225,6 +233,8 @@ model Transaction {
 
   @@index([userId])
   @@index([status])
+  // Billing history: newest-first per user.
+  @@index([userId, createdAt])
 }
 
 model Account {
@@ -285,6 +295,8 @@ model Notification {
   @@index([isRead])
   @@index([createdAt])
   @@index([userId, isRead])
+  // Notification list: newest-first per user.
+  @@index([userId, createdAt])
 }
 
 /// Smart Journal — a Rex Pro trade journal. One row per logged trade. Journal
@@ -324,6 +336,8 @@ model JournalEntry {
   @@index([userId])
   @@index([userId, resultType])
   @@index([createdAt])
+  // Smart Journal timeline: newest-first per user.
+  @@index([userId, createdAt])
 }
 
 model JournalTag {

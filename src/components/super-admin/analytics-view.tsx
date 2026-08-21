@@ -6,7 +6,7 @@ import type { AnalyticsData } from "@/lib/admin/queries";
 
 export function AnalyticsView({ data }: { data: AnalyticsData }) {
   return (
-    <div className="space-y-6">
+    <div className="allow-anim space-y-6">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <AdminCard className="p-5 lg:col-span-2">
           <SectionTitle>User Growth · Last 30 days</SectionTitle>

@@ -7,7 +7,7 @@ import { AI_GROWTH } from "@/lib/billing-data";
 
 export function AiGrowth() {
   return (
-    <div className="rounded-3xl glass p-6 sm:p-8">
+    <div className="allow-anim rounded-3xl glass p-6 sm:p-8">
       <div className="flex items-center gap-2">
         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <Sparkles className="h-5 w-5" />

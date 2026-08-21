@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Reveal } from "@/components/ui/reveal";
 import { Button } from "@/components/ui/button";
+import { StartFreeButton } from "./start-free-button";
 
 export function CTA() {
   return (
@@ -30,12 +31,7 @@ export function CTA() {
             </p>
 
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button size="lg" className="hover-zoom" asChild>
-                <Link href="/register">
-                  Start Free
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
+              <StartFreeButton />
               <Button size="lg" variant="secondary" className="hover-zoom" asChild>
                 <Link href="#features">Explore Features</Link>
               </Button>

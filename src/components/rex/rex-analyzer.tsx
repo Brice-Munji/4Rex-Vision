@@ -187,6 +187,13 @@ export function RexAnalyzer({ usage }: RexAnalyzerProps) {
       return;
     }
 
+    // Server-side anti-spam throttle — no credit consumed; let them retry.
+    if (result.status === "rate_limited") {
+      toast.error(result.message);
+      setStage("ready");
+      return;
+    }
+
     // Strict validation: the pair couldn't be confidently extracted. Never guess.
     if (result.status === "pair_not_detected") {
       setPairNotDetected({ title: result.title, message: result.message });
