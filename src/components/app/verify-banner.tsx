@@ -3,7 +3,7 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MailWarning, X, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { resendVerification } from "@/actions/verify";
 
 export function VerifyBanner() {

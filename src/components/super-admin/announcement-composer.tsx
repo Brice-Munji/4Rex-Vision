@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Megaphone, Send, Loader2, Users, Crown } from "lucide-react";
 import { AdminCard, SectionTitle } from "./ui";
 

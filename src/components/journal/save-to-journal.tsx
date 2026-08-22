@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   BookOpen,
   X,

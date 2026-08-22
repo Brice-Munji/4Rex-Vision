@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { X, Loader2, CheckCircle2 } from "lucide-react";
 import type { JournalEntryDTO } from "@/lib/journal/constants";
 
