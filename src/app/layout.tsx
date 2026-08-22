@@ -4,6 +4,7 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { OfflineBanner } from "@/components/system/offline-banner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -47,6 +48,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             {children}
+            <OfflineBanner />
             <Toaster />
           </ThemeProvider>
         </SessionProvider>

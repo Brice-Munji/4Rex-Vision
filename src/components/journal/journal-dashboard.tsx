@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { motion } from "framer-motion";
 import {
   TrendingUp, Target, Layers, DoorOpen, Trophy, Clock3, Search,

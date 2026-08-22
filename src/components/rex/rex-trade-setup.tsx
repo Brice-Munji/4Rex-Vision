@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Sparkles,
   Crown,
@@ -185,11 +185,16 @@ function SetupModal({
     try {
       const note = [
         `Rex Trade Setup (APA) — ${directional.bias} · Quality ${directional.quality} · R:R ${directional.riskReward}`,
-        `Entry zone: ${directional.entryZone}`,
-        `Invalidation: ${directional.invalidationZone}`,
-        `Target 1: ${directional.target1}`,
-        `Target 2: ${directional.target2}`,
+        `Entry zone: ${directional.entryZone} (pullbacks/retests into this zone are normal)`,
+        `Invalidation (structural): ${directional.invalidationZone}`,
+        `Target 1 — ${directional.target1Label}: ${directional.target1}`,
+        `Target 2 — ${directional.target2Label}: ${directional.target2}`,
         `Confluence: ${directional.confluence.join(", ") || "—"}`,
+        "",
+        `Lower-timeframe confirmation:`,
+        ...directional.lowerTimeframeConfirmation.map((c) => `• ${c}`),
+        "",
+        directional.invalidationExplainer,
         `News risk (warning only): ${directional.newsRisk}`,
         "",
         SETUP_DISCLAIMER,
@@ -366,11 +371,61 @@ function DirectionalBody({ setup }: { setup: DirectionalSetup }) {
 
       {/* Zones */}
       <div className="space-y-2.5">
-        <ZoneRow icon={Crosshair} accent="text-primary" label="Entry zone" value={setup.entryZone} />
-        <ZoneRow icon={Ban} accent="text-rose-400" label="Invalidation zone" value={setup.invalidationZone} />
-        <ZoneRow icon={Target} accent="text-emerald-400" label="Target zone 1" value={setup.target1} />
-        <ZoneRow icon={Target} accent="text-emerald-400" label="Target zone 2" value={setup.target2} />
+        <ZoneRow
+          icon={Crosshair}
+          accent="text-primary"
+          label="Entry zone"
+          value={setup.entryZone}
+          hint="Pullbacks & retests into this zone are normal"
+        />
+        <ZoneRow
+          icon={Ban}
+          accent="text-rose-400"
+          label="Invalidation zone"
+          value={setup.invalidationZone}
+          hint="Structural — not an exact stop-loss"
+        />
+        <ZoneRow
+          icon={Target}
+          accent="text-emerald-400"
+          label="Target zone 1"
+          value={setup.target1}
+          hint={setup.target1Label}
+        />
+        <ZoneRow
+          icon={Target}
+          accent="text-emerald-400"
+          label="Target zone 2"
+          value={setup.target2}
+          hint={setup.target2Label}
+        />
       </div>
+
+      {/* Structural-invalidation + trade-management framing (educational, no buy/sell) */}
+      <div className={cn("space-y-2 rounded-2xl p-4", PANEL)}>
+        <p className="flex items-start gap-2 text-[12px] leading-relaxed text-[#F5F5F5]">
+          <Ban className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-400" />
+          <span>{setup.invalidationExplainer}</span>
+        </p>
+        <p className="text-[12px] leading-relaxed text-[#A3A3A3]">{setup.managementNote}</p>
+      </div>
+
+      {/* Lower-timeframe confirmation for scalping — conditions to watch, not signals */}
+      {setup.lowerTimeframeConfirmation.length > 0 && (
+        <div className={cn("rounded-2xl p-4", PANEL)}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A3A3A3]">
+            Lower-timeframe confirmation (scalping)
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {setup.lowerTimeframeConfirmation.map((c, i) => (
+              <li key={i} className="flex items-start gap-2 text-[12px] leading-relaxed text-[#F5F5F5]">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
+                {c}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* APA confluence the grade is built on */}
       {setup.confluence.length > 0 && (
@@ -449,11 +504,13 @@ function ZoneRow({
   accent,
   label,
   value,
+  hint,
 }: {
   icon: React.ElementType;
   accent: string;
   label: string;
   value: string;
+  hint?: string;
 }) {
   return (
     <div className={cn("flex items-center justify-between gap-3 rounded-2xl p-4", PANEL)}>
@@ -461,7 +518,10 @@ function ZoneRow({
         <span className={cn("flex h-7 w-7 items-center justify-center rounded-lg bg-[#0A0A0A]", accent)}>
           <Icon className="h-4 w-4" />
         </span>
-        <span className={MUTED}>{label}</span>
+        <span className="flex flex-col">
+          <span className={MUTED}>{label}</span>
+          {hint && <span className="text-[11px] text-[#7A7A7A]">{hint}</span>}
+        </span>
       </span>
       <span className={cn("font-mono text-sm font-semibold tabular-nums", TEXT)}>{value}</span>
     </div>

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { signIn } from "next-auth/react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 

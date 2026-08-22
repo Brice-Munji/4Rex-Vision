@@ -21,7 +21,7 @@ import {
   CheckCircle2,
   PartyPopper,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
