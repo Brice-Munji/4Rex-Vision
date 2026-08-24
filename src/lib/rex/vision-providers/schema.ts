@@ -414,14 +414,14 @@ export function normalizeVisionRead(raw: unknown): VisionChartRead {
 }
 
 export function extractJson(text: string): unknown {
-  const cleaned = text
-    .replace(/^```(?:json)?/i, "")
-    .replace(/```$/i, "")
-    .trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
+  // Prefer a fenced ```json … ``` block if the model wrapped its output in one
+  // (some models add prose before/after). Otherwise scan the whole text.
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const src = (fence ? fence[1] : text).trim();
+  const start = src.indexOf("{");
+  const end = src.lastIndexOf("}");
   if (start === -1 || end === -1) throw new Error("No JSON object found in model output");
-  return JSON.parse(cleaned.slice(start, end + 1));
+  return JSON.parse(src.slice(start, end + 1));
 }
 
 export function parseVisionText(text: string): VisionChartRead {

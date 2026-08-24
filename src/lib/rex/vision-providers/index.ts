@@ -57,6 +57,29 @@ export function isVisionConfigured(): boolean {
   return PROVIDERS.some((p) => p.configured());
 }
 
+/**
+ * Whether a read actually RECOGNIZED the chart. A provider can return a
+ * structurally-valid object that recognized nothing (no pair, no timeframe, no
+ * levels) — a weak model effectively "giving up". Treating that as success made
+ * the chain stop early and show "Rex can't recognize the chart" even though a
+ * stronger fallback could read it. Such empty reads are now skipped so the next
+ * provider gets a chance.
+ *
+ * A confident "this is not a trading chart" verdict IS usable (definitive), so
+ * we don't waste every provider on a genuine non-chart.
+ */
+function isUsableRead(d: VisionChartRead): boolean {
+  if (!d.isTradingChart) return true;
+  const hasPair = !!(d.instrument || d.symbol);
+  const hasTimeframe = d.timeframe !== "Unknown";
+  const hasLevels =
+    (d.priceLevels?.length ?? 0) > 0 ||
+    (d.supportLevels?.length ?? 0) > 0 ||
+    (d.resistanceLevels?.length ?? 0) > 0 ||
+    !!d.currentPrice;
+  return hasPair || hasTimeframe || hasLevels;
+}
+
 export type VisionResult =
   /** A provider successfully read the chart. */
   | { status: "ok"; data: VisionChartRead; provider: VisionProviderName }
@@ -103,16 +126,22 @@ export async function analyzeChartImage(
     const started = Date.now();
     try {
       const data = await provider.read(base64, mediaType);
-      if (data) {
+      if (data && isUsableRead(data)) {
         if (i > 0) {
           // eslint-disable-next-line no-console
           console.warn(`[rex.vision] fallback succeeded via ${provider.name} (attempt ${attempts})`);
         }
         return { status: "ok", data, provider: provider.name };
       }
-      lastError = `${provider.name} returned no usable result.`;
+      // A returned-but-empty read (recognized nothing) is a soft failure: fall
+      // through to the next provider instead of surfacing "can't recognize".
+      lastError = data
+        ? `${provider.name} recognized nothing usable in the chart.`
+        : `${provider.name} returned no usable result.`;
       // eslint-disable-next-line no-console
-      console.warn(`[rex.vision] ${provider.name} returned no usable result (${Date.now() - started}ms)`);
+      console.warn(
+        `[rex.vision] ${provider.name} ${data ? "recognized nothing usable" : "returned no usable result"} (${Date.now() - started}ms)`
+      );
     } catch (err) {
       const aborted = err instanceof Error && err.name === "AbortError";
       const message = aborted
