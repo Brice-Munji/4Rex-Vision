@@ -70,9 +70,12 @@ function buildInput(report: RexReportType): TradeSetupInput {
 export function RexTradeSetupCard({
   report,
   plan,
+  onSetupGenerated,
 }: {
   report: RexReportType;
   plan?: Plan;
+  /** Fired with the generated setup so the parent (e.g. PDF export) can use it. */
+  onSetupGenerated?: (setup: TradeSetupResult) => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const isPro = plan === "PROFESSIONAL" || plan === "ENTERPRISE";
@@ -122,7 +125,7 @@ export function RexTradeSetupCard({
       </motion.div>
 
       {isPro ? (
-        <SetupModal open={open} report={report} onClose={close} />
+        <SetupModal open={open} report={report} onClose={close} onSetupGenerated={onSetupGenerated} />
       ) : (
         <UpgradeModal open={open} onClose={close} />
       )}
@@ -136,10 +139,12 @@ function SetupModal({
   open,
   report,
   onClose,
+  onSetupGenerated,
 }: {
   open: boolean;
   report: RexReportType;
   onClose: () => void;
+  onSetupGenerated?: (setup: TradeSetupResult) => void;
 }) {
   const router = useRouter();
   const [state, setState] = React.useState<
@@ -166,7 +171,11 @@ function SetupModal({
         });
         if (!res.ok) throw new Error(`${res.status}`);
         const data = await res.json();
-        if (!cancelled) setState({ status: "done", result: data.setup as TradeSetupResult });
+        if (!cancelled) {
+          const result = data.setup as TradeSetupResult;
+          setState({ status: "done", result });
+          onSetupGenerated?.(result);
+        }
       } catch {
         if (!cancelled) setState({ status: "error" });
       }

@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, RotateCcw, AlertTriangle, Download, Info } from "lucide-react";
+import { Sparkles, RotateCcw, AlertTriangle, Download, Info, Loader2 } from "lucide-react";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
+import { generateRexReportPdf } from "@/lib/pdf/rex-report-pdf";
+import type { TradeSetupResult } from "@/lib/rex/trade-setup";
 import { PairBadge, TimeframeBadge, BiasPill } from "./rex-visuals";
 import { displayTimeframe } from "@/lib/rex/pair-integrity";
 import { VisionConfidenceCard } from "./vision-confidence";
@@ -33,6 +37,23 @@ export function RexReport({
   onReset?: () => void;
   plan?: Plan;
 }) {
+  // The Rex Trade Setup is generated on-demand in a modal; capture the last
+  // generated result so the PDF can include it when the user has one.
+  const [tradeSetup, setTradeSetup] = useState<TradeSetupResult | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  async function handleDownloadPdf() {
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      await generateRexReportPdf(report, tradeSetup);
+    } catch {
+      toast.error("Couldn't generate the PDF. Please try again.");
+    } finally {
+      setPdfLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* P0 — validation banner: which pair Rex is analyzing */}
@@ -102,9 +123,19 @@ export function RexReport({
 
           <div className="flex shrink-0 flex-wrap gap-2">
             <SaveToJournalButton report={report} plan={plan} />
-            <Button variant="secondary" size="sm">
-              <Download className="h-4 w-4" />
-              PDF
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={pdfLoading}
+              aria-busy={pdfLoading}
+            >
+              {pdfLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {pdfLoading ? "Preparing…" : "PDF"}
             </Button>
             {onReset && (
               <Button variant="ghost" size="sm" onClick={onReset}>
@@ -134,8 +165,9 @@ export function RexReport({
         )}
       </motion.div>
 
-      {/* Rex Trade Setup (PRO) — turn the completed analysis into trade zones */}
-      <RexTradeSetupCard report={report} plan={plan} />
+      {/* Rex Trade Setup (PRO) — turn the completed analysis into trade zones.
+          Captured here so the PDF export can include it once generated. */}
+      <RexTradeSetupCard report={report} plan={plan} onSetupGenerated={setTradeSetup} />
 
       {/* Step 3 — vision confidence */}
       <VisionConfidenceCard vision={report.visionConfidence} />
