@@ -308,6 +308,11 @@ export async function buildRexReportPdfDoc(
   /* ── trade-setup writer (closure over doc/helpers) ─────────────────────── */
   function writeTradeSetup(setup: TradeSetupResult) {
     sectionTitle("Rex Trade Setup (Advanced Price Action)");
+    if (setup.kind === "blocked") {
+      paragraph(setup.reason, { size: 11, color: DANGER, style: "bold", gap: 4 });
+      paragraph(setup.newsStatus, { size: 9.5, color: [70, 70, 70], gap: 4 });
+      return;
+    }
     if (setup.kind === "none") {
       paragraph(setup.reason, { size: 10, color: WARN, gap: 4 });
       kvRow("News risk (warning only)", setup.newsRisk);
@@ -338,13 +343,14 @@ export async function buildRexReportPdfDoc(
     }
     // directional
     kvRow("Bias", setup.bias, biasColor(setup.bias));
-    kvRow("Setup quality", setup.quality);
-    kvRow("Risk / Reward", setup.riskReward);
+    kvRow("Setup type", setup.setupType);
+    kvRow("Setup quality", `${setup.qualityScore}/100 — ${setup.qualityLabel}`);
+    kvRow("Risk / Reward", `${setup.riskReward} (TP1) · ${setup.riskReward2} (TP2)`);
     kvRow("Entry zone", setup.entryZone);
-    kvRow("Invalidation (structural)", setup.invalidationZone);
-    kvRow(`Target 1 — ${setup.target1Label}`, setup.target1);
-    kvRow(`Target 2 — ${setup.target2Label}`, setup.target2);
-    kvRow("News risk (warning only)", setup.newsRisk);
+    kvRow("Stop Loss / Invalidation", setup.invalidationZone);
+    kvRow(`TP1 — ${setup.target1Label}`, setup.target1);
+    kvRow(`TP2 — ${setup.target2Label}`, setup.target2);
+    kvRow("News", setup.newsStatus);
     if (setup.confluence?.length) {
       y += 2;
       font("bold", 10);

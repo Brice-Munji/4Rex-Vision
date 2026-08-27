@@ -53,6 +53,8 @@ function buildInput(report: RexReportType): TradeSetupInput {
     currentPrice: report.currentPrice ?? null,
     priceLevels: (report.priceLevels ?? []).map((l) => ({ type: l.type, value: l.value })),
     economicImpacts: (report.economic ?? []).map((e) => e.impact),
+    // Titles + impacts drive the high-impact-news BLOCK (never direction/zones).
+    economicEvents: (report.economic ?? []).map((e) => ({ title: e.title, impact: e.impact })),
     // APA structure signals — the setup is derived from these, not from news.
     trend: report.trend
       ? { direction: report.trend.direction, strength: report.trend.strength }
@@ -193,11 +195,12 @@ function SetupModal({
     setSaving(true);
     try {
       const note = [
-        `Rex Trade Setup (APA) — ${directional.bias} · Quality ${directional.quality} · R:R ${directional.riskReward}`,
+        `Rex Trade Setup (APA) — ${directional.setupType}`,
+        `Quality ${directional.qualityScore}/100 (${directional.qualityLabel}) · R:R ${directional.riskReward} (TP1) / ${directional.riskReward2} (TP2)`,
         `Entry zone: ${directional.entryZone} (pullbacks/retests into this zone are normal)`,
-        `Invalidation (structural): ${directional.invalidationZone}`,
-        `Target 1 — ${directional.target1Label}: ${directional.target1}`,
-        `Target 2 — ${directional.target2Label}: ${directional.target2}`,
+        `Stop Loss / Invalidation (structural): ${directional.invalidationZone}`,
+        `TP1 — ${directional.target1Label}: ${directional.target1}`,
+        `TP2 — ${directional.target2Label}: ${directional.target2}`,
         `Confluence: ${directional.confluence.join(", ") || "—"}`,
         "",
         `Lower-timeframe confirmation:`,
@@ -263,6 +266,22 @@ function SetupModal({
               <ShieldAlert className="h-5 w-5" />
             </span>
             <p className="text-sm text-[#A3A3A3]">Rex couldn&apos;t generate the setup just now.</p>
+          </div>
+        )}
+
+        {setup && setup.kind === "blocked" && (
+          <div className="space-y-4">
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/[0.08] px-5 py-8 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-400">
+                <ShieldAlert className="h-5 w-5" />
+              </span>
+              <p className="max-w-sm text-base font-bold text-[#F5F5F5]">{setup.reason}</p>
+              <p className="max-w-sm text-sm text-[#A3A3A3]">{setup.newsStatus}</p>
+              <p className="max-w-sm text-xs text-[#7A7A7A]">
+                Rex won&apos;t plan a trade into a high-impact event or predict its reaction. Wait for
+                the news to pass and for structure to re-form.
+              </p>
+            </div>
           </div>
         )}
 
@@ -371,11 +390,17 @@ function DirectionalBody({ setup }: { setup: DirectionalSetup }) {
           {setup.bias} setup
         </span>
         <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-bold", QUALITY_META[setup.quality])}>
-          Setup {setup.quality}
+          Quality {setup.qualityScore}/100 · {setup.qualityLabel}
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-[#1F1F1F] bg-[#111111] px-3 py-1 text-sm font-semibold text-[#F5F5F5]">
-          <Gauge className="h-4 w-4 text-primary" /> R:R {setup.riskReward}
+          <Gauge className="h-4 w-4 text-primary" /> R:R {setup.riskReward} · TP2 {setup.riskReward2}
         </span>
+      </div>
+
+      {/* Setup type + news status */}
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-[#A3A3A3]">{setup.setupType}</p>
+        <p className="text-xs text-[#7A7A7A]">News: {setup.newsStatus}</p>
       </div>
 
       {/* Zones */}
@@ -390,21 +415,21 @@ function DirectionalBody({ setup }: { setup: DirectionalSetup }) {
         <ZoneRow
           icon={Ban}
           accent="text-rose-400"
-          label="Invalidation zone"
+          label="Stop Loss / Invalidation"
           value={setup.invalidationZone}
           hint="Structural — not an exact stop-loss"
         />
         <ZoneRow
           icon={Target}
           accent="text-emerald-400"
-          label="Target zone 1"
+          label="TP1"
           value={setup.target1}
           hint={setup.target1Label}
         />
         <ZoneRow
           icon={Target}
           accent="text-emerald-400"
-          label="Target zone 2"
+          label="TP2"
           value={setup.target2}
           hint={setup.target2Label}
         />
