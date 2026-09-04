@@ -29,6 +29,7 @@ import type { RexReport as RexReportType } from "@/lib/rex/types";
 import type { Plan } from "@prisma/client";
 import {
   SETUP_DISCLAIMER,
+  NEWS_BLOCK_WINDOW_MIN,
   type SetupBias,
   type SetupNewsRisk,
   type SetupQuality,
@@ -278,8 +279,9 @@ function SetupModal({
               <p className="max-w-sm text-base font-bold text-[#F5F5F5]">{setup.reason}</p>
               <p className="max-w-sm text-sm text-[#A3A3A3]">{setup.newsStatus}</p>
               <p className="max-w-sm text-xs text-[#7A7A7A]">
-                Rex won&apos;t plan a trade into a high-impact event or predict its reaction. Wait for
-                the news to pass and for structure to re-form.
+                Rex won&apos;t create a new setup within {NEWS_BLOCK_WINDOW_MIN} minutes of a
+                high-impact event, or predict its reaction. Previously saved setups stay in your
+                Smart Journal — Rex resumes generating once the event has passed.
               </p>
             </div>
           </div>

@@ -36,10 +36,19 @@ export interface TradeSetupInput {
   confidence: number | null;
   currentPrice?: string | null;
   priceLevels: { type: string; value: string }[]; // Entry/Invalidation/Take Profit/Support/Resistance
-  economicImpacts?: string[]; // impact levels — used for the news WARNING / block only
-  /** Upcoming economic events (title + impact) — used ONLY to BLOCK the setup on
-   *  high-impact news. Never influences direction, entry, SL or TP. */
+  economicImpacts?: string[]; // impact levels — legacy warning hint only
+  /** Upcoming economic events (title + impact) — legacy warning hint only. */
   economicEvents?: { title?: string | null; impact?: string | null }[];
+  /**
+   * TIMED, pair-relevant high-impact news (from the live economic calendar).
+   * This is the ONLY input that can BLOCK a setup, and only on TIMING — it never
+   * changes bias, entry, SL or TP. `available: false` means reliable timing data
+   * couldn't be obtained (shown as "news data unavailable", never as "clear").
+   */
+  news?: {
+    available: boolean;
+    events?: { currency?: string | null; title?: string | null; minutesUntil?: number | null }[];
+  };
   // APA structure signals from the report:
   trend?: { direction?: string | null; strength?: string | null } | null;
   evidence?: { key?: string; label?: string; explanation?: string }[];
@@ -112,6 +121,10 @@ export interface BlockedSetup {
   reason: string;
   /** The specific event that triggered the block, when known (e.g. "US CPI"). */
   event: string | null;
+  /** Currency the event affects (e.g. "USD"). */
+  currency: string | null;
+  /** Minutes until the event (<= 20 triggers the block; may be ~0/negative). */
+  minutesUntil: number | null;
   newsRisk: "High";
   newsStatus: string;
 }
@@ -122,7 +135,9 @@ export const SETUP_DISCLAIMER =
   "Rex Trade Setup provides educational trade-planning zones based on price-action structure, not financial advice.";
 export const SETUP_NO_VALID_MESSAGE =
   "No valid setup — the chart doesn't show enough Advanced Price Action confluence for a high-quality trade.";
-export const SETUP_NEWS_BLOCKED_MESSAGE = "Setup blocked — high-impact news approaching.";
+export const SETUP_NEWS_BLOCKED_MESSAGE = "News approaching — new trade setups paused.";
+/** Setups are paused this many minutes before a high-impact pair event. */
+export const NEWS_BLOCK_WINDOW_MIN = 20;
 export const SETUP_RR_MESSAGE =
   "No valid trade setup — the available APA structure doesn't offer at least a 1:2 reward-to-risk.";
 export const SETUP_CHASE_MESSAGE =
@@ -155,34 +170,88 @@ function zone(a: number, b: number, d: number): string {
 function normalizeBias(b: string | null): SetupBias {
   return b === "Bullish" || b === "Bearish" || b === "Neutral" ? b : "Neutral";
 }
-function deriveNewsRisk(input: TradeSetupInput): SetupNewsRisk {
-  const eventImpacts = (input.economicEvents ?? []).map((e) => String(e.impact ?? "").toLowerCase());
-  const impacts = [...(input.economicImpacts ?? []).map((i) => i.toLowerCase()), ...eventImpacts];
-  if (impacts.includes("high")) return "High";
-  if (impacts.includes("medium")) return "Medium";
-  return "Low";
+/** Split a pair like "EUR/USD" or "EURUSD" into its two currencies (pure). */
+function pairCurrencies(pair: string | null | undefined): string[] {
+  if (!pair) return [];
+  const clean = pair.replace(/[^A-Za-z]/g, "").toUpperCase();
+  if (clean.length >= 6) return [clean.slice(0, 3), clean.slice(3, 6)];
+  if (pair.includes("/")) return pair.split("/").map((s) => s.trim().toUpperCase());
+  return [];
 }
 
-/** Critical high-impact events Rex refuses to trade into. */
-const CRITICAL_NEWS =
-  /\b(cpi|inflation|nfp|non.?farm|payrolls?|fomc|interest\s*rate|rate\s*decision|central\s*bank|\becb\b|\bboe\b|\bboj\b|\bfed\b|\bsnb\b|\brba\b|unemployment|gdp|jobs?\s*report)\b/i;
+type NewsEval = {
+  state: "clear" | "blocked" | "unavailable";
+  risk: SetupNewsRisk;
+  status: string; // human-readable news status line
+  event: string | null;
+  currency: string | null;
+  minutesUntil: number | null;
+};
 
 /**
- * News PROTECTION (Rule 4): decide whether an approaching high-impact economic
- * event should BLOCK the setup. This is a capital-preservation gate — it never
- * influences direction, entry, SL or TP.
+ * News-aware TIMING filter (Rule 4). Uses only the live, timed, pair-relevant
+ * high-impact events supplied in `input.news`:
+ *   - available && a pair event ≤ 20 min away  → BLOCK new setups
+ *   - available && nothing within 20 min        → clear (setups allowed)
+ *   - not available                             → "news data unavailable"
+ * News never changes bias/entry/SL/TP — it only gates the TIMING of generation.
  */
-function detectNewsBlock(input: TradeSetupInput): { blocked: boolean; event: string | null } {
-  const highs = (input.economicEvents ?? []).filter(
-    (e) => String(e.impact ?? "").toLowerCase() === "high"
-  );
-  if (highs.length > 0) {
-    const named = highs.find((e) => CRITICAL_NEWS.test(String(e.title ?? "")));
-    return { blocked: true, event: (named ?? highs[0]).title ?? null };
+function evaluateNews(input: TradeSetupInput): NewsEval {
+  const news = input.news;
+  const curs = pairCurrencies(input.pair);
+
+  if (!news || !news.available) {
+    return {
+      state: "unavailable",
+      risk: "Medium",
+      status:
+        "News data unavailable — Rex can't verify high-impact event timing for this pair. Check an economic calendar before trading.",
+      event: null,
+      currency: null,
+      minutesUntil: null,
+    };
   }
-  // Backward-compat: only impact levels were provided.
-  const anyHigh = (input.economicImpacts ?? []).some((i) => i.toLowerCase() === "high");
-  return { blocked: anyHigh, event: null };
+
+  const relevant = (news.events ?? []).filter(
+    (e) =>
+      e.minutesUntil != null &&
+      (curs.length === 0 || (e.currency != null && curs.includes(String(e.currency).toUpperCase())))
+  );
+
+  const imminent = relevant
+    .filter((e) => (e.minutesUntil as number) <= NEWS_BLOCK_WINDOW_MIN)
+    .sort((a, b) => (a.minutesUntil as number) - (b.minutesUntil as number));
+
+  if (imminent.length) {
+    const e = imminent[0];
+    const m = e.minutesUntil as number;
+    const when = m <= 0 ? "imminent" : `in ~${m} min`;
+    const label = [e.currency, e.title].filter(Boolean).join(" ");
+    return {
+      state: "blocked",
+      risk: "High",
+      status:
+        `News approaching — new trade setups paused.` +
+        (label ? ` High-impact ${label} event ${when}.` : ` High-impact event ${when}.`),
+      event: e.title ?? null,
+      currency: e.currency ?? null,
+      minutesUntil: m,
+    };
+  }
+
+  const next = relevant.sort((a, b) => (a.minutesUntil as number) - (b.minutesUntil as number))[0];
+  const risk: SetupNewsRisk = next && (next.minutesUntil as number) <= 60 ? "Medium" : "Low";
+  const status = next
+    ? `Clear for now — next high-impact ${[next.currency, next.title].filter(Boolean).join(" ")} in ~${next.minutesUntil} min (outside the 20-min window).`
+    : `Clear — no high-impact news within 20 minutes for ${curs.join("/") || input.pair}.`;
+  return {
+    state: "clear",
+    risk,
+    status,
+    event: next?.title ?? null,
+    currency: next?.currency ?? null,
+    minutesUntil: next?.minutesUntil ?? null,
+  };
 }
 
 function qualityLabelFor(score: number): string {
@@ -253,21 +322,21 @@ function detectApa(input: TradeSetupInput): { flags: ApaFlags; factors: string[]
 
 export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
   const bias = normalizeBias(input.bias);
-  const newsRisk = deriveNewsRisk(input); // WARNING only — never sets direction/entry/SL/TP
 
-  // ── NEWS PROTECTION (Rule 4) — block the setup on approaching high-impact
-  // news. This never predicts the reaction or changes direction; it simply
-  // refuses to plan a trade into the event.
-  const newsBlock = detectNewsBlock(input);
-  if (newsBlock.blocked) {
+  // ── NEWS-AWARE TIMING FILTER (Rule 4) — evaluate the live, pair-relevant,
+  // timed high-impact calendar. News never sets direction/entry/SL/TP; it only
+  // gates WHEN a new setup may be generated.
+  const newsEval = evaluateNews(input);
+  const newsRisk = newsEval.risk;
+  if (newsEval.state === "blocked") {
     return {
       kind: "blocked",
       reason: SETUP_NEWS_BLOCKED_MESSAGE,
-      event: newsBlock.event,
+      event: newsEval.event,
+      currency: newsEval.currency,
+      minutesUntil: newsEval.minutesUntil,
       newsRisk: "High",
-      newsStatus: newsBlock.event
-        ? `High-impact news approaching (${newsBlock.event}) — trade setup blocked.`
-        : "High-impact economic news approaching — trade setup blocked.",
+      newsStatus: newsEval.status,
     };
   }
 
@@ -513,10 +582,7 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
   const setupType = `${bias} ${flags.choch ? "reversal" : "continuation"} — ${
     dir > 0 ? "demand/support retest" : "supply/resistance retest"
   }`;
-  const newsStatus =
-    newsRisk === "Medium"
-      ? "Medium-impact news nearby — manage risk (warning only, no high-impact event blocking)."
-      : "Clear — no high-impact economic events approaching.";
+  const newsStatus = newsEval.status;
 
   const sideWord = dir > 0 ? "demand/support" : "supply/resistance";
   const rationale =
