@@ -24,6 +24,8 @@
  * Pure & deterministic (no `server-only`) so the Pro-gated API route runs it.
  */
 
+import type { NewsGuard } from "@/lib/economicCalendar/blocking";
+
 export type SetupBias = "Bullish" | "Bearish" | "Neutral";
 export type SetupQuality = "A+" | "A" | "B" | "C";
 export type SetupNewsRisk = "Low" | "Medium" | "High";
@@ -42,13 +44,11 @@ export interface TradeSetupInput {
   /**
    * TIMED, pair-relevant high-impact news (from the live economic calendar).
    * This is the ONLY input that can BLOCK a setup, and only on TIMING — it never
-   * changes bias, entry, SL or TP. `available: false` means reliable timing data
-   * couldn't be obtained (shown as "news data unavailable", never as "clear").
+   * changes bias, entry, SL or TP. Computed server-side by the economic-calendar
+   * service (Forex Factory / provider-agnostic). When absent, the engine treats
+   * news as "unavailable" (honest — never a false "clear").
    */
-  news?: {
-    available: boolean;
-    events?: { currency?: string | null; title?: string | null; minutesUntil?: number | null }[];
-  };
+  newsGuard?: NewsGuard;
   // APA structure signals from the report:
   trend?: { direction?: string | null; strength?: string | null } | null;
   evidence?: { key?: string; label?: string; explanation?: string }[];
@@ -170,89 +170,19 @@ function zone(a: number, b: number, d: number): string {
 function normalizeBias(b: string | null): SetupBias {
   return b === "Bullish" || b === "Bearish" || b === "Neutral" ? b : "Neutral";
 }
-/** Split a pair like "EUR/USD" or "EURUSD" into its two currencies (pure). */
-function pairCurrencies(pair: string | null | undefined): string[] {
-  if (!pair) return [];
-  const clean = pair.replace(/[^A-Za-z]/g, "").toUpperCase();
-  if (clean.length >= 6) return [clean.slice(0, 3), clean.slice(3, 6)];
-  if (pair.includes("/")) return pair.split("/").map((s) => s.trim().toUpperCase());
-  return [];
-}
-
-type NewsEval = {
-  state: "clear" | "blocked" | "unavailable";
-  risk: SetupNewsRisk;
-  status: string; // human-readable news status line
-  event: string | null;
-  currency: string | null;
-  minutesUntil: number | null;
-};
-
 /**
- * News-aware TIMING filter (Rule 4). Uses only the live, timed, pair-relevant
- * high-impact events supplied in `input.news`:
- *   - available && a pair event ≤ 20 min away  → BLOCK new setups
- *   - available && nothing within 20 min        → clear (setups allowed)
- *   - not available                             → "news data unavailable"
- * News never changes bias/entry/SL/TP — it only gates the TIMING of generation.
+ * Fallback guard used when the caller didn't supply a pre-computed news guard —
+ * honest "unavailable" (never a false "clear"), and never blocking on its own.
  */
-function evaluateNews(input: TradeSetupInput): NewsEval {
-  const news = input.news;
-  const curs = pairCurrencies(input.pair);
-
-  if (!news || !news.available) {
-    return {
-      state: "unavailable",
-      risk: "Medium",
-      status:
-        "News data unavailable — Rex can't verify high-impact event timing for this pair. Check an economic calendar before trading.",
-      event: null,
-      currency: null,
-      minutesUntil: null,
-    };
-  }
-
-  const relevant = (news.events ?? []).filter(
-    (e) =>
-      e.minutesUntil != null &&
-      (curs.length === 0 || (e.currency != null && curs.includes(String(e.currency).toUpperCase())))
-  );
-
-  const imminent = relevant
-    .filter((e) => (e.minutesUntil as number) <= NEWS_BLOCK_WINDOW_MIN)
-    .sort((a, b) => (a.minutesUntil as number) - (b.minutesUntil as number));
-
-  if (imminent.length) {
-    const e = imminent[0];
-    const m = e.minutesUntil as number;
-    const when = m <= 0 ? "imminent" : `in ~${m} min`;
-    const label = [e.currency, e.title].filter(Boolean).join(" ");
-    return {
-      state: "blocked",
-      risk: "High",
-      status:
-        `News approaching — new trade setups paused.` +
-        (label ? ` High-impact ${label} event ${when}.` : ` High-impact event ${when}.`),
-      event: e.title ?? null,
-      currency: e.currency ?? null,
-      minutesUntil: m,
-    };
-  }
-
-  const next = relevant.sort((a, b) => (a.minutesUntil as number) - (b.minutesUntil as number))[0];
-  const risk: SetupNewsRisk = next && (next.minutesUntil as number) <= 60 ? "Medium" : "Low";
-  const status = next
-    ? `Clear for now — next high-impact ${[next.currency, next.title].filter(Boolean).join(" ")} in ~${next.minutesUntil} min (outside the 20-min window).`
-    : `Clear — no high-impact news within 20 minutes for ${curs.join("/") || input.pair}.`;
-  return {
-    state: "clear",
-    risk,
-    status,
-    event: next?.title ?? null,
-    currency: next?.currency ?? null,
-    minutesUntil: next?.minutesUntil ?? null,
-  };
-}
+const UNAVAILABLE_GUARD: NewsGuard = {
+  state: "unavailable",
+  risk: "Medium",
+  status:
+    "News data unavailable — Rex can't verify high-impact event timing for this pair. Check an economic calendar before trading.",
+  event: null,
+  currency: null,
+  minutesUntil: null,
+};
 
 function qualityLabelFor(score: number): string {
   if (score >= 80) return "Strong";
@@ -323,20 +253,21 @@ function detectApa(input: TradeSetupInput): { flags: ApaFlags; factors: string[]
 export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
   const bias = normalizeBias(input.bias);
 
-  // ── NEWS-AWARE TIMING FILTER (Rule 4) — evaluate the live, pair-relevant,
-  // timed high-impact calendar. News never sets direction/entry/SL/TP; it only
+  // ── NEWS-AWARE TIMING GUARD (Rule 4) — applied as a GUARD before generation.
+  // The decision is computed server-side by the provider-agnostic economic
+  // calendar (Forex Factory). News never sets direction/entry/SL/TP; it only
   // gates WHEN a new setup may be generated.
-  const newsEval = evaluateNews(input);
-  const newsRisk = newsEval.risk;
-  if (newsEval.state === "blocked") {
+  const guard: NewsGuard = input.newsGuard ?? UNAVAILABLE_GUARD;
+  const newsRisk = guard.risk;
+  if (guard.state === "blocked") {
     return {
       kind: "blocked",
       reason: SETUP_NEWS_BLOCKED_MESSAGE,
-      event: newsEval.event,
-      currency: newsEval.currency,
-      minutesUntil: newsEval.minutesUntil,
+      event: guard.event,
+      currency: guard.currency,
+      minutesUntil: guard.minutesUntil,
       newsRisk: "High",
-      newsStatus: newsEval.status,
+      newsStatus: guard.status,
     };
   }
 
@@ -582,7 +513,7 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
   const setupType = `${bias} ${flags.choch ? "reversal" : "continuation"} — ${
     dir > 0 ? "demand/support retest" : "supply/resistance retest"
   }`;
-  const newsStatus = newsEval.status;
+  const newsStatus = guard.status;
 
   const sideWord = dir > 0 ? "demand/support" : "supply/resistance";
   const rationale =

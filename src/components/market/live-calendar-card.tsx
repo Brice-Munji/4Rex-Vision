@@ -124,7 +124,7 @@ export function LiveCalendarCard({
           {data.warning}
         </p>
       ) : (
-        <CardFooter>Refreshes every 15 minutes</CardFooter>
+        <CardFooter>Provider-reported times (may change) · refreshes every 15 min</CardFooter>
       )}
     </IntelCard>
   );

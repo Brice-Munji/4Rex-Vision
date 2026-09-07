@@ -39,9 +39,9 @@ export interface CalendarPayload {
   events: CalendarEvent[];
   /** Aggregate risk from the nearest upcoming high-impact event. */
   riskLevel: NewsRiskLevel;
-  /** "finnhub" when live, "fallback" when the built-in schedule is used. */
-  source: "finnhub" | "fallback";
-  /** Set when live data is unavailable (Finnhub error / no access). */
+  /** Provider that produced the calendar ("forexfactory" | "finnhub" | "fallback"). */
+  source: "forexfactory" | "finnhub" | "fallback";
+  /** Set when live data is stale/unavailable. */
   warning: string | null;
   updatedAt: string; // ISO — when the underlying data was fetched
 }
