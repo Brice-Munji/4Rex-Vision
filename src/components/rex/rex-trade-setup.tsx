@@ -151,7 +151,9 @@ function SetupModal({
 }) {
   const router = useRouter();
   const [state, setState] = React.useState<
-    { status: "idle" | "loading" | "error" } | { status: "done"; result: TradeSetupResult }
+    | { status: "idle" | "loading" }
+    | { status: "error"; code?: number; message: string }
+    | { status: "done"; result: TradeSetupResult }
   >({ status: "idle" });
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
@@ -172,15 +174,42 @@ function SetupModal({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(buildInput(report)),
         });
-        if (!res.ok) throw new Error(`${res.status}`);
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          // Surface a meaningful reason instead of a vague failure. A 403 means
+          // the subscription isn't active (the gate is preserved server-side).
+          const message =
+            res.status === 403
+              ? "Your Rex Pro isn't active — reactivate Rex Pro to generate trade setups."
+              : res.status === 401
+                ? "Your session has expired. Please sign in again."
+                : res.status === 429
+                  ? "You're generating setups too quickly. Please wait a moment and try again."
+                  : "Rex couldn't generate the setup just now. Please try again.";
+          if (!cancelled) setState({ status: "error", code: res.status, message });
+          return;
+        }
+
+        const result = data?.setup as TradeSetupResult | undefined;
+        if (!result || typeof result.kind !== "string") {
+          if (!cancelled)
+            setState({
+              status: "error",
+              message: "Rex returned an unexpected response. Please try again.",
+            });
+          return;
+        }
         if (!cancelled) {
-          const result = data.setup as TradeSetupResult;
           setState({ status: "done", result });
           onSetupGenerated?.(result);
         }
       } catch {
-        if (!cancelled) setState({ status: "error" });
+        if (!cancelled)
+          setState({
+            status: "error",
+            message: "Couldn't reach Rex. Check your connection and try again.",
+          });
       }
     })();
     return () => {
@@ -266,7 +295,15 @@ function SetupModal({
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500/10 text-rose-400">
               <ShieldAlert className="h-5 w-5" />
             </span>
-            <p className="text-sm text-[#A3A3A3]">Rex couldn&apos;t generate the setup just now.</p>
+            <p className="max-w-sm text-sm text-[#A3A3A3]">{state.message}</p>
+            {state.code === 403 && (
+              <Link
+                href="/billing"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2f74e6]"
+              >
+                Reactivate Rex Pro <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            )}
           </div>
         )}
 
