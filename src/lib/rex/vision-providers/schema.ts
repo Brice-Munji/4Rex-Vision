@@ -424,8 +424,67 @@ export function extractJson(text: string): unknown {
   return JSON.parse(src.slice(start, end + 1));
 }
 
+/**
+ * Salvage a TRUNCATED JSON object (e.g. a thinking model that hit its output cap
+ * mid-array). Because the prompt emits the important fields first (isTradingChart,
+ * instrument, timeframe, currentPrice, bias, priceLevels), the recovered prefix
+ * still carries the correct pair/bias/levels — far better than dropping the whole
+ * read and falling back to a weaker model. Never throws; returns null if nothing
+ * usable can be recovered.
+ */
+export function repairJson(text: string): unknown {
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const raw = (fence ? fence[1] : text).trim();
+  const start = raw.indexOf("{");
+  if (start === -1) return null;
+  let s = raw.slice(start);
+
+  // Close an unterminated string, drop a trailing comma, and balance brackets.
+  const closeBrackets = (str: string): string => {
+    let inStr = false;
+    let esc = false;
+    const stack: string[] = [];
+    for (const c of str) {
+      if (inStr) {
+        if (esc) esc = false;
+        else if (c === "\\") esc = true;
+        else if (c === '"') inStr = false;
+        continue;
+      }
+      if (c === '"') inStr = true;
+      else if (c === "{" || c === "[") stack.push(c);
+      else if (c === "}" || c === "]") stack.pop();
+    }
+    let out = str;
+    if (inStr) out += '"';
+    out = out.replace(/[,\s]*$/, "").replace(/:\s*$/, ': null');
+    for (let i = stack.length - 1; i >= 0; i--) out += stack[i] === "{" ? "}" : "]";
+    return out;
+  };
+
+  // Progressively drop the incomplete trailing element until it parses.
+  for (let attempt = 0; attempt < 60 && s.length > 1; attempt++) {
+    try {
+      return JSON.parse(closeBrackets(s));
+    } catch {
+      const cut = s.lastIndexOf(",");
+      if (cut <= 0) break;
+      s = s.slice(0, cut);
+    }
+  }
+  return null;
+}
+
 export function parseVisionText(text: string): VisionChartRead {
-  return normalizeVisionRead(extractJson(text));
+  try {
+    return normalizeVisionRead(extractJson(text));
+  } catch (err) {
+    const repaired = repairJson(text);
+    if (repaired && typeof repaired === "object") {
+      return normalizeVisionRead(repaired);
+    }
+    throw err;
+  }
 }
 
 /** System instruction shared by all providers. */

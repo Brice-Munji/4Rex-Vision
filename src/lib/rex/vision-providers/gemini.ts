@@ -50,7 +50,13 @@ export async function readChartWithGemini(
         ],
         generationConfig: {
           temperature: 0.2,
-          maxOutputTokens: 4000,
+          // Gemini 2.5 Flash is a THINKING model: internal reasoning tokens are
+          // drawn from the output budget. With thinking on and a small cap, the
+          // JSON answer gets truncated mid-array (invalid JSON → provider fails →
+          // wrong/weak fallback bias). Disable thinking and give the structured
+          // answer plenty of room so it always returns complete JSON.
+          thinkingConfig: { thinkingBudget: 0 },
+          maxOutputTokens: 8192,
           responseMimeType: "application/json",
         },
       }),
@@ -62,13 +68,17 @@ export async function readChartWithGemini(
     }
 
     const json = (await res.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
+      candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
     };
-    const text = json.candidates?.[0]?.content?.parts
-      ?.map((p) => p.text ?? "")
-      .join("");
-    if (!text) throw new Error("Gemini vision returned no content");
-
+    const candidate = json.candidates?.[0];
+    const text = candidate?.content?.parts?.map((p) => p.text ?? "").join("");
+    if (!text) {
+      throw new Error(
+        `Gemini vision returned no content (finishReason=${candidate?.finishReason ?? "unknown"})`
+      );
+    }
+    // parseVisionText salvages a truncated response (finishReason MAX_TOKENS) so
+    // the core read (pair/bias/levels) survives even if a late field is cut.
     return parseVisionText(text);
   } finally {
     clearTimeout(timeout);
