@@ -439,11 +439,18 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
     return { kind: "none", reason: SETUP_NO_VALID_MESSAGE, newsRisk };
   }
 
-  // ── ENTRY QUALITY (Rule 5) — don't chase. If price has already run more than
-  // one risk-unit past the structural entry zone, the retest is unrealistic.
+  // ── ENTRY QUALITY (Rule 5) — don't chase. The entry is a retest / limit zone,
+  // so price sitting a pullback away from it is NORMAL and must be allowed (that
+  // is the setup). We only reject when price has already run PAST the first
+  // structural target (Target 1) in the trade direction — the move has largely
+  // played out, so a fresh entry would be chasing. Measured structurally against
+  // the reward leg (entry-zone edge → Target 1), NOT the tight entry↔SL distance
+  // (which wrongly rejected virtually every valid retest setup).
   if (current != null) {
-    const beyond = dir > 0 ? current - entryHigh : entryLow - current;
-    if (beyond > risk) {
+    const entryEdge = dir > 0 ? entryHigh : entryLow; // zone edge facing the target
+    const beyond = dir > 0 ? current - entryEdge : entryEdge - current; // >0 ⇒ past the zone toward target
+    const rewardToT1 = Math.abs(t1 - entryEdge);
+    if (rewardToT1 > 0 && beyond > rewardToT1) {
       return { kind: "none", reason: SETUP_CHASE_MESSAGE, newsRisk };
     }
   }

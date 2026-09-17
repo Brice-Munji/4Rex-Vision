@@ -98,6 +98,26 @@ check("8 no valid events → not blocked", buildTradeSetup({ ...validApa("GBPUSD
   check("9 unavailable → status reported", g.state === "unavailable" && /unavailable/i.test(g.status));
 }
 
+// Anti-chase (retest entry): a retest/limit entry sitting a pullback away from
+// current price is VALID and must generate; only price PAST Target 1 is chasing.
+{
+  // Bearish EUR/USD: supply retest entry ABOVE current (price at recent low).
+  const read = (current: string) => ({
+    pair: "EURUSD", timeframe: "H1", bias: "Bearish" as const, confidence: 78, currentPrice: current,
+    priceLevels: [
+      { type: "Resistance", value: "1.0990" }, { type: "Support", value: "1.0760" },
+      { type: "Entry", value: "1.0980" }, { type: "Take Profit", value: "1.0700" },
+      { type: "Invalidation", value: "1.1010" },
+    ],
+    trend: { direction: "Downtrend", strength: "Strong" },
+    evidence: [{ label: "CHOCH", explanation: "lower highs supply rejection bos liquidity" }],
+    newsGuard: guard([], "EURUSD"),
+  });
+  check("chase A: retest a pullback away → generated", buildTradeSetup(read("1.0790")).kind === "directional");
+  check("chase B: reasonably close to entry → generated", buildTradeSetup(read("1.0950")).kind === "directional");
+  check("chase C: overextended past T1 → none (chase)", buildTradeSetup(read("1.0740")).kind === "none");
+}
+
 // XAU relevance (extra): USD blocks, EUR doesn't
 check("X XAUUSD + USD High 10m → blocked", buildTradeSetup({ ...validApa("XAUUSD"), newsGuard: guard([evt("USD", "High", 10)], "XAUUSD") }).kind === "blocked");
 check("X XAUUSD + EUR High 10m → generated", buildTradeSetup({ ...validApa("XAUUSD"), newsGuard: guard([evt("EUR", "High", 10)], "XAUUSD") }).kind === "directional");
