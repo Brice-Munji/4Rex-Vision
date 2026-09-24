@@ -455,9 +455,13 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
     }
   }
 
-  // ── R:R VALIDATION (Rule 3) — require a STRUCTURAL 1:2. Targets are never
-  // stretched to fake it: if real structure can't reach 1:2, there is no setup.
-  if (bestStructuralRR < MIN_RR) {
+  // ── R:R VALIDATION (Rule 3) — Target 1 (the nearest STRUCTURAL target) must
+  // ITSELF achieve at least MIN_RR (1:2). This is the exact R:R shown to the user
+  // (riskReward = rr1), so the validated and displayed R:R always match. A nearer
+  // target below 1:2 is rejected even when TP2 is beyond 1:2, and a measured-move
+  // fallback (no real structural target) never satisfies the gate. TP2/extended
+  // targets are still produced for display; they just can't rescue a sub-1:2 TP1.
+  if (structuralTargets.length === 0 || rr1 < MIN_RR) {
     return { kind: "none", reason: SETUP_RR_MESSAGE, newsRisk };
   }
 
