@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { DashboardShell } from "@/components/dashboard/shell/dashboard-shell";
 import { CheckoutProvider } from "@/components/billing/checkout-provider";
 import { DisableAnimations } from "@/components/dashboard/disable-animations";
+import { RexCoachProvider } from "@/components/dashboard/coach/rex-coach";
 
 export default async function AppLayout({
   children,
@@ -30,7 +31,9 @@ export default async function AppLayout({
       {/* Turn off all app animations right after login/sign-up (graphs opt out
           via the `allow-anim` class). */}
       <DisableAnimations />
-      <CheckoutProvider>{children}</CheckoutProvider>
+      <RexCoachProvider>
+        <CheckoutProvider>{children}</CheckoutProvider>
+      </RexCoachProvider>
     </DashboardShell>
   );
 }

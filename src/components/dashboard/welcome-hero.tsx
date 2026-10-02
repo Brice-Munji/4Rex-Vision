@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Upload, Sparkles, Zap, Infinity as InfinityIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRexCoach } from "@/components/dashboard/coach/rex-coach";
 
 interface WelcomeHeroProps {
   firstName: string;
@@ -21,6 +22,7 @@ export function WelcomeHero({
   unlimited,
 }: WelcomeHeroProps) {
   const remaining = unlimited ? Infinity : Math.max(0, limit - used);
+  const coach = useRexCoach();
 
   return (
     <motion.div
@@ -59,19 +61,9 @@ export function WelcomeHero({
                 Upload Screenshot
               </Link>
             </Button>
-            <Button
-              size="lg"
-              variant="secondary"
-              className="h-14"
-              disabled
-              aria-disabled="true"
-              title="Ask AI is coming soon"
-            >
+            <Button size="lg" variant="secondary" className="h-14" onClick={coach.open}>
               <Sparkles className="h-4 w-4" />
               Ask AI
-              <span className="ml-1.5 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Soon
-              </span>
             </Button>
           </div>
         </div>
