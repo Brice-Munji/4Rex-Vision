@@ -11,6 +11,29 @@ interface Msg {
   content: string;
 }
 
+/**
+ * The actual 4RexVision brand mark (same asset/pattern as the global <Logo>
+ * component) — never a substitute icon. Swaps automatically with the app theme.
+ */
+function CoachLogoMark({ className }: { className?: string }) {
+  return (
+    <span className={cn("relative inline-flex shrink-0 items-center justify-center", className)}>
+      <img
+        src="/images/logo-mark-light.png"
+        alt=""
+        aria-hidden="true"
+        className="h-full w-full object-contain dark:hidden"
+      />
+      <img
+        src="/images/logo-mark-dark.png"
+        alt=""
+        aria-hidden="true"
+        className="hidden h-full w-full object-contain dark:block"
+      />
+    </span>
+  );
+}
+
 interface CoachCtx {
   open: () => void;
   close: () => void;
@@ -88,6 +111,11 @@ export function RexCoachProvider({ children }: { children: React.ReactNode }) {
   return (
     <Ctx.Provider value={{ open, close, isOpen }}>
       {children}
+      {/* Global floating launcher — mounted once here, so it is automatically
+          available on every authenticated page that renders under this provider
+          (Dashboard, Analyze, Journal, History, Market, Growth, Billing,
+          Settings, Help, …) without any per-page duplication. */}
+      <CoachLauncher open={open} visible={!isOpen} />
       <CoachModal
         open={isOpen}
         onClose={close}
@@ -98,6 +126,44 @@ export function RexCoachProvider({ children }: { children: React.ReactNode }) {
         onReset={reset}
       />
     </Ctx.Provider>
+  );
+}
+
+/**
+ * Persistent floating Rex Coach button. Bottom-left so it never collides with
+ * the bottom-right minimized-checkout widget on the billing page; lifted above
+ * the mobile bottom nav bar on small screens, closer to the corner on desktop.
+ * Hidden (not unmounted) while the Coach is open, since the modal already
+ * covers it — avoids a redundant focusable control under the backdrop.
+ */
+function CoachLauncher({ open, visible }: { open: () => void; visible: boolean }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {visible && (
+        <motion.button
+          key="coach-launcher"
+          type="button"
+          onClick={open}
+          title="Rex Coach"
+          aria-label="Open Rex Coach"
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.85 }}
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.96 }}
+          className="fixed bottom-24 left-4 z-[150] flex h-14 w-14 items-center justify-center rounded-2xl bg-card p-2.5 shadow-[0_8px_28px_-6px_rgba(0,0,0,0.45)] ring-1 ring-border transition-shadow hover:shadow-[0_10px_32px_-6px_rgba(59,130,246,0.45)] hover:ring-primary/40 lg:bottom-6"
+        >
+          <CoachLogoMark className="h-full w-full" />
+          <span className="sr-only">Open Rex Coach</span>
+        </motion.button>
+      )}
+    </AnimatePresence>,
+    document.body
   );
 }
 
@@ -174,8 +240,8 @@ function CoachModal({
             {/* Header */}
             <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                  <Sparkles className="h-5 w-5" />
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 p-1.5 ring-1 ring-inset ring-primary/20">
+                  <CoachLogoMark className="h-full w-full" />
                 </span>
                 <div>
                   <h2 className="text-base font-bold tracking-tight">Rex Coach</h2>
