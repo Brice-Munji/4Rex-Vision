@@ -136,9 +136,174 @@ export function RexCoachProvider({ children }: { children: React.ReactNode }) {
  * Hidden (not unmounted) while the Coach is open, since the modal already
  * covers it — avoids a redundant focusable control under the backdrop.
  */
+const LAUNCHER_SIZE = 56; // px — matches h-14 w-14
+const EDGE_MARGIN = 16; // px — left/right/top safe margin
+const BOTTOM_MARGIN_DESKTOP = 24; // px
+const BOTTOM_MARGIN_MOBILE = 88; // px — clears the mobile bottom nav bar
+const MOBILE_BREAKPOINT = 1024; // matches the `lg` breakpoint the mobile nav hides at
+const DRAG_THRESHOLD = 6; // px of pointer movement before a press counts as a drag
+const POSITION_STORAGE_KEY = "rexCoachLauncherPos";
+
+export type LauncherSide = "left" | "right";
+/** Edge + a 0–1 fraction of the usable vertical travel — resize-safe, unlike raw px. */
+export interface LauncherPos {
+  side: LauncherSide;
+  verticalRatio: number;
+}
+
+export function clamp(v: number, min: number, max: number): number {
+  return Math.min(Math.max(v, min), max);
+}
+
+/** The draggable area's bounds for the CURRENT viewport. Recomputed on demand
+ *  (drag, resize, orientation change) — never cached stale. */
+export function getDragBounds() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const isMobile = vw < MOBILE_BREAKPOINT;
+  return {
+    minX: EDGE_MARGIN,
+    maxX: Math.max(EDGE_MARGIN, vw - LAUNCHER_SIZE - EDGE_MARGIN),
+    minY: EDGE_MARGIN,
+    maxY: Math.max(
+      EDGE_MARGIN,
+      vh - LAUNCHER_SIZE - (isMobile ? BOTTOM_MARGIN_MOBILE : BOTTOM_MARGIN_DESKTOP)
+    ),
+  };
+}
+
+export function loadStoredPos(): LauncherPos {
+  try {
+    const raw = sessionStorage.getItem(POSITION_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<LauncherPos>;
+      if (
+        (parsed.side === "left" || parsed.side === "right") &&
+        typeof parsed.verticalRatio === "number" &&
+        Number.isFinite(parsed.verticalRatio)
+      ) {
+        return { side: parsed.side, verticalRatio: clamp(parsed.verticalRatio, 0, 1) };
+      }
+    }
+  } catch {
+    /* sessionStorage unavailable (e.g. privacy mode) — fall back to default */
+  }
+  return { side: "left", verticalRatio: 1 }; // default: bottom-left, same as before
+}
+
+export function savePos(pos: LauncherPos) {
+  try {
+    sessionStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(pos));
+  } catch {
+    /* best-effort only */
+  }
+}
+
+/** Resolve an edge+ratio position into actual pixel coordinates for the live viewport. */
+export function resolvePixels(pos: LauncherPos, bounds: ReturnType<typeof getDragBounds>) {
+  return {
+    x: pos.side === "left" ? bounds.minX : bounds.maxX,
+    y: clamp(bounds.minY + pos.verticalRatio * (bounds.maxY - bounds.minY), bounds.minY, bounds.maxY),
+  };
+}
+
+/**
+ * Persistent, user-draggable floating Rex Coach button.
+ *
+ * Dragging uses only the native Pointer Events API (unifies mouse + touch + pen
+ * with zero extra dependencies and no permission prompt) — no drag library, no
+ * device-orientation/motion sensors. A short move-distance threshold tells a
+ * genuine drag apart from a click, so dragging never accidentally opens the
+ * Coach. On release it snaps horizontally to the nearest edge while keeping the
+ * vertical drop point (clamped to stay fully on-screen), the standard
+ * "chat bubble" pattern. Position is stored as an edge + vertical FRACTION
+ * (not raw pixels) in sessionStorage, so it survives in-session navigation yet
+ * re-resolves safely — never off-screen — on window resize / orientation change.
+ */
 function CoachLauncher({ open, visible }: { open: () => void; visible: boolean }) {
   const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
+  const [coords, setCoords] = React.useState({ x: EDGE_MARGIN, y: EDGE_MARGIN });
+  const [settling, setSettling] = React.useState(false);
+
+  const posRef = React.useRef<LauncherPos>({ side: "left", verticalRatio: 1 });
+  const draggingRef = React.useRef(false);
+  const movedRef = React.useRef(0);
+  const dragStartRef = React.useRef({ pointerX: 0, pointerY: 0, originX: 0, originY: 0 });
+
+  const applyPos = React.useCallback((pos: LauncherPos) => {
+    posRef.current = pos;
+    setCoords(resolvePixels(pos, getDragBounds()));
+  }, []);
+
+  React.useEffect(() => {
+    setMounted(true);
+    applyPos(loadStoredPos());
+
+    // Recalculate safely on resize / orientation change — keep the same edge +
+    // vertical fraction, just re-clamped to the new viewport (never off-screen).
+    const onViewportChange = () => applyPos(posRef.current);
+    window.addEventListener("resize", onViewportChange);
+    window.addEventListener("orientationchange", onViewportChange);
+    return () => {
+      window.removeEventListener("resize", onViewportChange);
+      window.removeEventListener("orientationchange", onViewportChange);
+    };
+  }, [applyPos]);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    draggingRef.current = true;
+    movedRef.current = 0;
+    setSettling(false);
+    dragStartRef.current = {
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      originX: coords.x,
+      originY: coords.y,
+    };
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!draggingRef.current) return;
+    const dx = e.clientX - dragStartRef.current.pointerX;
+    const dy = e.clientY - dragStartRef.current.pointerY;
+    movedRef.current = Math.max(movedRef.current, Math.hypot(dx, dy));
+    const bounds = getDragBounds();
+    setCoords({
+      x: clamp(dragStartRef.current.originX + dx, bounds.minX, bounds.maxX),
+      y: clamp(dragStartRef.current.originY + dy, bounds.minY, bounds.maxY),
+    });
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+
+    // Distinguish a click from a drag: a near-stationary press opens the Coach
+    // and leaves the position untouched (no snap needed).
+    if (movedRef.current < DRAG_THRESHOLD) {
+      open();
+      return;
+    }
+
+    // Snap horizontally to the nearest edge; keep the vertical release point.
+    const bounds = getDragBounds();
+    const centerX = coords.x + LAUNCHER_SIZE / 2;
+    const side: LauncherSide = centerX < window.innerWidth / 2 ? "left" : "right";
+    const verticalRatio =
+      bounds.maxY > bounds.minY ? clamp((coords.y - bounds.minY) / (bounds.maxY - bounds.minY), 0, 1) : 0;
+    const next: LauncherPos = { side, verticalRatio };
+    posRef.current = next;
+    savePos(next);
+    setSettling(true);
+    setCoords({ x: side === "left" ? bounds.minX : bounds.maxX, y: coords.y });
+  };
+
   if (!mounted) return null;
 
   return createPortal(
@@ -147,16 +312,30 @@ function CoachLauncher({ open, visible }: { open: () => void; visible: boolean }
         <motion.button
           key="coach-launcher"
           type="button"
-          onClick={open}
-          title="Rex Coach"
-          aria-label="Open Rex Coach"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onTransitionEnd={() => setSettling(false)}
+          title="Rex Coach — drag to move"
+          aria-label="Open Rex Coach (press and drag to reposition)"
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.85 }}
           transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.96 }}
-          className="fixed bottom-24 left-4 z-[150] flex h-14 w-14 items-center justify-center rounded-2xl bg-card p-2.5 shadow-[0_8px_28px_-6px_rgba(0,0,0,0.45)] ring-1 ring-border transition-shadow hover:shadow-[0_10px_32px_-6px_rgba(59,130,246,0.45)] hover:ring-primary/40 lg:bottom-6"
+          style={{
+            left: coords.x,
+            top: coords.y,
+            // Instant 1:1 tracking while actively dragging; a smooth ease back to
+            // the snapped edge once released.
+            transition: settling
+              ? "left 240ms cubic-bezier(0.22,1,0.36,1), top 240ms cubic-bezier(0.22,1,0.36,1)"
+              : undefined,
+            touchAction: "none", // let us own touch dragging instead of page scroll/zoom
+          }}
+          className="fixed z-[150] flex h-14 w-14 touch-none select-none items-center justify-center rounded-2xl bg-card p-2.5 shadow-[0_8px_28px_-6px_rgba(0,0,0,0.45)] ring-1 ring-border hover:shadow-[0_10px_32px_-6px_rgba(59,130,246,0.45)] hover:ring-primary/40 active:cursor-grabbing cursor-grab"
         >
           <CoachLogoMark className="h-full w-full" />
           <span className="sr-only">Open Rex Coach</span>
