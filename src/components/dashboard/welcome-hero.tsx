@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Upload, Sparkles, Zap, Infinity as InfinityIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRexCoach } from "@/components/dashboard/coach/rex-coach";
+import { useRexCoach, CoachLogoMark } from "@/components/dashboard/coach/rex-coach";
 
 interface WelcomeHeroProps {
   firstName: string;
@@ -62,7 +62,7 @@ export function WelcomeHero({
               </Link>
             </Button>
             <Button size="lg" variant="secondary" className="h-14" onClick={coach.open}>
-              <Sparkles className="h-4 w-4" />
+              <CoachLogoMark className="h-5 w-5" />
               Ask AI
             </Button>
           </div>

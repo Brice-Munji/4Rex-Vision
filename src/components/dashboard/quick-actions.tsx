@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Upload, Sparkles, BookOpen, History, ArrowRight } from "lucide-react";
+import { Upload, BookOpen, History, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useRexCoach } from "@/components/dashboard/coach/rex-coach";
+import { useRexCoach, CoachLogoMark } from "@/components/dashboard/coach/rex-coach";
 
 const actions = [
   {
@@ -17,8 +17,8 @@ const actions = [
   {
     label: "Ask AI",
     description: "Chat with Rex Coach about your activity",
-    icon: Sparkles,
-    gradient: "bg-primary/10 text-primary",
+    icon: CoachLogoMark,
+    gradient: "bg-primary/10",
     action: "coach" as const,
   },
   {

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, X, Send, Loader2, ShieldAlert, RotateCcw } from "lucide-react";
+import { X, Send, Loader2, ShieldAlert, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Msg {
@@ -15,7 +15,7 @@ interface Msg {
  * The actual 4RexVision brand mark (same asset/pattern as the global <Logo>
  * component) — never a substitute icon. Swaps automatically with the app theme.
  */
-function CoachLogoMark({ className }: { className?: string }) {
+export function CoachLogoMark({ className }: { className?: string }) {
   return (
     <span className={cn("relative inline-flex shrink-0 items-center justify-center", className)}>
       <img
@@ -453,8 +453,8 @@ function CoachModal({
             <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
               {messages.length === 0 && !sending ? (
                 <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <Sparkles className="h-6 w-6" />
+                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 p-2.5 ring-1 ring-inset ring-primary/20">
+                    <CoachLogoMark className="h-full w-full" />
                   </span>
                   <div>
                     <p className="font-semibold">Ask Rex about your trading</p>
