@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/current-user";
+import { isProActive } from "@/lib/journal/access";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { buildCoachContext } from "@/lib/coach/context";
 import { buildCoachSystemPrompt, sanitizeMessages } from "@/lib/coach/prompt";
@@ -8,13 +9,21 @@ import { chatWithRexCoach, isCoachConfigured } from "@/lib/coach/llm";
 export const dynamic = "force-dynamic";
 
 /**
- * Rex Coach chat endpoint (read-only). Authenticated users only. The user's own
- * data is loaded server-side via the user-scoped context layer and never exposed
- * directly to the browser. This route performs NO writes.
+ * Rex Coach chat endpoint (read-only). Authenticated AND active Rex Pro users
+ * only — this is the authoritative Pro gate (the client-side UI check is just
+ * UX, mirroring how /api/rex/trade-setup and /api/market/calendar enforce Pro).
+ * The user's own data is loaded server-side via the user-scoped context layer
+ * and never exposed directly to the browser. This route performs NO writes.
  */
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isProActive(user)) {
+    return NextResponse.json(
+      { error: "forbidden", message: "Rex Coach is a Rex Pro feature." },
+      { status: 403 }
+    );
+  }
 
   // Short-window anti-spam throttle (server-side).
   const ip = await clientIp();

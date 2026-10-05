@@ -64,6 +64,11 @@ export function WelcomeHero({
             <Button size="lg" variant="secondary" className="h-14" onClick={coach.open}>
               <CoachLogoMark className="h-5 w-5" />
               Ask AI
+              {!coach.isPro && (
+                <span className="ml-1.5 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                  Pro
+                </span>
+              )}
             </Button>
           </div>
         </div>

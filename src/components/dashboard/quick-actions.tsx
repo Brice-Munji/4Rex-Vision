@@ -45,6 +45,7 @@ export function QuickActions() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {actions.map((a, i) => {
+        const isCoach = a.action === "coach";
         const cardContent = (
           <>
             <div
@@ -55,7 +56,14 @@ export function QuickActions() {
             >
               <a.icon className="h-6 w-6" />
             </div>
-            <h3 className="mt-4 font-semibold">{a.label}</h3>
+            <h3 className="mt-4 flex items-center gap-2 font-semibold">
+              {a.label}
+              {isCoach && !coach.isPro && (
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+                  Pro
+                </span>
+              )}
+            </h3>
             <p className="mt-1 text-sm text-muted-foreground">{a.description}</p>
             <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               Open

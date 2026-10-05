@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Send, Loader2, ShieldAlert, RotateCcw } from "lucide-react";
+import { X, Send, Loader2, ShieldAlert, RotateCcw, Crown, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Msg {
@@ -38,6 +39,10 @@ interface CoachCtx {
   open: () => void;
   close: () => void;
   isOpen: boolean;
+  /** Rex Coach is a Rex Pro feature. Entry points use this to show a "Pro"
+   *  indicator; the modal itself uses it to decide chat vs. upgrade prompt.
+   *  The backend (/api/coach) re-checks this independently and is authoritative. */
+  isPro: boolean;
 }
 const Ctx = React.createContext<CoachCtx | null>(null);
 
@@ -55,7 +60,14 @@ const SUGGESTIONS = [
   "Any high-impact news coming up for my pairs?",
 ];
 
-export function RexCoachProvider({ children }: { children: React.ReactNode }) {
+export function RexCoachProvider({
+  children,
+  isPro,
+}: {
+  children: React.ReactNode;
+  /** Authoritative Pro status computed server-side (e.g. the (app) layout). */
+  isPro: boolean;
+}) {
   const [isOpen, setOpen] = React.useState(false);
   const [messages, setMessages] = React.useState<Msg[]>([]);
   const [sending, setSending] = React.useState(false);
@@ -87,9 +99,11 @@ export function RexCoachProvider({ children }: { children: React.ReactNode }) {
           const msg =
             res.status === 401
               ? "Your session expired — please sign in again."
-              : res.status === 429
-                ? "You're sending messages too quickly. Please wait a moment."
-                : (data?.message as string) ?? "Rex Coach is temporarily unavailable. Please try again.";
+              : res.status === 403
+                ? "Rex Coach is a Rex Pro feature — reactivate Rex Pro to continue chatting."
+                : res.status === 429
+                  ? "You're sending messages too quickly. Please wait a moment."
+                  : (data?.message as string) ?? "Rex Coach is temporarily unavailable. Please try again.";
           setError(msg);
           return;
         }
@@ -109,22 +123,30 @@ export function RexCoachProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <Ctx.Provider value={{ open, close, isOpen }}>
+    <Ctx.Provider value={{ open, close, isOpen, isPro }}>
       {children}
       {/* Global floating launcher — mounted once here, so it is automatically
           available on every authenticated page that renders under this provider
           (Dashboard, Analyze, Journal, History, Market, Growth, Billing,
           Settings, Help, …) without any per-page duplication. */}
       <CoachLauncher open={open} visible={!isOpen} />
-      <CoachModal
-        open={isOpen}
-        onClose={close}
-        messages={messages}
-        sending={sending}
-        error={error}
-        onSend={send}
-        onReset={reset}
-      />
+      {/* Rex Coach is a Rex Pro feature. Free users get the upgrade prompt
+          instead of the chat UI; the backend independently enforces this too
+          (never trust the client alone), so a lapsed Pro mid-session still
+          surfaces a clear 403 message instead of a broken chat. */}
+      {isPro ? (
+        <CoachModal
+          open={isOpen}
+          onClose={close}
+          messages={messages}
+          sending={sending}
+          error={error}
+          onSend={send}
+          onReset={reset}
+        />
+      ) : (
+        <CoachUpgradeModal open={isOpen} onClose={close} />
+      )}
     </Ctx.Provider>
   );
 }
@@ -537,6 +559,87 @@ function CoachModal({
               <p className="mt-1.5 px-1 text-[10px] text-muted-foreground">
                 Rex Coach is read-only and uses only your own 4RexVision data. Educational, not financial advice.
               </p>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body
+  );
+}
+
+/**
+ * Shown instead of the chat UI when the signed-in user isn't an active Rex Pro
+ * subscriber. Rex Coach is a Pro feature; this never exposes the chat, and the
+ * backend independently rejects any request from a non-Pro session regardless.
+ */
+function CoachUpgradeModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="coach-upgrade-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          onMouseDown={onClose}
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        >
+          <motion.div
+            key="coach-upgrade-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="coach-upgrade-title"
+            initial={{ opacity: 0, y: 24, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="relative w-full max-w-[440px] overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
+          >
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="px-7 py-8 text-center">
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Crown className="h-6 w-6" />
+              </span>
+              <h2 id="coach-upgrade-title" className="mt-4 text-lg font-semibold">
+                Rex Coach is a Rex Pro feature
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Chat with Rex about your real analyses, trades and performance — get summaries,
+                read-only insights and answers grounded in your own 4RexVision activity.
+              </p>
+              <Link
+                href="/billing"
+                className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:opacity-90"
+              >
+                Unlock with Rex Pro <ArrowUpRight className="h-4 w-4" />
+              </Link>
+              <p className="mt-3 text-xs text-muted-foreground">Included in Rex Pro • $15.99/month</p>
             </div>
           </motion.div>
         </motion.div>

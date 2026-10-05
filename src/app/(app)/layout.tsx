@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/current-user";
+import { isProActive } from "@/lib/journal/access";
 import { DashboardShell } from "@/components/dashboard/shell/dashboard-shell";
 import { CheckoutProvider } from "@/components/billing/checkout-provider";
 import { DisableAnimations } from "@/components/dashboard/disable-animations";
@@ -31,7 +32,9 @@ export default async function AppLayout({
       {/* Turn off all app animations right after login/sign-up (graphs opt out
           via the `allow-anim` class). */}
       <DisableAnimations />
-      <RexCoachProvider>
+      {/* Rex Coach is a Rex Pro feature — isPro is computed server-side here
+          (authoritative) and the backend route re-checks it independently. */}
+      <RexCoachProvider isPro={isProActive(user)}>
         <CheckoutProvider>{children}</CheckoutProvider>
       </RexCoachProvider>
     </DashboardShell>
