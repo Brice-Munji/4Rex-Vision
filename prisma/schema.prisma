@@ -170,6 +170,12 @@ model AnalysisUsage {
   confidence Int? // 0–100
   provider   String? // vision provider used, e.g. "gemini"
 
+  // Diagnostic instrumentation (additive & nullable — never gates analysis).
+  // Lets a future cross-device/incident report be verified against real data:
+  // was it really the same image, and which provider served each request.
+  requestId String? // per-analysis correlation id, also emitted in server logs
+  imageHash String? @db.VarChar(64) // SHA-256 of the exact decoded image bytes received
+
   // History record (powers the user-facing Analysis History). Additive &
   // nullable so older telemetry rows and the admin dashboard are unaffected.
   direction String? // "Bullish" | "Bearish" | "Neutral"
@@ -184,6 +190,9 @@ model AnalysisUsage {
   @@index([pair])
   // Analysis History: newest-first per user.
   @@index([userId, createdAt])
+  // Diagnostics: find every analysis of the exact same image bytes, regardless
+  // of user/device, to confirm or rule out "same screenshot, different result".
+  @@index([imageHash])
 }
 
 /// Audit trail of every privileged action taken from the super-admin dashboard.

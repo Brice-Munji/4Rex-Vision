@@ -17,6 +17,13 @@ export async function recordAnalysisEvent(params: {
   headline?: string | null;
   summary?: string | null;
   imageUrl?: string | null;
+  /** Diagnostic-only correlation id for this analysis request (see
+   * `[rex.vision]` logs). Never used for gating/scoring. */
+  requestId?: string | null;
+  /** SHA-256 of the exact decoded image bytes the vision call received.
+   * Diagnostic-only — lets a future incident confirm whether two analyses
+   * really were the same screenshot. Never the image itself. */
+  imageHash?: string | null;
 }): Promise<void> {
   try {
     await prisma.$transaction([
@@ -34,6 +41,8 @@ export async function recordAnalysisEvent(params: {
           headline: params.headline ?? null,
           summary: params.summary ?? null,
           imageUrl: params.imageUrl ?? null,
+          requestId: params.requestId ?? null,
+          imageHash: params.imageHash ?? null,
         },
       }),
       prisma.user.update({

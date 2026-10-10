@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -427,6 +428,12 @@ async function analyzeChartImpl(
     };
   }
 
+  // Diagnostic-only correlation id for this analysis request. Threaded through
+  // the vision call(s) and the persisted AnalysisUsage row so a future
+  // cross-device/incident report can be verified against real logs/data
+  // instead of guessed at. Never affects provider selection or the result.
+  const requestId = randomUUID();
+
   // STEP 1 — real image analysis + validation
   const metrics = await analyzeImage(buffer, input.sizeBytes);
   if (!metrics) {
@@ -462,7 +469,7 @@ async function analyzeChartImpl(
   // STEPS 3-11 — real multimodal Vision (OpenAI → Gemini → Anthropic), with a
   // transparent sample fallback when no provider is configured.
   const mediaType = mediaTypeFor(metrics.format);
-  const vision = await analyzeChartImage(input.base64, mediaType);
+  const vision = await analyzeChartImage(input.base64, mediaType, { requestId });
 
   // Providers are configured but the request failed. Per spec: show a soft
   // "temporarily unavailable" message — never claim the upload isn't a chart.
@@ -539,7 +546,7 @@ async function analyzeChartImpl(
     let guard = guardPrimaryPair(verdictText(activeAi), lockedSymbol);
     if (guard.violated) {
       // Reject and regenerate once with the same image.
-      const retry = await analyzeChartImage(input.base64, mediaType);
+      const retry = await analyzeChartImage(input.base64, mediaType, { requestId });
       if (retry.status === "ok" && retry.data.isTradingChart) {
         const retryNorm = normalizeInstrument(retry.data.symbol ?? retry.data.instrument);
         const g2 = guardPrimaryPair(verdictText(retry.data), lockedSymbol);
@@ -611,6 +618,8 @@ async function analyzeChartImpl(
       headline: report.headline,
       summary: report.bias.summary,
       imageUrl: thumbnail,
+      requestId,
+      imageHash: vision.status === "ok" ? vision.imageHash : null,
     });
     await notifyAnalysisSaved(gateUser.id, context.instrument);
     return {
@@ -660,6 +669,10 @@ async function analyzeChartImpl(
     headline: report.headline,
     summary: report.bias.summary,
     imageUrl: thumbnail,
+    requestId,
+    // No live provider was called in this fallback path (sample analysis),
+    // so there's no vision-call image hash to attribute.
+    imageHash: null,
   });
   await notifyAnalysisSaved(gateUser.id, report.analysisContext?.instrument ?? report.pair);
   return { status: "ok", report, metadata: buildMetadata(null, metrics), usage };

@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "crypto";
 import { readChartWithOpenAI, isOpenAIConfigured } from "./openai";
 import { readChartWithGemini, isGeminiConfigured } from "./gemini";
 import { readChartWithMistral, isMistralConfigured } from "./mistral";
@@ -82,11 +83,19 @@ function isUsableRead(d: VisionChartRead): boolean {
 
 export type VisionResult =
   /** A provider successfully read the chart. */
-  | { status: "ok"; data: VisionChartRead; provider: VisionProviderName }
+  | { status: "ok"; data: VisionChartRead; provider: VisionProviderName; imageHash: string }
   /** No provider is configured — caller may use the transparent sample fallback. */
   | { status: "no-provider" }
   /** Providers are configured but all failed — show "temporarily unavailable". */
   | { status: "unavailable"; error: string };
+
+/** Diagnostic-only context threaded through for correlation in logs/telemetry.
+ * Never affects provider selection, prompts, or the analysis result. */
+export interface AnalyzeChartImageOptions {
+  /** Caller-supplied id correlating this call (and any retry of it) across
+   * logs and the persisted AnalysisUsage row. Purely for diagnostics. */
+  requestId?: string;
+}
 
 /**
  * Analyze a chart image with the first configured provider (priority order),
@@ -95,10 +104,16 @@ export type VisionResult =
  */
 export async function analyzeChartImage(
   base64: string,
-  mediaType: MediaType
+  mediaType: MediaType,
+  opts: AnalyzeChartImageOptions = {}
 ): Promise<VisionResult> {
   const active = PROVIDERS.filter((p) => p.configured());
   if (active.length === 0) return { status: "no-provider" };
+
+  // SHA-256 of the exact decoded image bytes this call sends to the provider —
+  // diagnostic only (e.g. confirming two requests really were the same
+  // screenshot). Never logged/stored as the image itself, only its hash.
+  const imageHash = createHash("sha256").update(Buffer.from(base64, "base64")).digest("hex");
 
   const now = Date.now();
   let lastError = "Vision providers did not return a valid result.";
@@ -131,7 +146,21 @@ export async function analyzeChartImage(
           // eslint-disable-next-line no-console
           console.warn(`[rex.vision] fallback succeeded via ${provider.name} (attempt ${attempts})`);
         }
-        return { status: "ok", data, provider: provider.name };
+        // Diagnostic trace for EVERY successful analysis (the common case,
+        // previously unlogged). No image bytes, base64, or prompt content —
+        // only the hash, so a future incident can be verified against real
+        // data instead of guessed at. Mirrors the existing
+        // `[economicCalendar] news-guard evaluation` structured-log pattern.
+        // eslint-disable-next-line no-console
+        console.info(`[rex.vision] analysis ok`, {
+          timestamp: new Date().toISOString(),
+          requestId: opts.requestId ?? null,
+          provider: provider.name,
+          imageHash,
+          bias: data.bias,
+          confidence: data.biasConfidence,
+        });
+        return { status: "ok", data, provider: provider.name, imageHash };
       }
       // A returned-but-empty read (recognized nothing) is a soft failure: fall
       // through to the next provider instead of surfacing "can't recognize".

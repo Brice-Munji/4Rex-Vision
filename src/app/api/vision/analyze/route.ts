@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { evaluateAnalysisGate, consumeAnalysis } from "@/lib/usage";
@@ -66,7 +67,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unsupported_media_type" }, { status: 415 });
   }
 
-  const result = await analyzeChartImage(base64, mediaType);
+  // Diagnostic-only correlation id — see `[rex.vision]` success logs.
+  const requestId = randomUUID();
+  const result = await analyzeChartImage(base64, mediaType, { requestId });
 
   if (result.status === "no-provider") {
     return NextResponse.json(
