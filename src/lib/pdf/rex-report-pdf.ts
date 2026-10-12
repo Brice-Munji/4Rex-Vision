@@ -371,5 +371,6 @@ export async function buildRexReportPdfDoc(
     }
     if (setup.invalidationExplainer) paragraph(setup.invalidationExplainer, { size: 9, color: [70, 70, 70], gap: 4 });
     if (setup.managementNote) paragraph(setup.managementNote, { size: 9, color: [70, 70, 70], gap: 4 });
+    if (setup.higherTimeframeNote) paragraph(setup.higherTimeframeNote, { size: 9, color: [70, 70, 70], gap: 4 });
   }
 }

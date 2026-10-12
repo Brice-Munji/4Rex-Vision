@@ -52,6 +52,14 @@ export interface TradeSetupInput {
   // APA structure signals from the report:
   trend?: { direction?: string | null; strength?: string | null } | null;
   evidence?: { key?: string; label?: string; explanation?: string }[];
+  /**
+   * 1M-scalping support: optional higher-timeframe bias CONTEXT for this same
+   * pair (e.g. the user's own recent H4 read). Never required — a 1M/scalp
+   * setup is fully valid without it. When it agrees with this analysis's
+   * bias it strengthens the existing multi-timeframe confluence factor; it
+   * never sets direction and never blocks a setup on its own (Rule 3).
+   */
+  higherTimeframeContext?: { timeframe: string; bias: string | null } | null;
 }
 
 export interface DirectionalSetup {
@@ -95,6 +103,13 @@ export interface DirectionalSetup {
   managementNote: string;
   /** Lower-timeframe price-action confirmation to watch before acting (scalping). */
   lowerTimeframeConfirmation: string[];
+  /**
+   * 1M-scalping support only (set when the analysis timeframe is "M1"):
+   * states whether a higher-timeframe bias was available as context and, if
+   * so, whether it agreed. Undefined on every other timeframe — unchanged
+   * behavior/output there.
+   */
+  higherTimeframeNote?: string;
 }
 
 export interface NeutralSetup {
@@ -272,6 +287,32 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
   }
 
   const { flags, factors } = detectApa(input);
+
+  // ── 1M SCALPING: HIGHER-TIMEFRAME CONTEXT (optional, Rule 3 preserved) ───
+  // CONTEXT only — a 1M/scalping setup is fully valid without it, and it
+  // never sets direction (that stays the main analysis bias) and never
+  // blocks a setup. When it's directionally available and agrees with this
+  // analysis, it folds into the SAME multi-timeframe confluence factor real
+  // APA evidence already contributes to — no new scoring path. The resulting
+  // note is only populated for a 1M analysis (every other timeframe's output
+  // is unchanged).
+  const isScalpingTimeframe = input.timeframe === "M1";
+  const htf = input.higherTimeframeContext ?? null;
+  const htfBias = htf ? normalizeBias(htf.bias) : null;
+  const htfAgrees = htf != null && htfBias !== "Neutral" && htfBias === bias;
+  if (htfAgrees && !flags.mtf) {
+    flags.mtf = true;
+    factors.push("Multi-timeframe agreement");
+  }
+  const higherTimeframeNote = !isScalpingTimeframe
+    ? undefined
+    : !htf
+      ? "Higher-timeframe context unavailable — this setup is based solely on the uploaded 1-minute chart's own structure. For added confidence, check a higher timeframe (e.g. H1/H4) before sizing risk."
+      : htfBias === "Neutral"
+        ? `Higher-timeframe context: ${htf.timeframe} bias is Neutral — no higher-timeframe confirmation either way.`
+        : htfAgrees
+          ? `Higher-timeframe context: ${htf.timeframe} bias agrees (${htfBias}), adding multi-timeframe confluence.`
+          : `Higher-timeframe context: ${htf.timeframe} bias is ${htfBias}, which CONFLICTS with this 1-minute analysis. Treat this as a short-term tactical setup only and size risk accordingly.`;
 
   const levelStr = (t: string) =>
     input.priceLevels.find((l) => l.type === t)?.value ?? null;
@@ -548,8 +589,25 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
     `Target 1 as a logical partial-profit area.`;
 
   // Lower-timeframe confirmation for scalping (Rule 4 + Rule 5 — conditions, not commands).
-  const lowerTimeframeConfirmation =
-    dir > 0
+  // A 1-minute chart IS already the lowest common timeframe, so telling a 1M
+  // trader to "drop to a lower timeframe" doesn't make sense — immediate
+  // candle-by-candle confirmation on the same chart replaces that instruction.
+  // Every other timeframe's wording is unchanged.
+  const lowerTimeframeConfirmation = isScalpingTimeframe
+    ? dir > 0
+      ? [
+          "This is already the 1-minute chart — wait for the NEXT 1-3 candles to confirm before acting; do not act on the first touch of the zone.",
+          "Look for a bullish rejection (wick/pin or bullish engulfing) off the demand/support zone on this same 1-minute structure.",
+          "Look for a 1-minute bullish CHoCH or BOS (price breaking a recent minor lower-high) confirming structure is shifting up.",
+          "A successful retest that holds above the reclaimed level is added confirmation for continuation.",
+        ]
+      : [
+          "This is already the 1-minute chart — wait for the NEXT 1-3 candles to confirm before acting; do not act on the first touch of the zone.",
+          "Look for a bearish rejection (wick/pin or bearish engulfing) off the supply/resistance zone on this same 1-minute structure.",
+          "Look for a 1-minute bearish CHoCH or BOS (price breaking a recent minor higher-low) confirming structure is shifting down.",
+          "A failed retest that rejects below the reclaimed level is added confirmation for continuation.",
+        ]
+    : dir > 0
       ? [
           "Drop to a lower timeframe (e.g. 1m/5m) as price taps the entry zone and wait for BULLISH confirmation before acting — do not enter on the first touch.",
           "Look for a bullish rejection (wick/pin or bullish engulfing) off the demand/support zone.",
@@ -592,5 +650,6 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
     invalidationExplainer,
     managementNote,
     lowerTimeframeConfirmation,
+    higherTimeframeNote,
   };
 }

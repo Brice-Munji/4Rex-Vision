@@ -22,6 +22,7 @@ import {
   type VisionChartRead,
 } from "@/lib/rex/vision-providers";
 import { getEconomicContext } from "@/lib/rex/economic";
+import { getHigherTimeframeContext } from "@/lib/rex/history";
 import { recordAnalysisEvent } from "@/lib/admin/telemetry";
 import { notifyAnalysisSaved } from "@/lib/notifications/service";
 import { normalizeInstrument, unsupportedReason } from "@/lib/rex/instruments";
@@ -241,7 +242,8 @@ function buildReportFromAI(
   context: AnalysisContext,
   correlation: CorrelationCheck | undefined,
   flags: ConfidenceFlags,
-  correctionNote?: string
+  correctionNote?: string,
+  higherTimeframeContext?: RexReport["higherTimeframeContext"]
 ): RexReport {
   const rawOverall = clamp(
     ai.confidence.length
@@ -278,6 +280,7 @@ function buildReportFromAI(
     analysisContext: context,
     correlation,
     confidenceNote,
+    higherTimeframeContext: higherTimeframeContext ?? null,
     aiPowered: true,
     chartSource: ai.platform,
     currentPrice: context.currentPrice ?? ai.currentPrice,
@@ -574,6 +577,16 @@ async function analyzeChartImpl(
 
     const economic = await getEconomicContext(lockedInstrument);
 
+    // ── 1M SCALPING: HIGHER-TIMEFRAME CONTEXT (optional, never required) ───
+    // For a 1-minute analysis, surface the user's own recent higher-timeframe
+    // read of the same pair (if any) as CONTEXT — never a required extra
+    // upload. When none exists, this stays null and the Trade Setup clearly
+    // labels that limitation instead of silently assuming agreement.
+    const higherTimeframeContext =
+      context.timeframeKnown && context.timeframe === "M1"
+        ? await getHigherTimeframeContext(gateUser.id, context.symbol, context.timeframe)
+        : null;
+
     // ── CONFIDENCE RULE — reduce on weak / conflicting setups ──────────────
     const flags: ConfidenceFlags = {
       lowExtraction: instrumentConfidence < 70,
@@ -603,7 +616,8 @@ async function analyzeChartImpl(
       context,
       correlation.correlated.length ? correlation : undefined,
       flags,
-      correctionNote
+      correctionNote,
+      higherTimeframeContext
     );
 
     // Additive usage telemetry + Analysis History record (never gates analysis).

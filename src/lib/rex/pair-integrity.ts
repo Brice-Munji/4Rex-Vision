@@ -51,6 +51,24 @@ export function displayTimeframe(
   return TF_DISPLAY[tf] ?? tf;
 }
 
+/** Canonical timeframe order, finest-first — used to rank "is this a higher
+ *  (coarser) timeframe than that one" for optional multi-timeframe context
+ *  (e.g. surfacing a user's recent H4 read as context for a 1M scalp). */
+export const TIMEFRAME_RANK: readonly string[] = [
+  "M1", "M5", "M15", "M30", "H1", "H4", "Daily", "Weekly", "Monthly",
+];
+
+/** True when `tf` is strictly a higher (coarser) timeframe than `than`. */
+export function isHigherTimeframe(
+  tf: string | null | undefined,
+  than: string | null | undefined
+): boolean {
+  if (!tf || !than) return false;
+  const a = TIMEFRAME_RANK.indexOf(tf);
+  const b = TIMEFRAME_RANK.indexOf(than);
+  return a >= 0 && b >= 0 && a > b;
+}
+
 /* --------------------------- Strict validation --------------------------- */
 
 export interface PairExtractionInput {

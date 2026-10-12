@@ -41,6 +41,20 @@ export async function POST(req: Request) {
       newsGuard: guard,
       trend: body.trend ?? null,
       evidence: Array.isArray(body.evidence) ? body.evidence : [],
+      // 1M scalping support — optional higher-timeframe bias context (never
+      // required; loosely validated since it's purely informational/additive).
+      higherTimeframeContext:
+        body.higherTimeframeContext &&
+        typeof body.higherTimeframeContext === "object" &&
+        typeof body.higherTimeframeContext.timeframe === "string"
+          ? {
+              timeframe: body.higherTimeframeContext.timeframe,
+              bias:
+                typeof body.higherTimeframeContext.bias === "string"
+                  ? body.higherTimeframeContext.bias
+                  : null,
+            }
+          : null,
     });
 
     return NextResponse.json({ setup }, { headers: { "Cache-Control": "no-store" } });

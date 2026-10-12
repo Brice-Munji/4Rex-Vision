@@ -243,6 +243,21 @@ export interface CorrelationCheck {
 
 /* -------------------------------- Report --------------------------------- */
 
+/**
+ * Optional higher-timeframe (H1+) bias context for a lower-timeframe analysis
+ * (e.g. a 1M scalp) — sourced from the user's OWN recent analysis history of
+ * the SAME pair, never a required extra chart upload. Absent whenever no
+ * recent higher-timeframe read exists; callers must label that limitation
+ * rather than silently assuming agreement.
+ */
+export interface HigherTimeframeContext {
+  timeframe: Timeframe;
+  bias: MarketBias | null;
+  confidence: number | null;
+  /** How long ago that higher-timeframe analysis was run. */
+  ageMinutes: number;
+}
+
 export interface RexReport {
   id: string;
   pair: string;
@@ -256,6 +271,10 @@ export interface RexReport {
   correlation?: CorrelationCheck;
   /** P0 — explanation shown when the confidence rule reduced the score. */
   confidenceNote?: string;
+  /** 1M scalping support — the user's own recent higher-timeframe bias for
+   *  this pair, when one exists. Context only; never required and never a
+   *  substitute for this analysis's own structure. */
+  higherTimeframeContext?: HigherTimeframeContext | null;
 
   /** True when produced by the live Anthropic vision model. */
   aiPowered: boolean;

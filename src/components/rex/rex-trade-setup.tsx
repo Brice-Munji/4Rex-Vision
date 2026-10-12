@@ -65,6 +65,15 @@ function buildInput(report: RexReportType): TradeSetupInput {
       label: e.label,
       explanation: e.explanation,
     })),
+    // 1M scalping support — the user's own recent higher-timeframe bias for
+    // this pair, when the analysis found one. Context only; absent (null) is
+    // expected and handled on most analyses (only ever populated for M1).
+    higherTimeframeContext: report.higherTimeframeContext
+      ? {
+          timeframe: report.higherTimeframeContext.timeframe,
+          bias: report.higherTimeframeContext.bias,
+        }
+      : null,
   };
 }
 
@@ -497,6 +506,18 @@ function DirectionalBody({ setup }: { setup: DirectionalSetup }) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* 1M scalping support — higher-timeframe context (available or not) */}
+      {setup.higherTimeframeNote && (
+        <div className={cn("rounded-2xl p-4", PANEL)}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A3A3A3]">
+            Higher-timeframe context
+          </p>
+          <p className="mt-2 text-[12px] leading-relaxed text-[#F5F5F5]">
+            {setup.higherTimeframeNote}
+          </p>
         </div>
       )}
 

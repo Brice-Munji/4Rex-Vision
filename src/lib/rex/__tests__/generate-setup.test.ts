@@ -8,7 +8,7 @@
  * only inside that window, and the 1:2 R:R + "no valid setup" rules hold.
  * Fixed `now`/timestamps — never Date.now()/browser time.
  */
-import { buildTradeSetup } from "../trade-setup";
+import { buildTradeSetup, MIN_RR } from "../trade-setup";
 import { evaluateNewsGuard } from "@/lib/economicCalendar/blocking";
 import type { NormalizedEvent } from "@/lib/economicCalendar/types";
 
@@ -121,6 +121,137 @@ check("8 no valid events → not blocked", buildTradeSetup({ ...validApa("GBPUSD
 // XAU relevance (extra): USD blocks, EUR doesn't
 check("X XAUUSD + USD High 10m → blocked", buildTradeSetup({ ...validApa("XAUUSD"), newsGuard: guard([evt("USD", "High", 10)], "XAUUSD") }).kind === "blocked");
 check("X XAUUSD + EUR High 10m → generated", buildTradeSetup({ ...validApa("XAUUSD"), newsGuard: guard([evt("EUR", "High", 10)], "XAUUSD") }).kind === "directional");
+
+/* ── 1M Scalping support ──────────────────────────────────────────────────
+ * The APA engine (buildTradeSetup) never reads `timeframe` for its structural
+ * math — it's already timeframe-agnostic. These tests confirm that holds for
+ * "M1", that the 1:2 R:R / anti-chase / news-calendar rules are unaffected,
+ * and that the new (optional, M1-only) higher-timeframe-context labeling
+ * behaves correctly whether that context is available, absent, or conflicting.
+ */
+
+// 1M-A. Valid APA structure at M1 → a real scalping setup is generated, with
+// 1M-specific (not "drop to a lower timeframe") confirmation wording.
+{
+  const s = buildTradeSetup({ ...validApa("EURUSD"), timeframe: "M1", newsGuard: guard([], "EURUSD") });
+  check("1M-A valid M1 structure → generated", s.kind === "directional");
+  if (s.kind === "directional") {
+    check(
+      "1M-A confirmation wording is 1-minute-aware (no 'drop to a lower timeframe')",
+      s.lowerTimeframeConfirmation.some((c) => /already the 1-minute chart/i.test(c)) &&
+        !s.lowerTimeframeConfirmation.some((c) => /drop to a lower timeframe/i.test(c))
+    );
+    check("1M-A R:R still ≥ 1:2 at M1", s.rr1 >= MIN_RR);
+  }
+}
+
+// 1M-B. Missing/weak confirmation at M1 (minimal APA confluence, no real
+// confirmation/BOS/MTF signal) → NO VALID SETUP, even though R:R and
+// structure gates alone would otherwise pass. Also carries a Medium-impact
+// news item to prove news stays a risk WARNING (qNews only), never a block.
+{
+  const s = buildTradeSetup({
+    pair: "EURUSD",
+    timeframe: "M1",
+    bias: "Bullish",
+    confidence: 55,
+    currentPrice: "1.09200",
+    priceLevels: [
+      { type: "Entry", value: "1.09200" },
+      { type: "Resistance", value: "1.09151" },
+      { type: "Take Profit", value: "1.09265" },
+    ],
+    trend: { direction: "Sideways", strength: "Weak" },
+    evidence: [{ label: "Note", explanation: "momentum building near a minor support trendline" }],
+    newsGuard: guard([evt("USD", "Medium", 10)], "EURUSD"),
+  });
+  check("1M-B weak confirmation → none", s.kind === "none");
+  check(
+    "1M-B not blocked by the Medium news (warning only)",
+    s.kind !== "blocked" && guard([evt("USD", "Medium", 10)], "EURUSD").state !== "blocked"
+  );
+}
+
+// 1M-C. Invalid risk/reward at M1 (identical ratios to the H1 R:R-fail case
+// above, just relabeled M1) → the 1:2 minimum is enforced the same regardless
+// of timeframe.
+check(
+  "1M-C R:R < 1:2 at M1 → none",
+  buildTradeSetup({
+    pair: "EURUSD", timeframe: "M1", bias: "Bullish", confidence: 70, currentPrice: "1.2705",
+    priceLevels: [{ type: "Support", value: "1.2700" }, { type: "Entry", value: "1.2710" }, { type: "Resistance", value: "1.2718" }, { type: "Take Profit", value: "1.2720" }, { type: "Invalidation", value: "1.2680" }],
+    trend: { direction: "Uptrend", strength: "Strong" }, evidence: [{ label: "BOS", explanation: "bos HH HL demand liquidity" }],
+    newsGuard: guard([], "EURUSD"),
+  }).kind === "none"
+);
+
+// 1M-D. Anti-chase still applies at M1 (same math as the H1 case above).
+check(
+  "1M-D overextended past T1 at M1 → none (chase)",
+  buildTradeSetup({
+    pair: "EURUSD", timeframe: "M1", bias: "Bearish", confidence: 78, currentPrice: "1.0740",
+    priceLevels: [
+      { type: "Resistance", value: "1.0990" }, { type: "Support", value: "1.0760" },
+      { type: "Entry", value: "1.0980" }, { type: "Take Profit", value: "1.0700" },
+      { type: "Invalidation", value: "1.1010" },
+    ],
+    trend: { direction: "Downtrend", strength: "Strong" },
+    evidence: [{ label: "CHOCH", explanation: "lower highs supply rejection bos liquidity" }],
+    newsGuard: guard([], "EURUSD"),
+  }).kind === "none"
+);
+
+// 1M-E. Higher-timeframe context UNAVAILABLE (no upload required) → clearly
+// labeled as such, setup still generates (never required, never forced/blocked).
+{
+  const s = buildTradeSetup({ ...validApa("EURUSD"), timeframe: "M1", newsGuard: guard([], "EURUSD") });
+  check("1M-E generated without HTF context", s.kind === "directional");
+  if (s.kind === "directional") {
+    check(
+      "1M-E HTF note clearly labels 'unavailable'",
+      !!s.higherTimeframeNote && /unavailable/i.test(s.higherTimeframeNote)
+    );
+  }
+}
+
+// 1M-F. Higher-timeframe context AVAILABLE + agrees → used as context (folds
+// into multi-timeframe confluence) but still never required/blocking.
+{
+  const s = buildTradeSetup({
+    ...validApa("EURUSD"), timeframe: "M1", newsGuard: guard([], "EURUSD"),
+    higherTimeframeContext: { timeframe: "H4", bias: "Bullish" },
+  });
+  check("1M-F generated with agreeing HTF context", s.kind === "directional");
+  if (s.kind === "directional") {
+    check("1M-F HTF note reports agreement", !!s.higherTimeframeNote && /agrees/i.test(s.higherTimeframeNote));
+    check("1M-F confluence includes multi-timeframe agreement", s.confluence.includes("Multi-timeframe agreement"));
+  }
+}
+
+// 1M-G. Higher-timeframe context AVAILABLE but CONFLICTS → labeled as a
+// conflict, but direction still follows the uploaded 1M analysis only (Rule
+// 3 — HTF context never sets direction) and the setup is NOT blocked.
+{
+  const s = buildTradeSetup({
+    ...validApa("EURUSD"), timeframe: "M1", newsGuard: guard([], "EURUSD"),
+    higherTimeframeContext: { timeframe: "H4", bias: "Bearish" },
+  });
+  check("1M-G still generated (never forced/blocked by conflicting HTF)", s.kind === "directional");
+  if (s.kind === "directional") {
+    check("1M-G direction unchanged by conflicting HTF", s.bias === "Bullish");
+    check("1M-G HTF note reports the conflict", !!s.higherTimeframeNote && /conflict/i.test(s.higherTimeframeNote));
+  }
+}
+
+// 1M-H. Non-M1 timeframes are unaffected: no higherTimeframeNote field at all,
+// even when higherTimeframeContext is supplied (feature scoped to M1 only).
+{
+  const s = buildTradeSetup({
+    ...validApa("EURUSD"), newsGuard: guard([], "EURUSD"), // timeframe stays "H1" from validApa
+    higherTimeframeContext: { timeframe: "Daily", bias: "Bullish" },
+  });
+  check("1M-H H1 setup unaffected by HTF-context feature", s.kind === "directional" && s.higherTimeframeNote === undefined);
+}
 
 const total = passed + failures.length;
 // eslint-disable-next-line no-console
