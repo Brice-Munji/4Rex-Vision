@@ -122,7 +122,7 @@ export function RexReport({
           </div>
 
           <div className="flex shrink-0 flex-wrap gap-2">
-            <SaveToJournalButton report={report} plan={plan} />
+            <SaveToJournalButton report={report} plan={plan} tradeSetup={tradeSetup} />
             <Button
               variant="secondary"
               size="sm"

@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { RexReport as RexReportType } from "@/lib/rex/types";
 import type { Plan } from "@prisma/client";
+import type { TradeSetupResult } from "@/lib/rex/trade-setup";
 import { JOURNAL_TAGS, type NewsRisk } from "@/lib/journal/constants";
 
 /* ── Fixed premium dark palette (the modal is always a dark trading surface,
@@ -35,18 +36,77 @@ function parseNum(v: string | null | undefined): number | null {
   return isFinite(n) ? n : null;
 }
 
-/** Auto-imported fields pulled straight from the analysis report. */
-function importFromReport(report: RexReportType) {
+export interface ImportedTradeFields {
+  pair: string;
+  timeframe: string | null;
+  direction: string | null;
+  confidence: number | null;
+  entryPrice: number | null;
+  stopLoss: number | null;
+  takeProfit: number | null;
+  /** The structural invalidation ZONE string (e.g. "4169.410 – 4170.590"),
+   *  present only when a validated setup backs these numbers — the numeric
+   *  `stopLoss` above is that zone's center, not an exact stop (same
+   *  convention as the Rex Trade Setup modal's own save path). */
+  invalidationZone: string | null;
+  /**
+   * "validated-setup" — entry/stopLoss/takeProfit came from a generated,
+   * APA-validated `DirectionalSetup` (1:2 R:R, anti-chase, confluence gates
+   * already applied) — the SAME numbers the Rex Trade Setup modal would save.
+   * "raw-levels" — no validated setup exists yet; these are the chart's own
+   * unvalidated Entry/Invalidation/Take Profit price levels, shown so a user
+   * can still journal the analysis itself (legitimate analysis-only use),
+   * but they must never be presented as an APA-validated trade plan.
+   */
+  source: "validated-setup" | "raw-levels";
+}
+
+/**
+ * Auto-imported trade fields for the journal. When a validated
+ * `DirectionalSetup` has already been generated for this report (via the Rex
+ * Trade Setup card/modal), its entry/invalidation/target-1 numbers are reused
+ * verbatim — the SAME values that setup's own "Save to Smart Journal" button
+ * saves — so both save paths are always consistent and neither bypasses the
+ * APA engine's 1:2 R:R / anti-chase / confluence validation. Only when no
+ * validated setup exists does this fall back to the chart's raw price
+ * levels, clearly flagged via `source` so the UI never implies those raw
+ * numbers were validated.
+ */
+export function importFromReport(
+  report: RexReportType,
+  tradeSetup?: TradeSetupResult | null
+): ImportedTradeFields {
+  const pair = report.analysisContext?.instrument ?? report.pair;
+  const timeframe = report.timeframe;
+  const direction = report.bias?.bias ?? null;
+  const confidence = report.overallConfidence ?? null;
+
+  if (tradeSetup?.kind === "directional") {
+    return {
+      pair,
+      timeframe,
+      direction,
+      confidence,
+      entryPrice: tradeSetup.entryMid,
+      stopLoss: tradeSetup.invalidationMid,
+      takeProfit: tradeSetup.target1Mid,
+      invalidationZone: tradeSetup.invalidationZone,
+      source: "validated-setup",
+    };
+  }
+
   const levels = report.priceLevels ?? [];
   const find = (t: string) => levels.find((l) => l.type === t)?.value ?? null;
   return {
-    pair: report.analysisContext?.instrument ?? report.pair,
-    timeframe: report.timeframe,
-    direction: report.bias?.bias ?? null,
-    confidence: report.overallConfidence ?? null,
+    pair,
+    timeframe,
+    direction,
+    confidence,
     entryPrice: parseNum(find("Entry")),
     stopLoss: parseNum(find("Invalidation")),
     takeProfit: parseNum(find("Take Profit")),
+    invalidationZone: null,
+    source: "raw-levels",
   };
 }
 
@@ -62,9 +122,16 @@ function deriveNewsRisk(report: RexReportType): NewsRisk | null {
 export function SaveToJournalButton({
   report,
   plan,
+  tradeSetup,
 }: {
   report: RexReportType;
   plan?: Plan;
+  /** The last generated Rex Trade Setup for this report, when one exists
+   *  (lifted from the same state the Rex Trade Setup card/modal populates).
+   *  Passing it lets this button reuse the validated entry/SL/TP instead of
+   *  re-deriving them from raw chart levels. Safe to omit — falls back to
+   *  the raw-levels path, unchanged. */
+  tradeSetup?: TradeSetupResult | null;
 }) {
   const [open, setOpen] = React.useState(false);
   const isPro = plan === "PROFESSIONAL" || plan === "ENTERPRISE";
@@ -80,7 +147,7 @@ export function SaveToJournalButton({
         Save to Smart Journal
       </button>
       {isPro ? (
-        <SaveModal open={open} report={report} onClose={close} />
+        <SaveModal open={open} report={report} tradeSetup={tradeSetup} onClose={close} />
       ) : (
         <UpgradeModal open={open} onClose={close} />
       )}
@@ -93,14 +160,16 @@ export function SaveToJournalButton({
 function SaveModal({
   open,
   report,
+  tradeSetup,
   onClose,
 }: {
   open: boolean;
   report: RexReportType;
+  tradeSetup?: TradeSetupResult | null;
   onClose: () => void;
 }) {
   const router = useRouter();
-  const imported = React.useMemo(() => importFromReport(report), [report]);
+  const imported = React.useMemo(() => importFromReport(report, tradeSetup), [report, tradeSetup]);
   const newsRisk = React.useMemo(() => deriveNewsRisk(report), [report]);
   const [lotSize, setLotSize] = React.useState("");
   const [riskAmount, setRiskAmount] = React.useState("");
@@ -174,9 +243,27 @@ function SaveModal({
                 value={imported.confidence != null ? `${imported.confidence}%` : null}
               />
               <Imp label="Entry" value={imported.entryPrice} />
-              <Imp label="Stop loss" value={imported.stopLoss} />
+              <Imp
+                label="Stop loss"
+                value={imported.stopLoss}
+                hint={imported.invalidationZone ? `Zone: ${imported.invalidationZone}` : undefined}
+              />
               <Imp label="Take profit" value={imported.takeProfit} />
             </div>
+            {imported.source === "validated-setup" ? (
+              <p className="mt-3 text-[11px] leading-relaxed text-emerald-400/90">
+                Entry, stop loss and take profit are from your validated Rex Trade Setup (1:2+
+                R:R and anti-chase already checked) — the same values its own save uses.
+              </p>
+            ) : (
+              imported.entryPrice != null && (
+                <p className="mt-3 text-[11px] leading-relaxed text-amber-400/90">
+                  These are the chart&apos;s raw price levels — Rex hasn&apos;t validated them as a
+                  trade setup (no R:R or anti-chase check). Generate a Rex Trade Setup above for a
+                  validated entry, stop loss and take profit.
+                </p>
+              )
+            )}
           </div>
         </section>
 
@@ -432,17 +519,24 @@ function Imp({
   label,
   value,
   tone,
+  hint,
 }: {
   label: string;
   value: React.ReactNode;
   tone?: string;
+  /** Small muted caption shown under the value, e.g. the structural zone a
+   *  validated stop-loss number is the center of. */
+  hint?: string;
 }) {
   const empty = value === null || value === undefined || value === "";
   return (
     <div className="flex items-center justify-between gap-3">
       <span className={cn("text-sm", MUTED)}>{label}</span>
-      <span className={cn("text-right text-sm font-semibold", empty ? "text-[#565656]" : tone ?? TEXT)}>
-        {empty ? "—" : value}
+      <span className="flex flex-col items-end">
+        <span className={cn("text-right text-sm font-semibold", empty ? "text-[#565656]" : tone ?? TEXT)}>
+          {empty ? "—" : value}
+        </span>
+        {!empty && hint && <span className="text-[10px] text-[#7A7A7A]">{hint}</span>}
       </span>
     </div>
   );
