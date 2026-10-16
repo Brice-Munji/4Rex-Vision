@@ -117,6 +117,35 @@ check("13 unavailable + blockWhenUnavailable → blocked", guard([], "GBPUSD", "
 // Bonus: impact mapping table
 check("impact High/Medium/Low/Holiday", normalizeImpact("High") === "High" && normalizeImpact("Medium") === "Medium" && normalizeImpact("Low") === "Low" && normalizeImpact("Holiday") === "Non-Economic");
 
+// 15. NewsGuard shape contract — src/app/api/rex/trade-setup/route.ts's
+// diagnostic logger (logNewsGuard) reads state/currency/risk/minutesUntil/
+// event directly off the guard for EVERY attempt (clear, blocked,
+// unavailable). That route can't be unit-tested directly (it transitively
+// imports "server-only"), so this guards the one thing that could silently
+// break its logging: evaluateNewsGuard must always return these keys,
+// across all three states, so the log never reads `undefined`.
+{
+  const hasLoggedShape = (g: ReturnType<typeof evaluateNewsGuard>) =>
+    "state" in g && "currency" in g && "risk" in g && "minutesUntil" in g && "event" in g;
+
+  const blocked = guard([evt("USD", "High", 10)], "GBPUSD");
+  check("15 blocked guard has the logged shape", hasLoggedShape(blocked));
+  check("15 blocked guard state", blocked.state === "blocked");
+  check("15 blocked guard currency populated", blocked.currency === "USD");
+  check("15 blocked guard risk populated", blocked.risk === "High");
+  check("15 blocked guard minutesUntil populated", blocked.minutesUntil === 10);
+
+  const clear = guard([], "GBPUSD");
+  check("15 clear guard has the logged shape", hasLoggedShape(clear));
+  check("15 clear guard state", clear.state === "clear");
+
+  const unavailable = guard([], "GBPUSD", "unavailable");
+  check("15 unavailable guard has the logged shape", hasLoggedShape(unavailable));
+  check("15 unavailable guard state", unavailable.state === "unavailable");
+  check("15 unavailable guard currency is null, not undefined", unavailable.currency === null);
+  check("15 unavailable guard minutesUntil is null, not undefined", unavailable.minutesUntil === null);
+}
+
 const total = passed + failures.length;
 // eslint-disable-next-line no-console
 console.log(`\nEconomic Calendar tests: ${passed}/${total} passed`);

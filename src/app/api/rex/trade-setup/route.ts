@@ -2,8 +2,32 @@ import { NextResponse } from "next/server";
 import { getMarketAccess } from "@/lib/market/access";
 import { buildTradeSetup, type TradeSetupInput } from "@/lib/rex/trade-setup";
 import { getNewsGuardForPair } from "@/lib/economicCalendar/service";
+import type { NewsGuard } from "@/lib/economicCalendar/blocking";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Diagnostic-only trace of the server-computed news guard for EVERY
+ * setup-generation attempt (clear, blocked, and unavailable alike) — closes
+ * the evidence gap found when diagnosing whether setups respect economic
+ * news: previously nothing was logged at this route for a successful or
+ * blocked attempt, only on an unhandled exception. No secrets or
+ * user-identifying data (no user id/email) — only the pair, the guard's own
+ * state, and whatever relevant-event info the guard already carries.
+ */
+function logNewsGuard(pair: string, guard: NewsGuard, requestId: string | null) {
+  // eslint-disable-next-line no-console
+  console.info("[rex.trade-setup] news-guard", {
+    timestamp: new Date().toISOString(),
+    requestId,
+    pair,
+    guardState: guard.state,
+    eventCurrency: guard.currency,
+    eventImpact: guard.risk,
+    minutesUntilEvent: guard.minutesUntil,
+    event: guard.event,
+  });
+}
 
 /**
  * Generate a Rex Trade Setup from a completed analysis. Rex Pro only — this is
@@ -20,6 +44,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
 
+  // Correlation id — ONLY if the caller already supplied one; never fabricated.
+  const requestId = req.headers.get("x-request-id") ?? req.headers.get("x-correlation-id") ?? null;
+
   try {
     // ── ECONOMIC-CALENDAR SAFETY GUARD (server-side authority) ───────────────
     // Compute the news-timing guard from the provider-agnostic economic calendar
@@ -28,6 +55,9 @@ export async function POST(req: Request) {
     // A calendar outage resolves to "unavailable" inside the service (never
     // throws), so it can never silently block a setup.
     const { guard } = await getNewsGuardForPair(body.pair);
+    // Trace EVERY attempt (clear/blocked/unavailable) — diagnostic only, never
+    // affects filtering/fail-open behavior below.
+    logNewsGuard(body.pair, guard, requestId);
 
     const setup = buildTradeSetup({
       pair: body.pair,
