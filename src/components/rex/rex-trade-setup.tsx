@@ -38,6 +38,27 @@ import {
   type DirectionalSetup,
   type NeutralSetup,
 } from "@/lib/rex/trade-setup";
+import {
+  computePositionSize,
+  DEFAULT_RISK_PERCENT,
+  type PositionSizeResult,
+} from "@/lib/rex/position-size";
+
+/**
+ * Presentation-only status label over the EXISTING TradeSetupResult.kind —
+ * no new APA/setup logic, just a clearer READY / WAITING / NO SETUP framing
+ * for the scalping results UI.
+ */
+function setupStatusLabel(kind: TradeSetupResult["kind"]): "READY" | "WAITING" | "NO SETUP" {
+  if (kind === "directional") return "READY";
+  if (kind === "neutral") return "WAITING";
+  return "NO SETUP"; // "none" | "blocked"
+}
+const STATUS_META: Record<"READY" | "WAITING" | "NO SETUP", string> = {
+  READY: "border-emerald-500/40 bg-emerald-500/15 text-emerald-400",
+  WAITING: "border-amber-500/40 bg-amber-500/15 text-amber-400",
+  "NO SETUP": "border-[#2a2a2a] bg-[#161616] text-[#A3A3A3]",
+};
 
 /* Fixed premium dark palette — the modal is always a dark trading surface,
    independent of the app's light/dark theme (matches Save to Smart Journal). */
@@ -316,6 +337,17 @@ function SetupModal({
           </div>
         )}
 
+        {setup && (
+          <span
+            className={cn(
+              "mb-4 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide",
+              STATUS_META[setupStatusLabel(setup.kind)]
+            )}
+          >
+            {setupStatusLabel(setup.kind)}
+          </span>
+        )}
+
         {setup && setup.kind === "blocked" && (
           <div className="space-y-4">
             <div className="flex flex-col items-center gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/[0.08] px-5 py-8 text-center">
@@ -346,7 +378,9 @@ function SetupModal({
         )}
 
         {setup && setup.kind === "neutral" && <NeutralBody setup={setup} />}
-        {setup && setup.kind === "directional" && <DirectionalBody setup={setup} />}
+        {setup && setup.kind === "directional" && (
+          <DirectionalBody setup={setup} pair={report.analysisContext?.instrument ?? report.pair} />
+        )}
       </div>
 
       {/* Footer */}
@@ -423,7 +457,7 @@ function NewsWarning({ level }: { level: SetupNewsRisk }) {
   );
 }
 
-function DirectionalBody({ setup }: { setup: DirectionalSetup }) {
+function DirectionalBody({ setup, pair }: { setup: DirectionalSetup; pair: string }) {
   const bias = BIAS_META[setup.bias];
   const BiasIcon = bias.icon;
   return (
@@ -449,6 +483,9 @@ function DirectionalBody({ setup }: { setup: DirectionalSetup }) {
       <div className="space-y-1">
         <p className="text-xs font-medium text-[#A3A3A3]">{setup.setupType}</p>
         <p className="text-xs text-[#7A7A7A]">News: {setup.newsStatus}</p>
+        {setup.estimatedHoldingHorizon && (
+          <p className="text-xs text-[#7A7A7A]">{setup.estimatedHoldingHorizon}</p>
+        )}
       </div>
 
       {/* Zones */}
@@ -538,6 +575,82 @@ function DirectionalBody({ setup }: { setup: DirectionalSetup }) {
             ))}
           </div>
           <p className="mt-3 text-[12px] leading-relaxed text-[#A3A3A3]">{setup.rationale}</p>
+        </div>
+      )}
+
+      {/* Account risk — position sizing against THIS setup's own validated
+          entry/invalidation. User-supplied balance/risk % only; never
+          invented. */}
+      <PositionSizeCalculator pair={pair} entryMid={setup.entryMid} invalidationMid={setup.invalidationMid} />
+    </div>
+  );
+}
+
+/** Account-risk position sizing for the current validated setup. Balance and
+ *  risk % are user inputs only (default 0.5% risk) — never chart data. */
+function PositionSizeCalculator({
+  pair,
+  entryMid,
+  invalidationMid,
+}: {
+  pair: string;
+  entryMid: number;
+  invalidationMid: number;
+}) {
+  const [balance, setBalance] = React.useState("");
+  const [riskPercent, setRiskPercent] = React.useState(String(DEFAULT_RISK_PERCENT));
+
+  const result: PositionSizeResult | null = React.useMemo(() => {
+    const bal = parseFloat(balance);
+    const risk = parseFloat(riskPercent);
+    if (!isFinite(bal) || bal <= 0) return null;
+    return computePositionSize({
+      pair,
+      accountBalance: bal,
+      riskPercent: isFinite(risk) ? risk : undefined,
+      entryPrice: entryMid,
+      invalidationPrice: invalidationMid,
+    });
+  }, [pair, balance, riskPercent, entryMid, invalidationMid]);
+
+  return (
+    <div className={cn("space-y-3 rounded-2xl p-4", PANEL)}>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A3A3A3]">
+        Account risk — position size
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="mb-1 block text-[11px] text-[#7A7A7A]">Account balance</span>
+          <input
+            value={balance}
+            onChange={(e) => setBalance(e.target.value)}
+            inputMode="decimal"
+            placeholder="e.g. 10000"
+            className="w-full rounded-lg border border-[#1F1F1F] bg-[#0A0A0A] px-2.5 py-2 text-sm text-[#F5F5F5] outline-none focus:border-primary/60"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[11px] text-[#7A7A7A]">Risk % per trade</span>
+          <input
+            value={riskPercent}
+            onChange={(e) => setRiskPercent(e.target.value)}
+            inputMode="decimal"
+            className="w-full rounded-lg border border-[#1F1F1F] bg-[#0A0A0A] px-2.5 py-2 text-sm text-[#F5F5F5] outline-none focus:border-primary/60"
+          />
+        </label>
+      </div>
+      {result && (
+        <div className="text-[12px] leading-relaxed">
+          {result.ok ? (
+            <>
+              <p className="font-semibold text-[#F5F5F5]">
+                {result.lots.toFixed(2)} lots · risking ${result.riskAmount.toFixed(2)} ({result.stopPips.toFixed(1)} pips stop)
+              </p>
+              <p className="mt-1 text-[#7A7A7A]">{result.note}</p>
+            </>
+          ) : (
+            <p className="text-amber-400/90">{result.reason}</p>
+          )}
         </div>
       )}
     </div>

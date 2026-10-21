@@ -577,13 +577,14 @@ async function analyzeChartImpl(
 
     const economic = await getEconomicContext(lockedInstrument);
 
-    // ── 1M SCALPING: HIGHER-TIMEFRAME CONTEXT (optional, never required) ───
-    // For a 1-minute analysis, surface the user's own recent higher-timeframe
-    // read of the same pair (if any) as CONTEXT — never a required extra
+    // ── SCALPING: HIGHER-TIMEFRAME CONTEXT (optional, never required) ──────
+    // For a 1-minute analysis, or the M15 primary scalping timeframe, surface
+    // the user's own recent higher-timeframe read of the same pair (if any —
+    // e.g. H1 context for an M15 setup) as CONTEXT, never a required extra
     // upload. When none exists, this stays null and the Trade Setup clearly
     // labels that limitation instead of silently assuming agreement.
     const higherTimeframeContext =
-      context.timeframeKnown && context.timeframe === "M1"
+      context.timeframeKnown && (context.timeframe === "M1" || context.timeframe === "M15")
         ? await getHigherTimeframeContext(gateUser.id, context.symbol, context.timeframe)
         : null;
 

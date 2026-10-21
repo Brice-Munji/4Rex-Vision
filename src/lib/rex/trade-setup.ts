@@ -104,12 +104,19 @@ export interface DirectionalSetup {
   /** Lower-timeframe price-action confirmation to watch before acting (scalping). */
   lowerTimeframeConfirmation: string[];
   /**
-   * 1M-scalping support only (set when the analysis timeframe is "M1"):
-   * states whether a higher-timeframe bias was available as context and, if
-   * so, whether it agreed. Undefined on every other timeframe — unchanged
-   * behavior/output there.
+   * Scalping support (set for "M1"/"M15"): states whether a higher-timeframe
+   * bias was available as context and, if so, whether it agreed. Undefined
+   * on every other timeframe — unchanged behavior/output there.
    */
   higherTimeframeNote?: string;
+  /**
+   * A general, timeframe-derived holding-horizon guideline (e.g. "typically
+   * 1–6 hours on M15") — NOT a forced exit time or a prediction; price
+   * action (TP/invalidation) always decides when the trade actually ends.
+   * Only populated for timeframes with a documented guideline (M5/M15/H1);
+   * undefined otherwise — unchanged behavior/output there.
+   */
+  estimatedHoldingHorizon?: string;
 }
 
 export interface NeutralSetup {
@@ -164,6 +171,18 @@ export const MIN_RR = 2;
 /** Core APA framing for the invalidation zone (structural, not an exact stop). */
 export const STRUCTURAL_INVALIDATION_NOTE =
   "A temporary move against the bias does not invalidate this setup unless price breaks the structural invalidation area.";
+
+/**
+ * General, timeframe-derived holding-horizon guidelines — NOT a forced exit
+ * time or a prediction. Price action (hitting TP/invalidation) always
+ * decides when a trade actually ends; this is shown only as a rough,
+ * non-binding expectation for the timeframe the setup was read from.
+ */
+const HOLDING_HORIZON_BY_TIMEFRAME: Record<string, string> = {
+  M5: "Typically held roughly 15–90 minutes on M5 structure — not a fixed exit time; let price action (TP/invalidation) decide.",
+  M15: "Typically held roughly 1–6 hours on M15 structure — not a fixed exit time; let price action (TP/invalidation) decide.",
+  H1: "Typically held roughly 4–24+ hours on H1 structure — not a fixed exit time; let price action (TP/invalidation) decide.",
+};
 
 /* ── helpers ───────────────────────────────────────────────────────────────── */
 
@@ -288,15 +307,16 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
 
   const { flags, factors } = detectApa(input);
 
-  // ── 1M SCALPING: HIGHER-TIMEFRAME CONTEXT (optional, Rule 3 preserved) ───
-  // CONTEXT only — a 1M/scalping setup is fully valid without it, and it
-  // never sets direction (that stays the main analysis bias) and never
-  // blocks a setup. When it's directionally available and agrees with this
-  // analysis, it folds into the SAME multi-timeframe confluence factor real
-  // APA evidence already contributes to — no new scoring path. The resulting
-  // note is only populated for a 1M analysis (every other timeframe's output
-  // is unchanged).
+  // ── SCALPING: HIGHER-TIMEFRAME CONTEXT (optional, Rule 3 preserved) ──────
+  // CONTEXT only — a scalping setup (1M, or the M15 primary scalping
+  // timeframe) is fully valid without it, and it never sets direction (that
+  // stays the main analysis bias) and never blocks a setup. When it's
+  // directionally available and agrees with this analysis, it folds into the
+  // SAME multi-timeframe confluence factor real APA evidence already
+  // contributes to — no new scoring path. The resulting note is only
+  // populated for M1/M15 — every other timeframe's output is unchanged.
   const isScalpingTimeframe = input.timeframe === "M1";
+  const wantsHtfNote = input.timeframe === "M1" || input.timeframe === "M15";
   const htf = input.higherTimeframeContext ?? null;
   const htfBias = htf ? normalizeBias(htf.bias) : null;
   const htfAgrees = htf != null && htfBias !== "Neutral" && htfBias === bias;
@@ -304,15 +324,16 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
     flags.mtf = true;
     factors.push("Multi-timeframe agreement");
   }
-  const higherTimeframeNote = !isScalpingTimeframe
+  const tfLabel = input.timeframe ?? "this chart's";
+  const higherTimeframeNote = !wantsHtfNote
     ? undefined
     : !htf
-      ? "Higher-timeframe context unavailable — this setup is based solely on the uploaded 1-minute chart's own structure. For added confidence, check a higher timeframe (e.g. H1/H4) before sizing risk."
+      ? `Higher-timeframe context unavailable — this setup is based solely on the uploaded ${tfLabel} chart's own structure. For added confidence, check a higher timeframe (e.g. H1/H4) before sizing risk.`
       : htfBias === "Neutral"
         ? `Higher-timeframe context: ${htf.timeframe} bias is Neutral — no higher-timeframe confirmation either way.`
         : htfAgrees
           ? `Higher-timeframe context: ${htf.timeframe} bias agrees (${htfBias}), adding multi-timeframe confluence.`
-          : `Higher-timeframe context: ${htf.timeframe} bias is ${htfBias}, which CONFLICTS with this 1-minute analysis. Treat this as a short-term tactical setup only and size risk accordingly.`;
+          : `Higher-timeframe context: ${htf.timeframe} bias is ${htfBias}, which CONFLICTS with this ${tfLabel} analysis. Treat this as a short-term tactical setup only and size risk accordingly.`;
 
   const levelStr = (t: string) =>
     input.priceLevels.find((l) => l.type === t)?.value ?? null;
@@ -607,6 +628,20 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
           "Look for a 1-minute bearish CHoCH or BOS (price breaking a recent minor higher-low) confirming structure is shifting down.",
           "A failed retest that rejects below the reclaimed level is added confirmation for continuation.",
         ]
+    : input.timeframe === "M15"
+    ? dir > 0
+      ? [
+          "Drop to M5 as price taps the entry zone and wait for BULLISH confirmation before acting — do not enter on the first touch.",
+          "Look for a bullish rejection (wick/pin or bullish engulfing) off the demand/support zone on M5.",
+          "Look for an M5 bullish CHoCH or BOS (price breaking a recent minor lower-high) to confirm structure is shifting up.",
+          "A successful retest that holds above the reclaimed level is added confirmation for continuation.",
+        ]
+      : [
+          "Drop to M5 as price taps the entry zone and wait for BEARISH confirmation before acting — do not enter on the first touch.",
+          "Look for a bearish rejection (wick/pin or bearish engulfing) off the supply/resistance zone on M5.",
+          "Look for an M5 bearish CHoCH or BOS (price breaking a recent minor higher-low) to confirm structure is shifting down.",
+          "A failed retest that rejects below the reclaimed level is added confirmation for continuation.",
+        ]
     : dir > 0
       ? [
           "Drop to a lower timeframe (e.g. 1m/5m) as price taps the entry zone and wait for BULLISH confirmation before acting — do not enter on the first touch.",
@@ -651,5 +686,6 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
     managementNote,
     lowerTimeframeConfirmation,
     higherTimeframeNote,
+    estimatedHoldingHorizon: input.timeframe ? HOLDING_HORIZON_BY_TIMEFRAME[input.timeframe] : undefined,
   };
 }
