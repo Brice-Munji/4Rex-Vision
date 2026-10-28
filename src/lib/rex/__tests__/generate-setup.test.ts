@@ -122,6 +122,63 @@ check("8 no valid events → not blocked", buildTradeSetup({ ...validApa("GBPUSD
 check("X XAUUSD + USD High 10m → blocked", buildTradeSetup({ ...validApa("XAUUSD"), newsGuard: guard([evt("USD", "High", 10)], "XAUUSD") }).kind === "blocked");
 check("X XAUUSD + EUR High 10m → generated", buildTradeSetup({ ...validApa("XAUUSD"), newsGuard: guard([evt("EUR", "High", 10)], "XAUUSD") }).kind === "directional");
 
+/* ── XAUUSD regression (Gold Setup Failure Diagnosis) ─────────────────────
+ * `validApa("XAUUSD")` above only verifies currency-relevance for the news
+ * guard — it still carries forex-scale (1.27xx) price levels even for the
+ * "XAUUSD" pair name, never exercising Gold's real ~4-digit price scale. The
+ * APA engine's structural math is distance/ratio-based (never a fixed % of
+ * price), so this is expected to behave identically — these tests confirm
+ * that on realistic Gold-scale numbers, closing the coverage gap.
+ */
+{
+  // Realistic bullish XAUUSD H1 read (prices ~4150-4210, matching real Gold).
+  const goldApa = (current: string) => ({
+    pair: "XAUUSD",
+    timeframe: "H1",
+    bias: "Bullish" as const,
+    confidence: 78,
+    currentPrice: current,
+    priceLevels: [
+      { type: "Support", value: "4150.00" },
+      { type: "Resistance", value: "4205.00" },
+      { type: "Entry", value: "4160.00" },
+      { type: "Take Profit", value: "4210.00" },
+      { type: "Invalidation", value: "4148.00" },
+    ],
+    trend: { direction: "Uptrend", strength: "Strong" },
+    evidence: [{ label: "BOS", explanation: "break of structure HH HL demand liquidity rejection" }],
+    newsGuard: guard([], "XAUUSD"),
+  });
+
+  const s = buildTradeSetup(goldApa("4162.50"));
+  check("XAU-A Gold-scale valid structure → generated", s.kind === "directional");
+  if (s.kind === "directional") {
+    check("XAU-A Gold-scale R:R ≥ 1:2", s.rr1 >= MIN_RR, `got ${s.riskReward}`);
+    check("XAU-A Gold-scale 2-decimal zone formatting", /\d\.\d{2}/.test(s.entryZone), s.entryZone);
+  }
+
+  // Anti-chase still applies at Gold scale (price already past Target 1).
+  check(
+    "XAU-B Gold-scale overextended past T1 → none (chase)",
+    buildTradeSetup(goldApa("4206.00")).kind === "none"
+  );
+
+  // R:R gate still applies at Gold scale (TP too close for 1:2).
+  check(
+    "XAU-C Gold-scale R:R < 1:2 → none",
+    buildTradeSetup({
+      pair: "XAUUSD", timeframe: "H1", bias: "Bullish", confidence: 70, currentPrice: "4162.00",
+      priceLevels: [
+        { type: "Support", value: "4150.00" }, { type: "Entry", value: "4160.00" },
+        { type: "Resistance", value: "4166.00" }, { type: "Take Profit", value: "4168.00" },
+        { type: "Invalidation", value: "4145.00" },
+      ],
+      trend: { direction: "Uptrend", strength: "Strong" }, evidence: [{ label: "BOS", explanation: "bos HH HL demand liquidity" }],
+      newsGuard: guard([], "XAUUSD"),
+    }).kind === "none"
+  );
+}
+
 /* ── 1M Scalping support ──────────────────────────────────────────────────
  * The APA engine (buildTradeSetup) never reads `timeframe` for its structural
  * math — it's already timeframe-agnostic. These tests confirm that holds for
@@ -252,6 +309,51 @@ check(
   });
   check("1M-H H1 setup unaffected by HTF-context feature", s.kind === "directional" && s.higherTimeframeNote === undefined);
 }
+
+/* ── Missing-current-price validation gap (anti-chase entry-freshness) ────
+ * `buildTradeSetup()` can only run the anti-chase/entry-quality check when a
+ * current price was readable from the chart (never guessed/invented). These
+ * confirm a directional setup is still produced on real APA structure when
+ * the price is missing, but is explicitly flagged as NOT entry-freshness-
+ * validated — and that a normal valid current price is unaffected.
+ */
+
+// CP-A. Missing currentPrice (null) → still a real directional setup (never
+// forced/blocked for this reason alone), but anti-chase could not run.
+{
+  const s = buildTradeSetup({ ...validApa("GBPUSD"), currentPrice: null, newsGuard: guard([], "GBPUSD") });
+  check("CP-A still generated without currentPrice", s.kind === "directional");
+  if (s.kind === "directional") {
+    check("CP-A anticChaseChecked is false", s.anticChaseChecked === false);
+    check(
+      "CP-A entryFreshnessWarning present",
+      !!s.entryFreshnessWarning && /current price/i.test(s.entryFreshnessWarning)
+    );
+    check("CP-A R:R gate unaffected", s.rr1 >= MIN_RR);
+  }
+}
+
+// CP-B. Valid currentPrice (the normal case) → anti-chase DID run, no warning.
+{
+  const s = buildTradeSetup({ ...validApa("GBPUSD"), newsGuard: guard([], "GBPUSD") });
+  check("CP-B generated with currentPrice", s.kind === "directional");
+  if (s.kind === "directional") {
+    check("CP-B anticChaseChecked is true", s.anticChaseChecked === true);
+    check("CP-B no entryFreshnessWarning", s.entryFreshnessWarning === undefined);
+  }
+}
+
+// CP-C. Missing currentPrice never masks a genuine chase — if structure/R:R
+// fail on their own merits, a missing price does not rescue a "none" result.
+check(
+  "CP-C missing currentPrice doesn't rescue a failing R:R",
+  buildTradeSetup({
+    pair: "GBPUSD", timeframe: "H1", bias: "Bullish", confidence: 70, currentPrice: null,
+    priceLevels: [{ type: "Support", value: "1.2700" }, { type: "Entry", value: "1.2710" }, { type: "Resistance", value: "1.2718" }, { type: "Take Profit", value: "1.2720" }, { type: "Invalidation", value: "1.2680" }],
+    trend: { direction: "Uptrend", strength: "Strong" }, evidence: [{ label: "BOS", explanation: "bos HH HL demand liquidity" }],
+    newsGuard: guard([], "GBPUSD"),
+  }).kind === "none"
+);
 
 const total = passed + failures.length;
 // eslint-disable-next-line no-console

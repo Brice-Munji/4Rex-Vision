@@ -30,6 +30,89 @@ function logNewsGuard(pair: string, guard: NewsGuard, requestId: string | null) 
 }
 
 /**
+ * Minimal, local re-parse of a single named price level's numeric value —
+ * mirrors trade-setup.ts's own `parseNum` just closely enough to classify
+ * PROVENANCE for logging. Never used for any trading decision (that stays
+ * entirely inside buildTradeSetup); only to answer "was this input present,
+ * and did the engine's final output actually anchor on it".
+ */
+function parseLevelValue(
+  levels: { type: string; value: string }[] | undefined,
+  type: string
+): number | null {
+  const raw = (levels ?? []).find((l) => l.type === type)?.value;
+  if (!raw) return null;
+  const n = parseFloat(String(raw).replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Diagnostic-only trace of the APA engine's own outcome for every
+ * setup-generation attempt. The existing news-guard log only shows whether
+ * news blocked the attempt; it says nothing about what buildTradeSetup()
+ * itself decided (directional / neutral / none / blocked, and WHY on a
+ * rejection). Without this, "no setups" and "a genuine NO SETUP result" were
+ * indistinguishable from the logs alone. No price levels/evidence text are
+ * logged — only the pair, timeframe, bias, and the engine's own kind/reason.
+ *
+ * Structural-level provenance (added for the invalidation-provenance gap):
+ * presence of a raw "Invalidation" input is NOT by itself proof the engine's
+ * final invalidation is chart-derived — buildTradeSetup can still override it
+ * (structural-side enforcement, minimum-risk enforcement) even when a raw
+ * level was supplied. The only reliable signal is comparing the engine's own
+ * returned `invalidationMid` against the raw parsed input value: they match
+ * only when the raw level passed through untouched. Only presence flags and
+ * this source classification are logged — never the actual price numbers.
+ */
+function logSetupOutcome(
+  pair: string,
+  timeframe: string | null,
+  bias: string | null,
+  priceLevels: { type: string; value: string }[] | undefined,
+  currentPrice: string | null,
+  result: ReturnType<typeof buildTradeSetup>,
+  requestId: string | null
+) {
+  const supportPresent = parseLevelValue(priceLevels, "Support") != null;
+  const resistancePresent = parseLevelValue(priceLevels, "Resistance") != null;
+  const rawInvalidation = parseLevelValue(priceLevels, "Invalidation");
+  // Same provenance question as the invalidation gap, but for anti-chase: a
+  // missing current price means buildTradeSetup() could not run the entry-
+  // quality check at all (see DirectionalSetup.anticChaseChecked). Presence
+  // only — never the actual price number.
+  const currentPricePresent = currentPrice != null && Number.isFinite(parseFloat(currentPrice));
+
+  let invalidationSource: "chart-level" | "fallback" | "n/a" = "n/a";
+  if (result.kind === "directional") {
+    invalidationSource =
+      rawInvalidation != null && Math.abs(result.invalidationMid - rawInvalidation) < 1e-9
+        ? "chart-level"
+        : "fallback";
+  }
+
+  // eslint-disable-next-line no-console
+  console.info("[rex.trade-setup] outcome", {
+    timestamp: new Date().toISOString(),
+    requestId,
+    pair,
+    timeframe,
+    bias,
+    kind: result.kind,
+    reason: result.kind === "none" || result.kind === "blocked" ? result.reason : null,
+    ...(result.kind === "directional"
+      ? { riskReward: result.riskReward, qualityScore: result.qualityScore }
+      : null),
+    // Provenance of the structural inputs — presence flags + source
+    // classification only, never the raw numbers.
+    supportOrResistancePresent: supportPresent || resistancePresent,
+    invalidationLevelPresent: rawInvalidation != null,
+    invalidationSource,
+    usedFallbackInvalidationBuffer: invalidationSource === "fallback",
+    currentPricePresent,
+  });
+}
+
+/**
  * Generate a Rex Trade Setup from a completed analysis. Rex Pro only — this is
  * where "free users cannot generate the setup" is actually enforced (the UI gate
  * is just UX; this route is the authority).
@@ -86,6 +169,16 @@ export async function POST(req: Request) {
             }
           : null,
     });
+
+    logSetupOutcome(
+      body.pair,
+      typeof body.timeframe === "string" ? body.timeframe : null,
+      typeof body.bias === "string" ? body.bias : null,
+      Array.isArray(body.priceLevels) ? body.priceLevels : [],
+      typeof body.currentPrice === "string" ? body.currentPrice : null,
+      setup,
+      requestId
+    );
 
     return NextResponse.json({ setup }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {

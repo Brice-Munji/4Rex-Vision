@@ -520,6 +520,16 @@ function DirectionalBody({ setup, pair }: { setup: DirectionalSetup; pair: strin
         />
       </div>
 
+      {/* Entry-freshness caveat — only when the anti-chase check couldn't run
+          (chart's current price wasn't readable). Never silently presented as
+          a fully execution-validated entry in that case. */}
+      {!setup.anticChaseChecked && setup.entryFreshnessWarning && (
+        <div className="flex items-start gap-2 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-[12px] leading-relaxed text-amber-300">
+          <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{setup.entryFreshnessWarning}</span>
+        </div>
+      )}
+
       {/* Structural-invalidation + trade-management framing (educational, no buy/sell) */}
       <div className={cn("space-y-2 rounded-2xl p-4", PANEL)}>
         <p className="flex items-start gap-2 text-[12px] leading-relaxed text-[#F5F5F5]">

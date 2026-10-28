@@ -117,6 +117,20 @@ export interface DirectionalSetup {
    * undefined otherwise — unchanged behavior/output there.
    */
   estimatedHoldingHorizon?: string;
+  /**
+   * Whether the ENTRY-QUALITY / anti-chase check (Rule 5) actually ran. It can
+   * only run when a current price was readable from the chart; Rex never
+   * guesses one. `false` means the setup is still built on real APA structure
+   * (never forced/invented), but Rex could NOT confirm price hasn't already
+   * run past this entry — it is not yet a fully execution-validated entry.
+   */
+  anticChaseChecked: boolean;
+  /**
+   * Present only when `anticChaseChecked` is false — the caveat to surface
+   * alongside the entry zone so a setup is never silently presented as fully
+   * validated when the chart's current price couldn't be read.
+   */
+  entryFreshnessWarning?: string;
 }
 
 export interface NeutralSetup {
@@ -687,5 +701,16 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
     lowerTimeframeConfirmation,
     higherTimeframeNote,
     estimatedHoldingHorizon: input.timeframe ? HOLDING_HORIZON_BY_TIMEFRAME[input.timeframe] : undefined,
+    // ── ENTRY-FRESHNESS GATE (missing-current-price fix) ──────────────────
+    // `current` (parsed above) is only non-null when the chart's current
+    // price was actually readable — Rex never invents one. When it's null the
+    // anti-chase check a few lines up was structurally skipped (not passed),
+    // so this setup must not be presented as a fully execution-validated
+    // entry: it's real APA structure, but entry freshness is unconfirmed.
+    anticChaseChecked: current != null,
+    entryFreshnessWarning:
+      current != null
+        ? undefined
+        : "Current price wasn't available from the chart, so Rex could not verify this entry hasn't already been chased past Target 1. Confirm the live price before acting on this zone.",
   };
 }

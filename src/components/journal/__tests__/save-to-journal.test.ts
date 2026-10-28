@@ -100,6 +100,7 @@ const validatedSetup: DirectionalSetup = {
   invalidationExplainer: "",
   managementNote: "",
   lowerTimeframeConfirmation: [],
+  anticChaseChecked: true,
 };
 
 const neutralSetup: NeutralSetup = {
