@@ -133,24 +133,31 @@ export function Sidebar({ user, collapsed, onToggle, onNavigate }: SidebarProps)
             <div className="mt-1 text-base font-semibold">
               {PLAN_DISPLAY_NAMES[user.plan]}
             </div>
+            {/* Only Free users can upgrade — existing Pro/Enterprise users
+                already see their plan above; showing "Upgrade" alongside it
+                was misleading (reported bug: Upgrade button + "Rex Pro"). */}
+            {user.plan === "FREE" && (
+              <Link
+                href="/billing"
+                onClick={onNavigate}
+                className="mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all"
+              >
+                Upgrade
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+            )}
+          </div>
+        ) : (
+          user.plan === "FREE" && (
             <Link
               href="/billing"
               onClick={onNavigate}
-              className="mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all"
+              title="Upgrade plan"
+              className="flex items-center justify-center rounded-xl bg-primary p-2.5 text-primary-foreground shadow-sm"
             >
-              Upgrade
-              <ArrowUpRight className="h-3.5 w-3.5" />
+              <ArrowUpRight className="h-4 w-4" />
             </Link>
-          </div>
-        ) : (
-          <Link
-            href="/billing"
-            onClick={onNavigate}
-            title="Upgrade plan"
-            className="flex items-center justify-center rounded-xl bg-primary p-2.5 text-primary-foreground shadow-sm"
-          >
-            <ArrowUpRight className="h-4 w-4" />
-          </Link>
+          )
         )}
 
         <Link
