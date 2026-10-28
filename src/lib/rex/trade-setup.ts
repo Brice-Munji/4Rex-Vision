@@ -483,6 +483,11 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
   const invBand = Math.max(Math.abs(entryMid - invalMid) * 0.08, structuralUnit * 0.05);
 
   const risk = Math.abs(entryMid - invalMid);
+  // Whether the FINAL invalidation still IS the raw chart-extracted level
+  // (survived every override check above untouched) vs. was overridden by
+  // the fallback buffer / minimum-risk enforcement. Used only for SL quality
+  // scoring below (Rule 4) — never affects placement, gates, or R:R.
+  const invalidationFromChartLevel = invL != null && invalMid === invL;
 
   /* ── Targets follow structure (S/R, swing, liquidity) — R:R computed after ── */
   const structuralTargets = [tpL, resL, supL]
@@ -541,7 +546,11 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
     return { kind: "none", reason: SETUP_RR_MESSAGE, newsRisk };
   }
 
-  /* ── SETUP QUALITY (0–100): APA structure + entry + SL + TP + R:R + news ──── */
+  /* ── SETUP QUALITY (0–95: Structure 30 + Entry 15 + SL 10 + TP 15 + R:R 20 +
+     News 5): APA structure + entry + SL + TP + R:R + news. SL's ceiling
+     dropped from 15 to 10 when the tautological "+5 risk >= minRisk" bonus
+     was removed (see qSL below) — not redistributed elsewhere, so every
+     directional setup's maximum achievable score is now 95, not 100. ───── */
   const strength = (input.trend?.strength ?? "").toLowerCase();
   const entryFromRealLevel = entryL != null || (dir > 0 ? supL != null : resL != null);
 
@@ -561,11 +570,18 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
   if (flags.premiumDiscount) qEntry += 3;
   qEntry = Math.min(15, qEntry);
 
-  // SL / invalidation quality /15 (structural anchor + not-too-tight)
+  // SL / invalidation quality /10 — full credit (+10) only when the final
+  // invalidation genuinely IS the chart-extracted level; reduced credit (+4)
+  // when a raw invalidation level existed but was overridden by the
+  // fallback/minimum-risk buffer (still a real, structurally-scaled stop,
+  // just not chart-verified). The former separate "+5 risk >= minRisk" bonus
+  // was removed: that condition is already GUARANTEED by the enforcement
+  // above (it can never fail once reached), so it was never a real signal —
+  // not folded elsewhere, so this component's ceiling is now 10, not 15.
   let qSL = 0;
-  if (invL != null || (dir > 0 ? supL != null : resL != null)) qSL += 10;
-  if (risk >= minRisk) qSL += 5;
-  qSL = Math.min(15, qSL);
+  if (invalidationFromChartLevel) qSL += 10;
+  else if (invL != null || (dir > 0 ? supL != null : resL != null)) qSL += 4;
+  qSL = Math.min(10, qSL);
 
   // TP / target quality /15 (how much real structure backs the targets)
   let qTP = 0;

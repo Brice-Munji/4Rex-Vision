@@ -355,6 +355,73 @@ check(
   }).kind === "none"
 );
 
+/* ── SL quality scoring: chart-derived vs. fallback invalidation ──────────
+ * Confirmed scoring flaw (Gold/GBPUSD marginal-setup diagnosis): the old
+ * qSL formula awarded full credit (+10 presence, +5 "risk >= minRisk") any
+ * time SOME raw level existed, even when the engine's own fallback/minimum-
+ * risk enforcement had overridden it — "risk >= minRisk" was tautologically
+ * guaranteed true by that same enforcement, so it was never a real signal.
+ * Fix: full credit (+10) only when the final invalidation genuinely IS the
+ * raw chart-extracted level; reduced credit (+4) when a raw level existed
+ * but was overridden; the redundant +5 bonus is gone (qSL ceiling: 15 → 10).
+ */
+
+// SL-A. Chart-derived invalidation (raw level far enough from entry to
+// survive every override untouched) → full SL credit, higher overall score.
+{
+  const s = buildTradeSetup({ ...validApa("GBPUSD"), newsGuard: guard([], "GBPUSD") });
+  check("SL-A chart-derived invalidation → generated", s.kind === "directional");
+  if (s.kind === "directional") {
+    check("SL-A qualityScore is 85 (full SL credit)", s.qualityScore === 85, `got ${s.qualityScore}`);
+    check("SL-A quality grade A+", s.quality === "A+");
+  }
+}
+
+// SL-B. Same fixture, but the raw Invalidation level ("1.2704") is too tight
+// and gets overridden by the fallback/minimum-risk buffer → reduced SL
+// credit only, strictly lower qualityScore than SL-A (same R:R/structure/
+// evidence otherwise — isolates the SL scoring change).
+{
+  const tightInvalidation = {
+    ...validApa("GBPUSD"),
+    priceLevels: [
+      { type: "Support", value: "1.2700" },
+      { type: "Resistance", value: "1.2780" },
+      { type: "Entry", value: "1.2710" },
+      { type: "Take Profit", value: "1.2850" },
+      { type: "Invalidation", value: "1.2704" },
+    ],
+    newsGuard: guard([], "GBPUSD"),
+  };
+  const s = buildTradeSetup(tightInvalidation);
+  check("SL-B fallback-overridden invalidation → still generated", s.kind === "directional");
+  if (s.kind === "directional") {
+    check("SL-B qualityScore is 79 (reduced SL credit)", s.qualityScore === 79, `got ${s.qualityScore}`);
+    check("SL-B R:R gate unaffected (still well above 1:2)", s.rr1 >= MIN_RR);
+  }
+}
+
+// SL-C. No raw invalidation level at all (pure fallback from support/entry)
+// → same reduced SL credit as the overridden case — presence of an
+// opposing S/R level alone still earns partial credit, never full credit.
+{
+  const noInvalidation = {
+    ...validApa("GBPUSD"),
+    priceLevels: [
+      { type: "Support", value: "1.2700" },
+      { type: "Resistance", value: "1.2780" },
+      { type: "Entry", value: "1.2710" },
+      { type: "Take Profit", value: "1.2850" },
+    ],
+    newsGuard: guard([], "GBPUSD"),
+  };
+  const s = buildTradeSetup(noInvalidation);
+  check("SL-C no raw invalidation → still generated", s.kind === "directional");
+  if (s.kind === "directional") {
+    check("SL-C qualityScore is 79 (same reduced SL credit as SL-B)", s.qualityScore === 79, `got ${s.qualityScore}`);
+  }
+}
+
 const total = passed + failures.length;
 // eslint-disable-next-line no-console
 console.log(`\nGenerate-Setup regression tests: ${passed}/${total} passed`);
