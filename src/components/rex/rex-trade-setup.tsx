@@ -23,6 +23,7 @@ import {
   ArrowUpRight,
   BookOpen,
   Gauge,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RexReport as RexReportType } from "@/lib/rex/types";
@@ -43,6 +44,7 @@ import {
   DEFAULT_RISK_PERCENT,
   type PositionSizeResult,
 } from "@/lib/rex/position-size";
+import { hasLowerTimeframeAvailable } from "@/lib/rex/sniper-entry";
 
 /**
  * Presentation-only status label over the EXISTING TradeSetupResult.kind —
@@ -187,12 +189,17 @@ function SetupModal({
   >({ status: "idle" });
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
+  // Captured the moment a directional result lands — Sniper Entry's own
+  // expiry check is measured from here, never from a server-persisted
+  // timestamp (no such record exists; the setup only lives in this state).
+  const [generatedAtIso, setGeneratedAtIso] = React.useState<string | null>(null);
 
   // Generate once per open.
   React.useEffect(() => {
     if (!open) {
       setState({ status: "idle" });
       setSaved(false);
+      setGeneratedAtIso(null);
       return;
     }
     let cancelled = false;
@@ -232,6 +239,7 @@ function SetupModal({
         }
         if (!cancelled) {
           setState({ status: "done", result });
+          setGeneratedAtIso(new Date().toISOString());
           onSetupGenerated?.(result);
         }
       } catch {
@@ -379,7 +387,21 @@ function SetupModal({
 
         {setup && setup.kind === "neutral" && <NeutralBody setup={setup} />}
         {setup && setup.kind === "directional" && (
-          <DirectionalBody setup={setup} pair={report.analysisContext?.instrument ?? report.pair} />
+          <>
+            <DirectionalBody setup={setup} pair={report.analysisContext?.instrument ?? report.pair} />
+            {generatedAtIso && (
+              <div className="mt-5">
+                <SniperEntryPanel
+                  pair={report.analysisContext?.instrument ?? report.pair}
+                  timeframe={report.timeframe}
+                  bias={setup.bias}
+                  entryZone={setup.entryZone}
+                  invalidationMid={setup.invalidationMid}
+                  generatedAtIso={generatedAtIso}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -660,6 +682,172 @@ function PositionSizeCalculator({
             </>
           ) : (
             <p className="text-amber-400/90">{result.reason}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Rex Sniper Entry — optional lower-timeframe EXECUTION CONFIRMATION ────
+ * An ADDITIONAL confirmation layer on top of the setup above — it never
+ * changes the entry/invalidation/targets/bias/R:R/quality shown above (this
+ * panel only ever renders its OWN separate result below itself; it never
+ * writes back into the setup state). Local duplicate of rex-analyzer.tsx's
+ * tiny fileToBase64 helper (not exported there) to keep this feature fully
+ * self-contained. */
+function sniperFileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = reader.result as string;
+      resolve(res.split(",")[1] ?? "");
+    };
+    reader.onerror = () => reject(new Error("read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+type SniperApiResult =
+  | { state: "WAITING"; reason: string }
+  | { state: "CONFIRMED"; reason: string; evidence: string[] }
+  | { state: "INVALIDATED"; reason: string };
+
+const SNIPER_STATUS_META: Record<SniperApiResult["state"], string> = {
+  WAITING: "border-amber-500/40 bg-amber-500/15 text-amber-400",
+  CONFIRMED: "border-emerald-500/40 bg-emerald-500/15 text-emerald-400",
+  INVALIDATED: "border-rose-500/40 bg-rose-500/15 text-rose-400",
+};
+
+function SniperEntryPanel({
+  pair,
+  timeframe,
+  bias,
+  entryZone,
+  invalidationMid,
+  generatedAtIso,
+}: {
+  pair: string;
+  timeframe: string;
+  bias: "Bullish" | "Bearish";
+  entryZone: string;
+  invalidationMid: number;
+  generatedAtIso: string;
+}) {
+  const [state, setState] = React.useState<
+    | { status: "idle" }
+    | { status: "loading" }
+    | { status: "error"; message: string }
+    | { status: "done"; result: SniperApiResult }
+  >({ status: "idle" });
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  // An M1-originated setup has no genuinely lower timeframe to confirm with
+  // in this app's supported set — don't offer the panel at all.
+  if (!hasLowerTimeframeAvailable(timeframe)) return null;
+
+  async function onFile(file: File) {
+    setState({ status: "loading" });
+    try {
+      const base64 = await sniperFileToBase64(file);
+      const res = await fetch("/api/rex/sniper-entry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          base64,
+          original: { pair, timeframe, bias, entryZone, invalidationMid, generatedAtIso },
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message =
+          res.status === 429
+            ? "You're checking Sniper Entry too quickly. Please wait a moment and try again."
+            : res.status === 403
+              ? "Your Rex Pro isn't active — reactivate Rex Pro to use Sniper Entry."
+              : res.status === 401
+                ? "Your session has expired. Please sign in again."
+                : "Rex couldn't check Sniper Entry just now. Please try again.";
+        setState({ status: "error", message });
+        return;
+      }
+      if (!data?.result?.state) {
+        setState({ status: "error", message: "Rex returned an unexpected response. Please try again." });
+        return;
+      }
+      setState({ status: "done", result: data.result as SniperApiResult });
+    } catch {
+      setState({ status: "error", message: "Couldn't reach Rex. Check your connection and try again." });
+    }
+  }
+
+  return (
+    <div className={cn("space-y-3 rounded-2xl p-4", PANEL)}>
+      <div className="flex items-center gap-2">
+        <Crosshair className="h-4 w-4 text-primary" />
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A3A3A3]">
+          Check Sniper Entry (optional)
+        </p>
+      </div>
+      <p className="text-[12px] leading-relaxed text-[#A3A3A3]">
+        An additional confirmation step for this setup — it never changes the entry, stop,
+        targets or quality above. Upload a fresh M5 or M1 screenshot of the SAME pair ({pair}) and
+        Rex will check whether price has genuinely retested the entry zone with a{" "}
+        {bias.toLowerCase()}-aligned rejection and lower-timeframe structure shift. Rex can only
+        read what you upload here — it does not watch live candles on its own, so check back with
+        a fresh screenshot later if conditions aren&apos;t met yet.
+      </p>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onFile(file);
+          e.target.value = "";
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={state.status === "loading"}
+        className="inline-flex items-center gap-1.5 rounded-xl border border-[#1F1F1F] bg-[#0A0A0A] px-3 py-2 text-xs font-semibold text-[#F5F5F5] transition-colors hover:border-primary/50 disabled:opacity-60"
+      >
+        {state.status === "loading" ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Upload className="h-3.5 w-3.5" />
+        )}
+        Upload M5 / M1 confirmation chart
+      </button>
+
+      {state.status === "error" && <p className="text-[12px] text-rose-400">{state.message}</p>}
+
+      {state.status === "done" && (
+        <div className="space-y-1.5">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide",
+              SNIPER_STATUS_META[state.result.state]
+            )}
+          >
+            {state.result.state === "CONFIRMED" && <Check className="h-3.5 w-3.5" />}
+            {state.result.state === "INVALIDATED" && <Ban className="h-3.5 w-3.5" />}
+            {state.result.state === "WAITING" && <ShieldAlert className="h-3.5 w-3.5" />}
+            {state.result.state}
+          </span>
+          <p className="text-[12px] leading-relaxed text-[#F5F5F5]">{state.result.reason}</p>
+          {state.result.state === "CONFIRMED" && state.result.evidence.length > 0 && (
+            <ul className="mt-1 space-y-1">
+              {state.result.evidence.map((e, i) => (
+                <li key={i} className="flex items-start gap-2 text-[11px] text-[#A3A3A3]">
+                  <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-primary" />
+                  {e}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       )}
