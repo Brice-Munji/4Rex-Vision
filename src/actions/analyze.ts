@@ -23,6 +23,7 @@ import {
 } from "@/lib/rex/vision-providers";
 import { getEconomicContext } from "@/lib/rex/economic";
 import { getHigherTimeframeContext } from "@/lib/rex/history";
+import { recordLifecycleObservations } from "@/lib/rex/lifecycle";
 import { recordAnalysisEvent } from "@/lib/admin/telemetry";
 import { notifyAnalysisSaved } from "@/lib/notifications/service";
 import { normalizeInstrument, unsupportedReason } from "@/lib/rex/instruments";
@@ -637,6 +638,22 @@ async function analyzeChartImpl(
       imageHash: vision.status === "ok" ? vision.imageHash : null,
     });
     await notifyAnalysisSaved(gateUser.id, context.instrument);
+
+    // Stage 1 Trade Setup Lifecycle Monitoring: this app has no live/push
+    // price feed, so THIS upload is the only trigger for advancing any
+    // already-tracked setup for the same pair. Additive & best-effort
+    // (recordLifecycleObservations never throws) — never gates analysis.
+    // Reliability mirrors sniper-entry.ts's own two-factor gate (legible
+    // price axis + a parseable value) — never a guessed price.
+    const lifecyclePrice =
+      ai.priceAxisLegible && report.currentPrice ? parseFloat(report.currentPrice) : NaN;
+    await recordLifecycleObservations({
+      userId: gateUser.id,
+      pair: context.symbol,
+      sourceAnalysisId: report.id,
+      price: Number.isFinite(lifecyclePrice) ? lifecyclePrice : null,
+    });
+
     return {
       status: "ok",
       report,

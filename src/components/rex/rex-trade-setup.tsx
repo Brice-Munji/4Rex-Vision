@@ -45,6 +45,7 @@ import {
   type PositionSizeResult,
 } from "@/lib/rex/position-size";
 import { hasLowerTimeframeAvailable } from "@/lib/rex/sniper-entry";
+import type { TradeSetupLifecycleDTO, LifecycleState } from "@/lib/rex/setup-lifecycle";
 
 /**
  * Presentation-only status label over the EXISTING TradeSetupResult.kind —
@@ -193,6 +194,11 @@ function SetupModal({
   // expiry check is measured from here, never from a server-persisted
   // timestamp (no such record exists; the setup only lives in this state).
   const [generatedAtIso, setGeneratedAtIso] = React.useState<string | null>(null);
+  // Stage 1 lifecycle tracking — persisted server-side, keyed by report.id.
+  // Comes back on the SAME response as `setup` (the route upserts it), so
+  // re-opening this modal for the same report re-fetches the real, possibly
+  // since-updated state rather than ever recomputing/resetting it here.
+  const [lifecycle, setLifecycle] = React.useState<TradeSetupLifecycleDTO | null>(null);
 
   // Generate once per open.
   React.useEffect(() => {
@@ -200,6 +206,7 @@ function SetupModal({
       setState({ status: "idle" });
       setSaved(false);
       setGeneratedAtIso(null);
+      setLifecycle(null);
       return;
     }
     let cancelled = false;
@@ -209,7 +216,7 @@ function SetupModal({
         const res = await fetch("/api/rex/trade-setup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildInput(report)),
+          body: JSON.stringify({ ...buildInput(report), analysisId: report.id ?? null }),
         });
         const data = await res.json().catch(() => null);
 
@@ -240,6 +247,7 @@ function SetupModal({
         if (!cancelled) {
           setState({ status: "done", result });
           setGeneratedAtIso(new Date().toISOString());
+          setLifecycle((data?.lifecycle as TradeSetupLifecycleDTO | null | undefined) ?? null);
           onSetupGenerated?.(result);
         }
       } catch {
@@ -389,6 +397,11 @@ function SetupModal({
         {setup && setup.kind === "directional" && (
           <>
             <DirectionalBody setup={setup} pair={report.analysisContext?.instrument ?? report.pair} />
+            {lifecycle && (
+              <div className="mt-5">
+                <LifecyclePanel lifecycle={lifecycle} />
+              </div>
+            )}
             {generatedAtIso && (
               <div className="mt-5">
                 <SniperEntryPanel
@@ -706,6 +719,135 @@ function sniperFileToBase64(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("read failed"));
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Stage 1 — Trade Setup Lifecycle Monitoring display. Read-only: renders the
+ * persisted TradeSetupLifecycleDTO the trade-setup route already returned
+ * alongside `setup`; never recomputes or mutates anything. The ORIGINAL
+ * entry/SL/TP values are already shown above by DirectionalBody (this panel
+ * doesn't repeat them) — this is only the monitoring-specific delta: current
+ * status, the market price at generation, the latest verified price, the
+ * last check time, and recent observation history.
+ */
+const LIFECYCLE_META: Record<
+  LifecycleState,
+  { icon: React.ElementType; className: string; label: string; emphasize?: string }
+> = {
+  ACTIVE: { icon: Gauge, className: "border-[#2a2a2a] bg-[#161616] text-[#A3A3A3]", label: "Active" },
+  APPROACHING_ENTRY: {
+    icon: Crosshair,
+    className: "border-amber-500/40 bg-amber-500/15 text-amber-400",
+    label: "Approaching entry",
+  },
+  ENTRY_ZONE_REACHED: {
+    icon: Target,
+    className: "border-emerald-500/40 bg-emerald-500/15 text-emerald-400",
+    label: "Entry zone reached",
+  },
+  ENTRY_MISSED: {
+    icon: Ban,
+    className: "border-rose-500/40 bg-rose-500/15 text-rose-400",
+    label: "Entry missed",
+    emphasize: "DON'T CHASE",
+  },
+  TARGET_APPROACHING: {
+    icon: Target,
+    className: "border-amber-500/40 bg-amber-500/15 text-amber-400",
+    label: "Target approaching",
+  },
+  TP1_HIT: { icon: Check, className: "border-emerald-500/40 bg-emerald-500/15 text-emerald-400", label: "TP1 hit" },
+  TP2_HIT: { icon: Check, className: "border-emerald-500/40 bg-emerald-500/15 text-emerald-400", label: "TP2 hit" },
+  INVALIDATED: {
+    icon: ShieldAlert,
+    className: "border-rose-500/40 bg-rose-500/15 text-rose-400",
+    label: "Invalidated",
+  },
+  UNVERIFIED: { icon: Minus, className: "border-[#2a2a2a] bg-[#161616] text-[#7A7A7A]", label: "Unverified" },
+};
+
+/** Light display rounding only (never used for any trading decision) — caps
+ *  floating-point noise on a parsed chart price without pair-specific precision. */
+function formatLifecyclePrice(price: number | null): string {
+  if (price == null || !Number.isFinite(price)) return "—";
+  return String(Number(price.toFixed(5)));
+}
+
+function LifecyclePanel({ lifecycle }: { lifecycle: TradeSetupLifecycleDTO }) {
+  const meta = LIFECYCLE_META[lifecycle.state] ?? LIFECYCLE_META.UNVERIFIED;
+  const Icon = meta.icon;
+  const history = lifecycle.observations.slice(0, 5);
+
+  return (
+    <div className={cn("space-y-3 rounded-2xl p-4", PANEL)}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A3A3A3]">
+          Setup lifecycle
+        </p>
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide",
+            meta.className
+          )}
+        >
+          <Icon className="h-3.5 w-3.5" />
+          {meta.emphasize ?? meta.label}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-[12px]">
+        <div className="flex flex-col gap-0.5">
+          <span className={MUTED}>Price at generation</span>
+          <span className={cn("font-mono font-semibold tabular-nums", TEXT)}>
+            {formatLifecyclePrice(lifecycle.priceAtGeneration)}
+          </span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className={MUTED}>Latest verified price</span>
+          <span className={cn("font-mono font-semibold tabular-nums", TEXT)}>
+            {formatLifecyclePrice(lifecycle.lastPrice)}
+          </span>
+        </div>
+        <div className="col-span-2 flex flex-col gap-0.5">
+          <span className={MUTED}>Last monitoring check</span>
+          <span className={TEXT}>
+            {lifecycle.lastCheckedAt ? new Date(lifecycle.lastCheckedAt).toLocaleString() : "No follow-up upload yet"}
+          </span>
+        </div>
+      </div>
+
+      {meta.emphasize && (
+        <p className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] p-2.5 text-[11px] leading-relaxed text-rose-300">
+          <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          Price moved beyond this setup&apos;s actionable entry zone — Rex will not treat this as a fresh
+          signal. No replacement setup is generated automatically.
+        </p>
+      )}
+
+      <p className="text-[11px] leading-relaxed text-[#7A7A7A]">
+        Rex has no live market feed — this status only advances when you upload a NEW {lifecycle.pair}{" "}
+        chart. The original entry/SL/TP levels above never change; this only tracks what happened to that
+        original plan.
+      </p>
+
+      {history.length > 0 && (
+        <div className="space-y-1.5 border-t border-[#1F1F1F] pt-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#7A7A7A]">Recent checks</p>
+          <ul className="space-y-1">
+            {history.map((o) => (
+              <li key={o.id} className="flex items-center justify-between gap-2 text-[11px] text-[#A3A3A3]">
+                <span className="shrink-0">{new Date(o.observedAt).toLocaleString()}</span>
+                <span className="font-mono tabular-nums">{formatLifecyclePrice(o.price)}</span>
+                <span className="shrink-0 font-semibold text-[#F5F5F5]">
+                  {(LIFECYCLE_META[o.state] ?? LIFECYCLE_META.UNVERIFIED).label}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 type SniperApiResult =

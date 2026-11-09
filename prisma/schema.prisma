@@ -102,8 +102,8 @@ model User {
   emailVerified DateTime?
 
   // Access control
-  role      Role     @default(USER)
-  suspended Boolean  @default(false)
+  role      Role    @default(USER)
+  suspended Boolean @default(false)
 
   // Plan & subscription
   plan               Plan                @default(FREE)
@@ -139,16 +139,17 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts            Account[]
-  sessions            Session[]
-  verificationTokens  VerificationToken[]
-  passwordResetTokens PasswordResetToken[]
-  transactions        Transaction[]
-  analysisEvents      AnalysisUsage[]
-  notifications       Notification[]
-  journalEntries      JournalEntry[]
-  adminActionsMade    AdminAction[]        @relation("AdminActor")
-  adminActionsTarget  AdminAction[]        @relation("AdminTarget")
+  accounts             Account[]
+  sessions             Session[]
+  verificationTokens   VerificationToken[]
+  passwordResetTokens  PasswordResetToken[]
+  transactions         Transaction[]
+  analysisEvents       AnalysisUsage[]
+  notifications        Notification[]
+  journalEntries       JournalEntry[]
+  tradeSetupLifecycles TradeSetupLifecycle[]
+  adminActionsMade     AdminAction[]         @relation("AdminActor")
+  adminActionsTarget   AdminAction[]         @relation("AdminTarget")
 
   // Admin dashboard filters/sorts users by these fields.
   @@index([plan])
@@ -161,9 +162,9 @@ model User {
 /// analysis) that powers the Analysis Activity + Analytics dashboards: per-user
 /// counts by day, most-analyzed pair, and average confidence.
 model AnalysisUsage {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   pair       String? // e.g. "AUDUSD" — null when not confidently extracted
   timeframe  String? // e.g. "1H"
@@ -197,11 +198,11 @@ model AnalysisUsage {
 
 /// Audit trail of every privileged action taken from the super-admin dashboard.
 model AdminAction {
-  id       String          @id @default(cuid())
+  id       String  @id @default(cuid())
   actorId  String
-  actor    User            @relation("AdminActor", fields: [actorId], references: [id], onDelete: Cascade)
+  actor    User    @relation("AdminActor", fields: [actorId], references: [id], onDelete: Cascade)
   targetId String?
-  target   User?           @relation("AdminTarget", fields: [targetId], references: [id], onDelete: SetNull)
+  target   User?   @relation("AdminTarget", fields: [targetId], references: [id], onDelete: SetNull)
 
   type    AdminActionType
   details String? // human-readable summary, e.g. "Granted Pro · 30 days · reason: VIP"
@@ -217,25 +218,25 @@ model AdminAction {
 /// subscription is only activated after a row reaches SUCCESS (verified
 /// server-side). Powers the subscription history + audit trail.
 model Transaction {
-  id                String        @id @default(cuid())
-  userId            String
-  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  provider          String        // "flutterwave" | "demo" | future providers
-  method            String        // "mtn_momo" | "orange_money" | "flutterwave" | "card"
+  provider          String // "flutterwave" | "demo" | future providers
+  method            String // "mtn_momo" | "orange_money" | "flutterwave" | "card"
   reference         String        @unique // our idempotent tx_ref
-  providerReference String?       // id returned by the provider
+  providerReference String? // id returned by the provider
   status            PaymentStatus @default(PENDING)
 
   // Where the payment was routed (from backend recipient config, never the
   // frontend). Null for rails that settle to a provider merchant account.
-  recipient         String?       // receiving account, e.g. MoMo/Orange number
-  recipientName     String?       // configured account owner at payment time
+  recipient     String? // receiving account, e.g. MoMo/Orange number
+  recipientName String? // configured account owner at payment time
 
-  plan              Plan
-  amount            Int           // minor units (e.g. cents)
-  currency          String        @default("USD")
-  description       String?
+  plan        Plan
+  amount      Int // minor units (e.g. cents)
+  currency    String  @default("USD")
+  description String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -287,9 +288,9 @@ model VerificationToken {
 /// Persistent, per-user notifications powering the bell menu, /notifications
 /// page and near real-time (polled) updates.
 model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   type      NotificationType
   title     String
@@ -298,7 +299,7 @@ model Notification {
   actionUrl String? // where clicking the notification takes the user
   metadata  Json? // metadata_json — arbitrary structured context
 
-  createdAt DateTime         @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([isRead])
@@ -327,7 +328,7 @@ model JournalEntry {
   lotSize    Float?
   riskAmount Float?
 
-  resultType   String  @default("OPEN") // OPEN | WIN | LOSS | BREAKEVEN
+  resultType   String @default("OPEN") // OPEN | WIN | LOSS | BREAKEVEN
   resultR      Float? // R multiple
   resultAmount Float?
 
@@ -383,6 +384,79 @@ model JournalOutcome {
   note             String?  @db.Text
 
   checkedAt DateTime @default(now())
+}
+
+/// Trade Setup Lifecycle (Stage 1) — monitors an ALREADY-GENERATED Rex Trade
+/// Setup after the fact. One row per directional setup buildTradeSetup()
+/// produced. The original trading levels below are captured once, at
+/// creation, and are NEVER overwritten by lifecycle monitoring — only
+/// `state` / `lastPrice` / `lastCheckedAt` and the related observations are
+/// ever updated afterward. This app has no live/push price feed, so
+/// monitoring is strictly upload-driven: a new observation is only recorded
+/// when a LATER chart upload of the same pair yields a reliably-read price
+/// (see src/lib/rex/lifecycle.ts). Never generates or replaces a setup.
+model TradeSetupLifecycle {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The originating RexReport's own id (e.g. "rex_eurusd_abc123") — the same
+  /// loosely-correlated identifier convention JournalEntry.analysisId already
+  /// uses (this app has no FK from a report id to AnalysisUsage.id). One
+  /// lifecycle row per generated directional setup.
+  setupId String @unique
+
+  pair      String
+  timeframe String?
+  bias      String // "Bullish" | "Bearish" — ORIGINAL, never changed
+
+  // ── Original trading levels — immutable after creation ───────────────────
+  entryZone        String
+  invalidationZone String
+  target1          String
+  target2          String
+  entryMid         Float
+  invalidationMid  Float
+  target1Mid       Float
+  target2Mid       Float
+  riskReward       String
+
+  generatedAt       DateTime // when buildTradeSetup() produced this setup
+  priceAtGeneration Float? // currentPrice at generation, only when reliably available
+
+  // ── Lifecycle state — the only fields monitoring ever updates ─────────────
+  state         String    @default("ACTIVE")
+  lastPrice     Float?
+  lastCheckedAt DateTime?
+
+  observations SetupLifecycleObservation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, pair])
+  @@index([state])
+}
+
+/// Append-only price-check history for a tracked setup — one row per
+/// monitoring attempt (reliable or not). Deduped per source analysis so
+/// re-processing the same upload never creates a duplicate record.
+model SetupLifecycleObservation {
+  id      String              @id @default(cuid())
+  setupId String
+  setup   TradeSetupLifecycle @relation(fields: [setupId], references: [id], onDelete: Cascade)
+
+  /// The RexReport.id of the analysis this price reading came from.
+  sourceAnalysisId String
+
+  price Float? // null when price wasn't reliably extracted this time (→ UNVERIFIED)
+  state String // the lifecycle state determined AT this observation
+
+  observedAt DateTime @default(now())
+
+  @@unique([setupId, sourceAnalysisId])
+  @@index([setupId, observedAt])
 }
 
 // Password reset (token hashed before storage)
