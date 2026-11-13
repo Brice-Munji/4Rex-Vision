@@ -45,8 +45,7 @@ import {
   type PositionSizeResult,
 } from "@/lib/rex/position-size";
 import { hasLowerTimeframeAvailable } from "@/lib/rex/sniper-entry";
-import type { TradeSetupLifecycleDTO } from "@/lib/rex/setup-lifecycle";
-import { lifecycleMeta, formatLifecyclePrice } from "@/components/rex/lifecycle-display";
+import type { TradeSetupLifecycleDTO, LifecycleState } from "@/lib/rex/setup-lifecycle";
 
 /**
  * Presentation-only status label over the EXISTING TradeSetupResult.kind —
@@ -730,13 +729,52 @@ function sniperFileToBase64(file: File): Promise<string> {
  * doesn't repeat them) — this is only the monitoring-specific delta: current
  * status, the market price at generation, the latest verified price, the
  * last check time, and recent observation history.
- *
- * LIFECYCLE_META/formatLifecyclePrice now live in lifecycle-display.tsx,
- * shared with the Tracked Setups page (Sprint 1.1) so a state's visual
- * meaning is defined in exactly one place.
  */
+const LIFECYCLE_META: Record<
+  LifecycleState,
+  { icon: React.ElementType; className: string; label: string; emphasize?: string }
+> = {
+  ACTIVE: { icon: Gauge, className: "border-[#2a2a2a] bg-[#161616] text-[#A3A3A3]", label: "Active" },
+  APPROACHING_ENTRY: {
+    icon: Crosshair,
+    className: "border-amber-500/40 bg-amber-500/15 text-amber-400",
+    label: "Approaching entry",
+  },
+  ENTRY_ZONE_REACHED: {
+    icon: Target,
+    className: "border-emerald-500/40 bg-emerald-500/15 text-emerald-400",
+    label: "Entry zone reached",
+  },
+  ENTRY_MISSED: {
+    icon: Ban,
+    className: "border-rose-500/40 bg-rose-500/15 text-rose-400",
+    label: "Entry missed",
+    emphasize: "DON'T CHASE",
+  },
+  TARGET_APPROACHING: {
+    icon: Target,
+    className: "border-amber-500/40 bg-amber-500/15 text-amber-400",
+    label: "Target approaching",
+  },
+  TP1_HIT: { icon: Check, className: "border-emerald-500/40 bg-emerald-500/15 text-emerald-400", label: "TP1 hit" },
+  TP2_HIT: { icon: Check, className: "border-emerald-500/40 bg-emerald-500/15 text-emerald-400", label: "TP2 hit" },
+  INVALIDATED: {
+    icon: ShieldAlert,
+    className: "border-rose-500/40 bg-rose-500/15 text-rose-400",
+    label: "Invalidated",
+  },
+  UNVERIFIED: { icon: Minus, className: "border-[#2a2a2a] bg-[#161616] text-[#7A7A7A]", label: "Unverified" },
+};
+
+/** Light display rounding only (never used for any trading decision) — caps
+ *  floating-point noise on a parsed chart price without pair-specific precision. */
+function formatLifecyclePrice(price: number | null): string {
+  if (price == null || !Number.isFinite(price)) return "—";
+  return String(Number(price.toFixed(5)));
+}
+
 function LifecyclePanel({ lifecycle }: { lifecycle: TradeSetupLifecycleDTO }) {
-  const meta = lifecycleMeta(lifecycle.state);
+  const meta = LIFECYCLE_META[lifecycle.state] ?? LIFECYCLE_META.UNVERIFIED;
   const Icon = meta.icon;
   const history = lifecycle.observations.slice(0, 5);
 
@@ -801,7 +839,7 @@ function LifecyclePanel({ lifecycle }: { lifecycle: TradeSetupLifecycleDTO }) {
                 <span className="shrink-0">{new Date(o.observedAt).toLocaleString()}</span>
                 <span className="font-mono tabular-nums">{formatLifecyclePrice(o.price)}</span>
                 <span className="shrink-0 font-semibold text-[#F5F5F5]">
-                  {lifecycleMeta(o.state).label}
+                  {(LIFECYCLE_META[o.state] ?? LIFECYCLE_META.UNVERIFIED).label}
                 </span>
               </li>
             ))}

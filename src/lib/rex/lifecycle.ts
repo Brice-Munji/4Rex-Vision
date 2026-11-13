@@ -28,12 +28,6 @@ import {
  *    only fires when a later chart upload of the SAME pair produces a
  *    reliably-read price. Best-effort and additive: never throws into the
  *    analysis path, mirroring recordAnalysisEvent()'s own contract.
- *
- *  - listTrackedSetups() (Sprint 1.1): read-only retrieval for the Tracked
- *    Setups page — always scoped to a single userId the caller resolved
- *    server-side from the session, never a client-supplied value. This is
- *    the ONLY new query this sprint adds; it reuses the same toDTO/include
- *    shape createOrGetSetupLifecycle/getSetupLifecycle already use.
  */
 
 interface LifecycleRow {
@@ -184,46 +178,6 @@ export async function getSetupLifecycle(
     // eslint-disable-next-line no-console
     console.error("[rex.lifecycle] getSetupLifecycle failed:", err instanceof Error ? err.message : err);
     return null;
-  }
-}
-
-/**
- * All of a user's tracked setups, newest generated first (Sprint 1.1 —
- * Tracked Setups reachability). Ownership is enforced HERE, by the query's
- * own `where: { userId }` — callers must resolve `userId` server-side from
- * the authenticated session and never accept it from client input. Returns
- * an empty array (never throws) on any failure so a transient DB issue
- * degrades to an empty list rather than breaking the page.
- */
-export async function listTrackedSetups(
-  userId: string,
-  limit = 50
-): Promise<TradeSetupLifecycleDTO[]> {
-  try {
-    const rows = await prisma.tradeSetupLifecycle.findMany({
-      where: { userId },
-      orderBy: { generatedAt: "desc" },
-      take: limit,
-      include: OBSERVATIONS_INCLUDE,
-    });
-    return rows.map(toDTO);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[rex.lifecycle] listTrackedSetups failed:", err instanceof Error ? err.message : err);
-    return [];
-  }
-}
-
-/** Count of a user's tracked setups — used only to decide whether a lapsed
- *  Pro user still has preserved data worth showing read-only (mirrors
- *  journal/access.ts's own hasData check for Smart Journal). */
-export async function countTrackedSetups(userId: string): Promise<number> {
-  try {
-    return await prisma.tradeSetupLifecycle.count({ where: { userId } });
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[rex.lifecycle] countTrackedSetups failed:", err instanceof Error ? err.message : err);
-    return 0;
   }
 }
 

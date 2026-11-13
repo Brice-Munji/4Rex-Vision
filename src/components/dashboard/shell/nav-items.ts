@@ -8,7 +8,6 @@ import {
   CreditCard,
   Settings,
   HelpCircle,
-  Crosshair,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,7 +24,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Analyze Chart", href: "/analyze", icon: ScanSearch },
   { label: "Smart Journal", href: "/journal", icon: BookOpen, pro: true },
-  { label: "Tracked Setups", href: "/tracked-setups", icon: Crosshair, pro: true },
   { label: "Analysis History", href: "/history", icon: History },
   { label: "Market Intelligence", href: "/market", icon: Globe },
   { label: "AI Growth", href: "/growth", icon: TrendingUp },
