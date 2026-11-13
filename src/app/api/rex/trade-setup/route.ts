@@ -3,7 +3,6 @@ import { getMarketAccess } from "@/lib/market/access";
 import { buildTradeSetup, type TradeSetupInput } from "@/lib/rex/trade-setup";
 import { getNewsGuardForPair } from "@/lib/economicCalendar/service";
 import type { NewsGuard } from "@/lib/economicCalendar/blocking";
-import { createOrGetSetupLifecycle } from "@/lib/rex/lifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -123,17 +122,10 @@ export async function POST(req: Request) {
   if (!access) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!access.isPro) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  const body = (await req.json().catch(() => null)) as
-    | (Partial<TradeSetupInput> & { analysisId?: unknown })
-    | null;
+  const body = (await req.json().catch(() => null)) as Partial<TradeSetupInput> | null;
   if (!body || typeof body.pair !== "string" || !body.pair.trim()) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
-  // Stage 1 lifecycle tracking — the originating RexReport's own id (client-
-  // generated, e.g. "rex_eurusd_abc123"), the same loosely-correlated
-  // identifier convention JournalEntry.analysisId already uses. Optional:
-  // its absence just means this particular generation isn't tracked.
-  const analysisId = typeof body.analysisId === "string" && body.analysisId.trim() ? body.analysisId : null;
 
   // Correlation id — ONLY if the caller already supplied one; never fabricated.
   const requestId = req.headers.get("x-request-id") ?? req.headers.get("x-correlation-id") ?? null;
@@ -188,38 +180,7 @@ export async function POST(req: Request) {
       requestId
     );
 
-    // ── STAGE 1 LIFECYCLE TRACKING ──────────────────────────────────────────
-    // Retain this generated setup for subsequent monitoring. Purely additive:
-    // never affects the setup returned above, never throws into this route
-    // (createOrGetSetupLifecycle is best-effort). Idempotent on analysisId —
-    // re-opening the setup modal for the SAME analysis returns the SAME
-    // tracked record rather than resetting it.
-    let lifecycle = null;
-    if (setup.kind === "directional" && analysisId) {
-      const rawCurrent = typeof body.currentPrice === "string" ? parseFloat(body.currentPrice) : NaN;
-      lifecycle = await createOrGetSetupLifecycle({
-        userId: access.user.id,
-        setupId: analysisId,
-        pair: body.pair,
-        timeframe: typeof body.timeframe === "string" ? body.timeframe : null,
-        bias: setup.bias,
-        entryZone: setup.entryZone,
-        invalidationZone: setup.invalidationZone,
-        target1: setup.target1,
-        target2: setup.target2,
-        entryMid: setup.entryMid,
-        invalidationMid: setup.invalidationMid,
-        target1Mid: setup.target1Mid,
-        target2Mid: setup.target2Mid,
-        riskReward: setup.riskReward,
-        // Only treated as reliable when the engine's own anti-chase check
-        // actually ran (DirectionalSetup.anticChaseChecked) — never guessed.
-        priceAtGeneration: setup.anticChaseChecked && Number.isFinite(rawCurrent) ? rawCurrent : null,
-        generatedAt: new Date(),
-      });
-    }
-
-    return NextResponse.json({ setup, lifecycle }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ setup }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     // Never leak internals; return parseable JSON so the client shows a real error.
     // eslint-disable-next-line no-console
