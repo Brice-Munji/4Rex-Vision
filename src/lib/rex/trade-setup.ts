@@ -254,6 +254,12 @@ interface ApaFlags {
   premiumDiscount: boolean; // premium / discount / equilibrium
   mtf: boolean; // higher-timeframe agreement
   trendConf: boolean; // trendline / MA alignment
+  // Explicit directional language (independent of HH/HL structure phrasing).
+  // Used ONLY to guard the generic-factor validity bypass below against
+  // directional contradiction — never scored, never added to `factors`/
+  // confluence, never shown to the user.
+  bullishLanguage: boolean;
+  bearishLanguage: boolean;
 }
 
 function detectApa(input: TradeSetupInput): { flags: ApaFlags; factors: string[] } {
@@ -277,6 +283,10 @@ function detectApa(input: TradeSetupInput): { flags: ApaFlags; factors: string[]
     premiumDiscount: has(/premium|discount|equilibrium|fib/),
     mtf: has(/higher timeframe|multi-timeframe|multi timeframe|\bhtf\b|daily|weekly/),
     trendConf: has(/trendline|moving average|\bema\b|\bma\b|averages aligned/),
+    // Deliberately excludes bare "buy"/"sell" — "buy-side"/"sell-side liquidity"
+    // are direction-neutral SMC/ICT location terms, not directional theses.
+    bullishLanguage: has(/\bbullish\b|reversing up|turning up|breaking higher|broke higher|pushed higher|bought up|buying pressure/),
+    bearishLanguage: has(/\bbearish\b|reversing down|turning down|rolling over|breaking lower|broke lower|pushed lower|sold off|sell-off|selling pressure/),
   };
 
   const factors: string[] = [];
@@ -418,7 +428,21 @@ export function buildTradeSetup(input: TradeSetupInput): TradeSetupResult {
   const zoneFromLevel = dir > 0 ? supL != null || entryL != null : resL != null || entryL != null;
   const zoneLevel = zoneFromText || zoneFromLevel;
   const anchorPresent = entryL != null || (dir > 0 ? supL != null : resL != null) || current != null;
-  if (!anchorPresent || !zoneLevel || (!structureAligned && factors.length < 3)) {
+  // Directional integrity: the generic-factor bypass just below (factors.length
+  // >= 3) exists only to tolerate evidence that skips exact HH/HL structure
+  // phrasing but still carries real levels. It must never fire when the
+  // evidence actually describes the OPPOSITE direction — otherwise a bullish
+  // setup could be built from a bearish rejection (e.g. "bearish engulfing...
+  // reversing down") just because 3 bias-neutral keywords (resistance,
+  // liquidity, confirmation) also matched. This only gates the bypass path:
+  // when real, directly-aligned structure/trend evidence already exists
+  // (structureAligned), the setup still validates on that strength alone, so
+  // legitimate sweep-then-reverse setups that mention the prior opposite
+  // structure as context are not penalized.
+  const oppositeEvidence = dir > 0
+    ? flags.structureBear || flags.bearishLanguage
+    : flags.structureBull || flags.bullishLanguage;
+  if (!anchorPresent || !zoneLevel || (!structureAligned && (factors.length < 3 || oppositeEvidence))) {
     return { kind: "none", reason: SETUP_NO_VALID_MESSAGE, newsRisk };
   }
   // Reflect a level-derived zone in the confluence list so the grade and the

@@ -422,6 +422,119 @@ check(
   }
 }
 
+// DI-A. Directional integrity (Sprint 2 fix): bias=Bullish, but the evidence
+// text describes purely BEARISH price action ("bearish engulfing candle" +
+// "reversing down"), trend=Sideways (no HH/HL, so structureAligned=false).
+// Before the fix, 3 bias-neutral generic factors (resistance/liquidity/
+// confirmation) let this bypass the validity gate and produced a BUY setup
+// from bearish evidence. Must now be rejected.
+{
+  const r = buildTradeSetup({
+    pair: "EURUSD",
+    timeframe: "H1",
+    bias: "Bullish",
+    confidence: 70,
+    currentPrice: null,
+    priceLevels: [
+      { type: "Entry", value: "1.0980" },
+      { type: "Take Profit", value: "1.1300" },
+      { type: "Invalidation", value: "1.0900" },
+    ],
+    trend: { direction: "Sideways", strength: "Moderate" },
+    evidence: [
+      { label: "Rejection", explanation: "Price rejected hard at resistance with a bearish engulfing candle" },
+      { label: "Liquidity", explanation: "Liquidity sweep of the equal highs before reversing down" },
+    ],
+    newsGuard: guard([], "EURUSD"),
+  });
+  check("DI-A bullish bias + bearish-only evidence → rejected, not a BUY setup", r.kind === "none", `got kind=${r.kind}`);
+}
+
+// DI-B. Mirror of DI-A: bias=Bearish, evidence purely BULLISH ("bullish
+// engulfing candle" + "reversing up"), trend=Sideways. Must also reject —
+// the bypass must not be direction-specific.
+{
+  const r = buildTradeSetup({
+    pair: "EURUSD",
+    timeframe: "H1",
+    bias: "Bearish",
+    confidence: 70,
+    currentPrice: null,
+    priceLevels: [
+      { type: "Entry", value: "1.1020" },
+      { type: "Take Profit", value: "1.0700" },
+      { type: "Invalidation", value: "1.1100" },
+    ],
+    trend: { direction: "Sideways", strength: "Moderate" },
+    evidence: [
+      { label: "Rejection", explanation: "Price rejected hard at support with a bullish engulfing candle" },
+      { label: "Liquidity", explanation: "Liquidity sweep of the equal lows before reversing up" },
+    ],
+    newsGuard: guard([], "EURUSD"),
+  });
+  check("DI-B bearish bias + bullish-only evidence → rejected, not a SELL setup", r.kind === "none", `got kind=${r.kind}`);
+}
+
+// DI-C. Control: legitimate setup validated via DIRECT structure alignment
+// (trend=Uptrend → structureBull=true → structureAligned=true) must be
+// completely unaffected by the new contradiction check — same fixture/score
+// as the baseline "valid" case used throughout this file.
+{
+  const s = buildTradeSetup({ ...validApa("GBPUSD"), newsGuard: guard([], "GBPUSD") });
+  check("DI-C direct-alignment setup unaffected by directional-integrity check", s.kind === "directional");
+}
+
+// DI-D. Legitimate "sweep the low, then reverse up" bullish setup: evidence
+// mentions a prior "lower low" sweep purely as CONTEXT before the real
+// bullish break of structure (both HH/HL and LL language present). Because
+// structureBull is also true here, structureAligned=true short-circuits the
+// new check — this must NOT be rejected as "contradictory". Guards against
+// the fix over-rejecting legitimate reversal setups.
+{
+  const r = buildTradeSetup({
+    pair: "EURUSD",
+    timeframe: "H1",
+    bias: "Bullish",
+    confidence: 70,
+    currentPrice: null,
+    priceLevels: [
+      { type: "Entry", value: "1.0980" },
+      { type: "Take Profit", value: "1.1300" },
+      { type: "Invalidation", value: "1.0900" },
+    ],
+    trend: { direction: "Sideways", strength: "Moderate" },
+    evidence: [
+      { label: "Sweep", explanation: "Price swept the prior lower low liquidity pool" },
+      { label: "BOS", explanation: "then reversed hard into a bullish break of structure with higher highs and higher lows" },
+    ],
+    newsGuard: guard([], "EURUSD"),
+  });
+  check("DI-D legitimate sweep-then-reverse bullish setup NOT rejected", r.kind === "directional", `got kind=${r.kind}`);
+}
+
+// DI-E. Insufficient/neutral evidence (no directional language either way,
+// < 3 generic factors) must still fall through the pre-existing
+// factors.length<3 branch exactly as before — the new check adds a
+// contradiction gate, it does not loosen the original insufficiency gate.
+{
+  const r = buildTradeSetup({
+    pair: "EURUSD",
+    timeframe: "H1",
+    bias: "Bullish",
+    confidence: 70,
+    currentPrice: null,
+    priceLevels: [
+      { type: "Entry", value: "1.0980" },
+      { type: "Take Profit", value: "1.1300" },
+      { type: "Invalidation", value: "1.0900" },
+    ],
+    trend: { direction: "Sideways", strength: "Moderate" },
+    evidence: [{ label: "Vague", explanation: "Price is near a round number." }],
+    newsGuard: guard([], "EURUSD"),
+  });
+  check("DI-E insufficient neutral evidence (<3 factors) still rejected", r.kind === "none", `got kind=${r.kind}`);
+}
+
 const total = passed + failures.length;
 // eslint-disable-next-line no-console
 console.log(`\nGenerate-Setup regression tests: ${passed}/${total} passed`);
