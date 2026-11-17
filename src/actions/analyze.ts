@@ -25,6 +25,8 @@ import { getEconomicContext } from "@/lib/rex/economic";
 import { getHigherTimeframeContext } from "@/lib/rex/history";
 import { recordAnalysisEvent } from "@/lib/admin/telemetry";
 import { notifyAnalysisSaved } from "@/lib/notifications/service";
+import { recordLifecycleObservations } from "@/lib/rex/lifecycle";
+import { isProActive } from "@/lib/journal/access";
 import { normalizeInstrument, unsupportedReason } from "@/lib/rex/instruments";
 import { rex } from "@/lib/rex/mock-pipeline";
 import { CLOSING_NOTE } from "@/lib/rex/scenarios";
@@ -377,6 +379,11 @@ async function analyzeChartImpl(
       plan: true,
       dailyAnalysisCount: true,
       analysisCountDate: true,
+      // Additive — needed only for the isProActive() check that gates
+      // lifecycle-observation recording further down; evaluateAnalysisGate()
+      // and the rate limiter below don't read these.
+      subscriptionStatus: true,
+      currentPeriodEnd: true,
     },
   });
   if (!gateUser) {
@@ -637,6 +644,32 @@ async function analyzeChartImpl(
       imageHash: vision.status === "ok" ? vision.imageHash : null,
     });
     await notifyAnalysisSaved(gateUser.id, context.instrument);
+
+    // ── LIFECYCLE OBSERVATIONS (best-effort, additive, Rex Pro only) ────────
+    // This app has no live/push price feed, so THIS completed analysis is
+    // the only trigger that can ever advance an already-tracked setup for
+    // this pair. Pro-gated the same way setup generation/creation already is
+    // (see /api/rex/trade-setup's route) — a Free user has no tracked
+    // setups to advance anyway (creation requires Pro), so this is also a
+    // cheap no-op for them, but the explicit check keeps the policy visible
+    // and avoids the DB round-trip. Never throws into analysis generation —
+    // recordLifecycleObservations() is best-effort internally.
+    //
+    // Deliberately uses `activeAi` (what `report` was actually built from,
+    // after any primary-pair-guard retry) rather than the original `ai`, and
+    // `context.symbol` (the normalized "EURUSD"-style pair) — the same
+    // normalized form the trade-setup route stores, so lookups here actually
+    // match the rows that route created instead of silently finding none.
+    if (isProActive(gateUser)) {
+      const lifecyclePrice = activeAi.priceAxisLegible ? parseFloat(activeAi.currentPrice ?? "") : NaN;
+      await recordLifecycleObservations({
+        userId: gateUser.id,
+        pair: context.symbol,
+        sourceAnalysisId: report.id,
+        price: Number.isFinite(lifecyclePrice) ? lifecyclePrice : null,
+      });
+    }
+
     return {
       status: "ok",
       report,

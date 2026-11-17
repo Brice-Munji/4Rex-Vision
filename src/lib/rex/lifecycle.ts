@@ -7,6 +7,7 @@ import {
   type LifecycleOriginalLevels,
   type TradeSetupLifecycleDTO,
 } from "./setup-lifecycle";
+import type { DirectionalSetup } from "./trade-setup";
 
 /**
  * Trade Setup Lifecycle — persistence layer (Stage 1, ownership-fixed).
@@ -131,6 +132,67 @@ export interface CreateLifecycleInput {
    *  DirectionalSetup.anticChaseChecked — never a guessed/fallback value). */
   priceAtGeneration: number | null;
   generatedAt: Date;
+}
+
+/**
+ * Pure mapping from a just-generated DirectionalSetup + the caller's own
+ * identifying fields to the exact CreateLifecycleInput shape
+ * createOrGetSetupLifecycle() needs. Extracted so the trade-setup route and
+ * this file's own integration tests build that input the SAME way, instead
+ * of two independent copies of this mapping silently drifting apart —
+ * "Do not duplicate persistence logic" applies to this glue too, not just
+ * the DB calls themselves.
+ *
+ * Reads the setup's OWN already-computed levels verbatim (never
+ * recalculates anything — trade-generation stays entirely inside
+ * trade-setup.ts). Does not touch the database and never throws.
+ */
+export function toCreateLifecycleInput(args: {
+  userId: string;
+  setupId: string;
+  pair: string;
+  timeframe: string | null;
+  setup: Pick<
+    DirectionalSetup,
+    | "bias"
+    | "entryZone"
+    | "invalidationZone"
+    | "target1"
+    | "target2"
+    | "entryMid"
+    | "invalidationMid"
+    | "target1Mid"
+    | "target2Mid"
+    | "riskReward"
+    | "anticChaseChecked"
+  >;
+  /** Raw numeric current price, if any was read from the chart. Reliability
+   *  is still gated by setup.anticChaseChecked below — passing a number
+   *  here does NOT by itself make it trusted. */
+  currentPrice: number | null;
+  generatedAt: Date;
+}): CreateLifecycleInput {
+  return {
+    userId: args.userId,
+    setupId: args.setupId,
+    pair: args.pair,
+    timeframe: args.timeframe,
+    bias: args.setup.bias,
+    entryZone: args.setup.entryZone,
+    invalidationZone: args.setup.invalidationZone,
+    target1: args.setup.target1,
+    target2: args.setup.target2,
+    entryMid: args.setup.entryMid,
+    invalidationMid: args.setup.invalidationMid,
+    target1Mid: args.setup.target1Mid,
+    target2Mid: args.setup.target2Mid,
+    riskReward: args.setup.riskReward,
+    priceAtGeneration:
+      args.setup.anticChaseChecked && args.currentPrice != null && Number.isFinite(args.currentPrice)
+        ? args.currentPrice
+        : null,
+    generatedAt: args.generatedAt,
+  };
 }
 
 /**

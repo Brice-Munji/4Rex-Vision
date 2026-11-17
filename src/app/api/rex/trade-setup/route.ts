@@ -3,6 +3,8 @@ import { getMarketAccess } from "@/lib/market/access";
 import { buildTradeSetup, type TradeSetupInput } from "@/lib/rex/trade-setup";
 import { getNewsGuardForPair } from "@/lib/economicCalendar/service";
 import type { NewsGuard } from "@/lib/economicCalendar/blocking";
+import { normalizeInstrument } from "@/lib/rex/instruments";
+import { createOrGetSetupLifecycle, toCreateLifecycleInput } from "@/lib/rex/lifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -122,10 +124,20 @@ export async function POST(req: Request) {
   if (!access) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!access.isPro) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  const body = (await req.json().catch(() => null)) as Partial<TradeSetupInput> | null;
+  const body = (await req.json().catch(() => null)) as
+    | (Partial<TradeSetupInput> & { analysisId?: unknown })
+    | null;
   if (!body || typeof body.pair !== "string" || !body.pair.trim()) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
+  // Lifecycle tracking correlator — the originating RexReport's own id,
+  // client-echoed back (same loosely-correlated convention JournalEntry's
+  // Save-to-Journal already uses for report.id). Safe despite being
+  // client-supplied: lifecycle.ts enforces ownership via the compound
+  // (userId, setupId) key, never by setupId alone — see its header comment.
+  // Optional: its absence just means this particular generation isn't
+  // tracked (the setup itself is unaffected either way).
+  const analysisId = typeof body.analysisId === "string" && body.analysisId.trim() ? body.analysisId : null;
 
   // Correlation id — ONLY if the caller already supplied one; never fabricated.
   const requestId = req.headers.get("x-request-id") ?? req.headers.get("x-correlation-id") ?? null;
@@ -179,6 +191,37 @@ export async function POST(req: Request) {
       setup,
       requestId
     );
+
+    // ── LIFECYCLE TRACKING (best-effort, additive) ──────────────────────────
+    // Persist this generated setup for later monitoring. Never affects the
+    // `setup` returned below, never changes trade-generation output, and
+    // never throws into this route — createOrGetSetupLifecycle() is
+    // best-effort internally (catches its own errors, returns null). Already
+    // Pro-gated: this only runs after the access.isPro check at the top of
+    // this handler. userId is ALWAYS access.user.id, resolved server-side
+    // above from the session — never read from the request body, so no
+    // client-supplied id can influence ownership (only `setupId`, the
+    // correlator, is client-echoed, which is safe per lifecycle.ts's own
+    // ownership guarantee).
+    if (setup.kind === "directional" && analysisId) {
+      // Normalized to the same "EURUSD"-style symbol the analysis action
+      // stores as `pair` when later recording observations — body.pair is
+      // the display form (e.g. "EUR/USD"), which would otherwise never
+      // match and silently leave this setup un-advanced.
+      const pair = normalizeInstrument(body.pair)?.symbol ?? body.pair;
+      const rawCurrent = typeof body.currentPrice === "string" ? parseFloat(body.currentPrice) : NaN;
+      await createOrGetSetupLifecycle(
+        toCreateLifecycleInput({
+          userId: access.user.id,
+          setupId: analysisId,
+          pair,
+          timeframe: typeof body.timeframe === "string" ? body.timeframe : null,
+          setup,
+          currentPrice: Number.isFinite(rawCurrent) ? rawCurrent : null,
+          generatedAt: new Date(),
+        })
+      );
+    }
 
     return NextResponse.json({ setup }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
