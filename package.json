@@ -13,6 +13,7 @@
     "test:sniper": "tsx src/lib/rex/__tests__/sniper-entry.test.ts",
     "test:coach": "tsx src/lib/coach/__tests__/coach.test.ts",
     "test:coach-launcher": "tsx src/components/dashboard/coach/__tests__/launcher.test.ts",
+    "test:lifecycle-ownership": "NODE_OPTIONS=--conditions=react-server tsx src/lib/rex/__tests__/lifecycle-ownership.test.ts",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

@@ -147,6 +147,7 @@ model User {
   analysisEvents      AnalysisUsage[]
   notifications       Notification[]
   journalEntries      JournalEntry[]
+  tradeSetupLifecycles TradeSetupLifecycle[]
   adminActionsMade    AdminAction[]        @relation("AdminActor")
   adminActionsTarget  AdminAction[]        @relation("AdminTarget")
 
@@ -383,6 +384,93 @@ model JournalOutcome {
   note             String?  @db.Text
 
   checkedAt DateTime @default(now())
+}
+
+/// Trade Setup Lifecycle — monitors an ALREADY-GENERATED Rex Trade Setup
+/// after the fact. One row per (user, directional setup) pair. The original
+/// trading levels below are captured once, at creation, and are NEVER
+/// overwritten by lifecycle monitoring — only `state` / `lastPrice` /
+/// `lastCheckedAt` and the related observations are ever updated afterward.
+/// This app has no live/push price feed, so monitoring is strictly
+/// upload-driven: a new observation is only recorded when a LATER chart
+/// upload of the same pair yields a reliably-read price (see
+/// src/lib/rex/lifecycle.ts). Never generates or replaces a setup.
+model TradeSetupLifecycle {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The originating RexReport's own id (e.g. "rex_eurusd_abc123") — the same
+  /// loosely-correlated identifier convention JournalEntry.analysisId already
+  /// uses (this app has no FK from a report id to AnalysisUsage.id).
+  /// Deliberately NOT globally unique on its own: a report id is a
+  /// predictable `rex_<pair>_<timestamp>` string, not a secret token, so a
+  /// global unique constraint on this column alone would let one user's
+  /// lookup resolve to a DIFFERENT user's row if the two ever collided or
+  /// were guessed from a client request. Uniqueness is scoped to
+  /// (userId, setupId) below instead — every ownership-sensitive query must
+  /// filter by both, never setupId alone.
+  setupId String
+
+  pair      String
+  timeframe String?
+  bias      String // "Bullish" | "Bearish" — ORIGINAL, never changed
+
+  // ── Original trading levels — immutable after creation ───────────────────
+  entryZone        String
+  invalidationZone String
+  target1          String
+  target2          String
+  entryMid         Float
+  invalidationMid  Float
+  target1Mid       Float
+  target2Mid       Float
+  riskReward       String
+
+  generatedAt       DateTime // when buildTradeSetup() produced this setup
+  priceAtGeneration Float? // currentPrice at generation, only when reliably available
+
+  // ── Lifecycle state — the only fields monitoring ever updates ─────────────
+  state         String    @default("ACTIVE")
+  lastPrice     Float?
+  lastCheckedAt DateTime?
+
+  observations SetupLifecycleObservation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Ownership-scoped uniqueness (the fix this model exists to ship): the
+  // SAME setupId may exist independently for two different users — it must
+  // never be looked up or constrained by setupId alone. This compound key
+  // is also what makes creation idempotent per-user.
+  @@unique([userId, setupId])
+  @@index([userId])
+  @@index([userId, pair])
+  @@index([state])
+}
+
+/// Append-only price-check history for a tracked setup — one row per
+/// monitoring attempt (reliable or not). Deduped per source analysis so
+/// re-processing the same upload never creates a duplicate record. Reached
+/// only through its parent TradeSetupLifecycle, which is itself always
+/// looked up scoped by (userId, setupId) — there is no direct,
+/// ownership-unchecked query path onto this table.
+model SetupLifecycleObservation {
+  id      String              @id @default(cuid())
+  setupId String
+  setup   TradeSetupLifecycle @relation(fields: [setupId], references: [id], onDelete: Cascade)
+
+  /// The RexReport.id of the analysis this price reading came from.
+  sourceAnalysisId String
+
+  price Float? // null when price wasn't reliably extracted this time (→ UNVERIFIED)
+  state String // the lifecycle state determined AT this observation
+
+  observedAt DateTime @default(now())
+
+  @@unique([setupId, sourceAnalysisId])
+  @@index([setupId, observedAt])
 }
 
 // Password reset (token hashed before storage)
