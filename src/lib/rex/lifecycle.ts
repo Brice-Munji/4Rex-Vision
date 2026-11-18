@@ -277,6 +277,53 @@ export async function getSetupLifecycle(
   }
 }
 
+/**
+ * All of a user's tracked setups, newest generated first (Sprint 3 —
+ * Tracked Setups UI). Ownership is enforced HERE, by the query's own
+ * `where: { userId }` — callers must resolve `userId` server-side from the
+ * authenticated session and never accept it from client input (see
+ * lifecycle-access.ts's getTrackedSetupsAccess()).
+ *
+ * Unlike the single-record lookups above, a bare array can't distinguish
+ * "this user genuinely has no tracked setups" from "the query failed" —
+ * both would otherwise look identical to the caller. Returns `failed: true`
+ * on any error instead (setups stays [], never throws), so the UI can show
+ * a real error state rather than silently rendering an empty list.
+ */
+export async function listTrackedSetups(
+  userId: string,
+  limit = 50
+): Promise<{ setups: TradeSetupLifecycleDTO[]; failed: boolean }> {
+  try {
+    const rows = await prisma.tradeSetupLifecycle.findMany({
+      where: { userId },
+      orderBy: { generatedAt: "desc" },
+      take: limit,
+      include: OBSERVATIONS_INCLUDE,
+    });
+    return { setups: rows.map(toDTO), failed: false };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[rex.lifecycle] listTrackedSetups failed:", err instanceof Error ? err.message : err);
+    return { setups: [], failed: true };
+  }
+}
+
+/** Count of a user's tracked setups — used only to decide whether a lapsed
+ *  Pro user still has preserved data worth showing read-only (mirrors
+ *  journal/access.ts's own hasData check for Smart Journal). Defaults to 0
+ *  on failure: the conservative direction here is "treat as no data" rather
+ *  than risk granting view access on an unverified count. */
+export async function countTrackedSetups(userId: string): Promise<number> {
+  try {
+    return await prisma.tradeSetupLifecycle.count({ where: { userId } });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[rex.lifecycle] countTrackedSetups failed:", err instanceof Error ? err.message : err);
+    return 0;
+  }
+}
+
 export interface RecordObservationInput {
   userId: string;
   pair: string;
