@@ -209,7 +209,11 @@ function SetupModal({
         const res = await fetch("/api/rex/trade-setup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildInput(report)),
+          // Lifecycle tracking correlator (Sprint 2.1) — the same report.id
+          // already used by Save-to-Journal's analysisId. Purely additive:
+          // the route only reads it to key an optional persisted record; it
+          // never changes what `setup` comes back or how it's rendered here.
+          body: JSON.stringify({ ...buildInput(report), analysisId: report.id ?? null }),
         });
         const data = await res.json().catch(() => null);
 
