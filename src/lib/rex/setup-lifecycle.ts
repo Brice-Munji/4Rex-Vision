@@ -54,12 +54,19 @@ export const TERMINAL_LIFECYCLE_STATES: ReadonlySet<LifecycleState> = new Set([
  * `"server-only"` files (e.g. JournalEntryDTO lives in journal/constants.ts,
  * not the "server-only" journal/service.ts).
  */
+/** Provenance of a single observation (Sprint 4). "chart_analysis" is the
+ *  original upload-driven path (a later chart upload of the same pair
+ *  yielded a reliable price); "market_data" is the independent market-price
+ *  monitoring job added in Sprint 4. */
+export type ObservationSource = "chart_analysis" | "market_data";
+
 export interface LifecycleObservationDTO {
   id: string;
   sourceAnalysisId: string;
   price: number | null;
   state: LifecycleState;
   observedAt: string;
+  source: ObservationSource;
 }
 
 export interface TradeSetupLifecycleDTO {

@@ -391,10 +391,13 @@ model JournalOutcome {
 /// trading levels below are captured once, at creation, and are NEVER
 /// overwritten by lifecycle monitoring — only `state` / `lastPrice` /
 /// `lastCheckedAt` and the related observations are ever updated afterward.
-/// This app has no live/push price feed, so monitoring is strictly
-/// upload-driven: a new observation is only recorded when a LATER chart
-/// upload of the same pair yields a reliably-read price (see
-/// src/lib/rex/lifecycle.ts). Never generates or replaces a setup.
+/// Two independent paths ever advance monitoring (see src/lib/rex/
+/// lifecycle.ts): (1) upload-driven — a LATER chart upload of the same pair
+/// yields a reliably-read price, and (2) Sprint 4's market-price monitoring
+/// job — an independent, scheduled job retrieves real prices from a market-
+/// data provider. Either path only ever updates `state`/`lastPrice`/
+/// `lastCheckedAt` + appends an observation; neither ever generates, adjusts,
+/// or replaces a setup's original levels.
 model TradeSetupLifecycle {
   id     String @id @default(cuid())
   userId String
@@ -461,11 +464,24 @@ model SetupLifecycleObservation {
   setupId String
   setup   TradeSetupLifecycle @relation(fields: [setupId], references: [id], onDelete: Cascade)
 
-  /// The RexReport.id of the analysis this price reading came from.
+  /// For `source: "chart_analysis"`, the RexReport.id of the analysis this
+  /// price reading came from. For `source: "market_data"` (Sprint 4), there
+  /// is no analysis — this instead holds a per-monitoring-run correlator
+  /// (`market:<cycleId>`) so retrying/repeating the SAME run stays
+  /// idempotent (upsert in place) while a later run still adds a new row.
+  /// Column name kept as-is for backward compatibility with existing rows
+  /// and the existing unique index below.
   sourceAnalysisId String
 
   price Float? // null when price wasn't reliably extracted this time (→ UNVERIFIED)
   state String // the lifecycle state determined AT this observation
+
+  /// Provenance of this observation. "chart_analysis" = the pre-Sprint-4
+  /// upload-driven path (a later chart upload of the same pair yielded a
+  /// reliable price). "market_data" = Sprint 4's independent price-monitoring
+  /// job (an external market-data provider). Defaulted so every pre-existing
+  /// row is correctly and retroactively labeled without a backfill.
+  source String @default("chart_analysis")
 
   observedAt DateTime @default(now())
 

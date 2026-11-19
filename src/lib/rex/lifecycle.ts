@@ -6,6 +6,7 @@ import {
   type LifecycleState,
   type LifecycleOriginalLevels,
   type TradeSetupLifecycleDTO,
+  type ObservationSource,
 } from "./setup-lifecycle";
 import type { DirectionalSetup } from "./trade-setup";
 
@@ -73,7 +74,14 @@ interface LifecycleRow {
   state: string;
   lastPrice: number | null;
   lastCheckedAt: Date | null;
-  observations: { id: string; sourceAnalysisId: string; price: number | null; state: string; observedAt: Date }[];
+  observations: {
+    id: string;
+    sourceAnalysisId: string;
+    price: number | null;
+    state: string;
+    observedAt: Date;
+    source: string;
+  }[];
 }
 
 function toDTO(row: LifecycleRow): TradeSetupLifecycleDTO {
@@ -103,6 +111,7 @@ function toDTO(row: LifecycleRow): TradeSetupLifecycleDTO {
       price: o.price,
       state: o.state as LifecycleState,
       observedAt: o.observedAt.toISOString(),
+      source: o.source as ObservationSource,
     })),
   };
 }
@@ -393,10 +402,11 @@ export async function recordLifecycleObservations(input: RecordObservationInput)
           sourceAnalysisId: input.sourceAnalysisId,
           price: input.price,
           state: newState,
+          source: "chart_analysis",
         },
         // Same source analysis reprocessed: refresh the reading in place
         // rather than add a second row for the identical event.
-        update: { price: input.price, state: newState },
+        update: { price: input.price, state: newState, source: "chart_analysis" },
       });
 
       // Only move the setup's own headline state/lastPrice forward on a
@@ -413,5 +423,151 @@ export async function recordLifecycleObservations(input: RecordObservationInput)
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error("[rex.lifecycle] recordLifecycleObservations failed:", err instanceof Error ? err.message : err);
+  }
+}
+
+/**
+ * Minimum time between two market-data-sourced rechecks of the SAME setup.
+ * Bounds how fast the observation history can grow under frequent monitor
+ * invocations ("prevent duplicate or redundant observations") independently
+ * of the price-feed's own 5-minute fetch cache (src/lib/market/forex-price.ts)
+ * — that cache bounds how often the EXTERNAL provider is hit per pair per
+ * run; this bounds how often any ONE setup gets a new observation row.
+ */
+const MIN_MARKET_RECHECK_MS = 15 * 60 * 1000; // 15 minutes
+
+/**
+ * Every currently-non-terminal pair across ALL users — the monitoring job's
+ * own worklist. Deliberately NOT scoped to a single userId: unlike the
+ * upload-driven path above (which only ever advances the uploading user's
+ * own setups, because it rides along a specific user's analyze request),
+ * the market-data monitor has no "current user" — it is a scheduled,
+ * instrument-scoped job (see src/app/api/rex/market-monitor/route.ts) that
+ * applies the SAME real market price to every tracked setup for that
+ * instrument, which is objectively correct regardless of who owns it and
+ * reveals nothing about one user to another (it only ever reads `pair`
+ * here, and the write path below still never returns cross-user data to
+ * any caller). Best-effort: returns [] (never throws) on failure.
+ */
+export async function getDistinctTrackedPairs(): Promise<string[]> {
+  try {
+    const rows = await prisma.tradeSetupLifecycle.findMany({
+      where: { state: { notIn: Array.from(TERMINAL_LIFECYCLE_STATES) } },
+      distinct: ["pair"],
+      select: { pair: true },
+    });
+    return rows.map((r) => r.pair);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[rex.lifecycle] getDistinctTrackedPairs failed:", err instanceof Error ? err.message : err);
+    return [];
+  }
+}
+
+export interface RecordMarketObservationInput {
+  /** Compact symbol matching TradeSetupLifecycle.pair, e.g. "EURUSD". */
+  pair: string;
+  /** Already validated by the caller (src/lib/market/forex-price.ts) —
+   *  this function only ever runs for a RELIABLE reading. There is no
+   *  "price: null" case on this path (contrast recordLifecycleObservations
+   *  above): a monitoring run that couldn't get a trustworthy price for a
+   *  pair simply never calls this function for it at all, rather than
+   *  writing an UNVERIFIED row on every failed poll — see forex-price.ts's
+   *  module doc for why that's the more honest choice for a machine-
+   *  triggered poller than it would be for a user-driven chart upload. */
+  price: number;
+  /** Per-monitoring-run correlator (e.g. an ISO-minute-bucketed string from
+   *  the calling route). Retrying/repeating the SAME run stays idempotent
+   *  (upsert in place, no duplicate row); a later run still adds a new one. */
+  cycleId: string;
+}
+
+export interface RecordMarketObservationResult {
+  /** Setups whose state/lastPrice/lastCheckedAt were advanced this run. */
+  updated: number;
+  /** Setups for this pair that were within MIN_MARKET_RECHECK_MS of their
+   *  last check and were left untouched — not a failure, just a no-op. */
+  skipped: number;
+  failed: boolean;
+}
+
+/**
+ * Advance every currently-tracked, non-terminal setup for `pair` (across
+ * ALL owners — see getDistinctTrackedPairs's own comment on why that is
+ * correct here) using one externally-sourced, already-validated price
+ * reading:
+ *   1. Load candidates for this pair (mirrors recordLifecycleObservations's
+ *      own `state: { notIn: TERMINAL }` filter — a terminal setup is left
+ *      alone entirely, same as the upload-driven path).
+ *   2. Skip any setup rechecked within MIN_MARKET_RECHECK_MS — safe against
+ *      repeated/overlapping monitor executions without a separate lock.
+ *   3. Classify with the SAME pure classifier the upload-driven path uses
+ *      (determineLifecycleState) — no new/duplicated trading logic.
+ *   4. Persist the observation (tagged source: "market_data", deduped per
+ *      (setupId, "market:<cycleId>") so a retried run can never duplicate
+ *      a row) and advance state/lastPrice/lastCheckedAt. Original entry/
+ *      SL/TP levels are never touched — identical guarantee to the
+ *      upload-driven path.
+ * Best-effort: never throws (returns failed: true instead) so a transient
+ * DB error on one pair can never take down the rest of a monitoring run.
+ */
+export async function recordMarketPriceObservations(
+  input: RecordMarketObservationInput
+): Promise<RecordMarketObservationResult> {
+  try {
+    const candidates = await prisma.tradeSetupLifecycle.findMany({
+      where: {
+        pair: input.pair,
+        state: { notIn: Array.from(TERMINAL_LIFECYCLE_STATES) },
+      },
+    });
+    if (candidates.length === 0) return { updated: 0, skipped: 0, failed: false };
+
+    const nowMs = Date.now();
+    const sourceAnalysisId = `market:${input.cycleId}`;
+    let updated = 0;
+    let skipped = 0;
+
+    for (const setup of candidates) {
+      if (setup.lastCheckedAt && nowMs - setup.lastCheckedAt.getTime() < MIN_MARKET_RECHECK_MS) {
+        skipped++;
+        continue;
+      }
+
+      const original: LifecycleOriginalLevels = {
+        bias: setup.bias as "Bullish" | "Bearish",
+        entryZone: setup.entryZone,
+        invalidationMid: setup.invalidationMid,
+        target1: setup.target1,
+        target1Mid: setup.target1Mid,
+        target2: setup.target2,
+        target2Mid: setup.target2Mid,
+      };
+      const newState = determineLifecycleState(original, input.price);
+
+      await prisma.setupLifecycleObservation.upsert({
+        where: { setupId_sourceAnalysisId: { setupId: setup.id, sourceAnalysisId } },
+        create: {
+          setupId: setup.id,
+          sourceAnalysisId,
+          price: input.price,
+          state: newState,
+          source: "market_data",
+        },
+        update: { price: input.price, state: newState, source: "market_data" },
+      });
+
+      await prisma.tradeSetupLifecycle.update({
+        where: { id: setup.id },
+        data: { state: newState, lastPrice: input.price, lastCheckedAt: new Date() },
+      });
+      updated++;
+    }
+
+    return { updated, skipped, failed: false };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[rex.lifecycle] recordMarketPriceObservations failed:", err instanceof Error ? err.message : err);
+    return { updated: 0, skipped: 0, failed: true };
   }
 }

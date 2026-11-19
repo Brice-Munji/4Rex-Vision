@@ -102,8 +102,8 @@ function TrackedSetupRow({ setup }: { setup: TradeSetupLifecycleDTO }) {
             </ul>
           ) : (
             <p className="mt-2 text-xs text-muted-foreground">
-              No monitoring checks recorded yet — this updates automatically the next time you analyze a{" "}
-              {setup.pair} chart. Rex has no live price feed, so status only advances on a new upload.
+              No monitoring checks recorded yet — this updates automatically from Rex's market-price
+              monitoring, or the next time you analyze a {setup.pair} chart.
             </p>
           )}
         </div>
