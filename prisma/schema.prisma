@@ -438,6 +438,17 @@ model TradeSetupLifecycle {
   lastPrice     Float?
   lastCheckedAt DateTime?
 
+  /// Sprint 5 — Review Entry Freshness: whether the ORIGINAL entry
+  /// opportunity specifically remains actionable (narrower than `state`
+  /// above, which also tracks post-entry TP/target progress). One of
+  /// FRESH | APPROACHING | ENTRY_REACHED | ENTRY_MISSED | STALE |
+  /// INVALIDATED (see src/lib/rex/entry-freshness.ts) or null when never
+  /// evaluated yet. Updated in the SAME write as lastPrice/lastCheckedAt —
+  /// lastCheckedAt doubles as "entryFreshness was last evaluated at this
+  /// time". Only ever derived from a validated market-price observation
+  /// (src/lib/market/forex-price.ts), never from a chart-upload price.
+  entryFreshness String?
+
   observations SetupLifecycleObservation[]
 
   createdAt DateTime @default(now())

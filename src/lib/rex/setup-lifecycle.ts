@@ -27,6 +27,13 @@
  */
 
 import { parseZoneBounds } from "./sniper-entry";
+// Type-only: entry-freshness.ts imports VALUES from this file (the geometric
+// primitives above), so a value-level import back here would be a genuine
+// runtime circular dependency. `import type` is erased entirely at compile
+// time, so this stays a one-directional runtime dependency graph
+// (entry-freshness.ts -> setup-lifecycle.ts -> sniper-entry.ts) with only a
+// type-level back-reference for the DTO field below.
+import type { EntryFreshnessState } from "./entry-freshness";
 
 export type LifecycleState =
   | "ACTIVE"
@@ -89,6 +96,12 @@ export interface TradeSetupLifecycleDTO {
   state: LifecycleState;
   lastPrice: number | null;
   lastCheckedAt: string | null;
+  /** Sprint 5 — Review Entry Freshness: whether the ORIGINAL entry
+   *  opportunity specifically remains actionable (a narrower question than
+   *  `state` above, which also tracks post-entry TP/target progress). Null
+   *  until the market-price monitor has evaluated it at least once; never
+   *  derived from a chart-upload price (see entry-freshness.ts module doc). */
+  entryFreshness: EntryFreshnessState | null;
   observations: LifecycleObservationDTO[];
 }
 
@@ -108,7 +121,12 @@ export interface LifecycleOriginalLevels {
   target2Mid: number;
 }
 
-function isInside(price: number, bounds: { low: number; high: number }): boolean {
+/** Exported (Sprint 5) so entry-freshness.ts can reuse this EXACT geometric
+ *  primitive rather than redefining it — "avoid duplicate or conflicting
+ *  classifications". Behavior is unchanged; this is purely a visibility
+ *  change, zero logic difference, so determineLifecycleState's own
+ *  behavior below is unaffected. */
+export function isInside(price: number, bounds: { low: number; high: number }): boolean {
   return price >= bounds.low && price <= bounds.high;
 }
 
@@ -121,7 +139,7 @@ function isInside(price: number, bounds: { low: number; high: number }): boolean
  * themselves — see trade-setup.ts Rule 9). It never affects validity, entry,
  * invalidation, targets, R:R, or quality — display/monitoring only.
  */
-function isApproaching(price: number, bounds: { low: number; high: number }): boolean {
+export function isApproaching(price: number, bounds: { low: number; high: number }): boolean {
   const width = bounds.high - bounds.low;
   if (width <= 0) return false;
   if (isInside(price, bounds)) return false;
@@ -144,7 +162,7 @@ function hasReachedLevel(bias: "Bullish" | "Bearish", price: number, levelMid: n
  * original is an inline expression inside evaluateSniperEntry(), not an
  * exported function — this is the same formula, not a new threshold.
  */
-function isInvalidationBreached(
+export function isInvalidationBreached(
   bias: "Bullish" | "Bearish",
   price: number,
   invalidationMid: number
@@ -169,7 +187,7 @@ function isInvalidationBreached(
  * setup's own bias — zero new invented distance/threshold, just a
  * direction-aware comparison against a boundary the setup already has.
  */
-function isBeyondEntryTowardTarget(
+export function isBeyondEntryTowardTarget(
   bias: "Bullish" | "Bearish",
   price: number,
   entryBounds: { low: number; high: number }

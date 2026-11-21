@@ -8,6 +8,7 @@ import {
   type TradeSetupLifecycleDTO,
   type ObservationSource,
 } from "./setup-lifecycle";
+import { evaluateEntryFreshness, type EntryFreshnessState } from "./entry-freshness";
 import type { DirectionalSetup } from "./trade-setup";
 
 /**
@@ -74,6 +75,7 @@ interface LifecycleRow {
   state: string;
   lastPrice: number | null;
   lastCheckedAt: Date | null;
+  entryFreshness: string | null;
   observations: {
     id: string;
     sourceAnalysisId: string;
@@ -105,6 +107,7 @@ function toDTO(row: LifecycleRow): TradeSetupLifecycleDTO {
     state: row.state as LifecycleState,
     lastPrice: row.lastPrice,
     lastCheckedAt: row.lastCheckedAt ? row.lastCheckedAt.toISOString() : null,
+    entryFreshness: row.entryFreshness as EntryFreshnessState | null,
     observations: row.observations.map((o) => ({
       id: o.id,
       sourceAnalysisId: o.sourceAnalysisId,
@@ -503,11 +506,24 @@ export interface RecordMarketObservationResult {
  *      repeated/overlapping monitor executions without a separate lock.
  *   3. Classify with the SAME pure classifier the upload-driven path uses
  *      (determineLifecycleState) — no new/duplicated trading logic.
+ *   3b. Sprint 5 — ALSO evaluate entry freshness (evaluateEntryFreshness,
+ *      src/lib/rex/entry-freshness.ts) from this SAME validated price. This
+ *      is the ONLY call site for that engine — recordLifecycleObservations
+ *      (the upload-driven path) deliberately never calls it, per "never use
+ *      chart-upload prices as though they were current market prices".
+ *      `entryFreshness: newFreshness ?? setup.entryFreshness` persists the
+ *      new verdict when one was computed, or leaves the existing value
+ *      untouched when evaluateEntryFreshness returned null (can't classify
+ *      — never guessed). Sharing this loop iteration (and its
+ *      MIN_MARKET_RECHECK_MS gate) with `state`/`lastPrice` means freshness
+ *      automatically inherits the same pair-association, rate-limiting, and
+ *      repeated-execution safety as the rest of this function — no second
+ *      set of guarantees to maintain.
  *   4. Persist the observation (tagged source: "market_data", deduped per
  *      (setupId, "market:<cycleId>") so a retried run can never duplicate
- *      a row) and advance state/lastPrice/lastCheckedAt. Original entry/
- *      SL/TP levels are never touched — identical guarantee to the
- *      upload-driven path.
+ *      a row) and advance state/lastPrice/lastCheckedAt/entryFreshness.
+ *      Original entry/SL/TP levels are never touched — identical guarantee
+ *      to the upload-driven path.
  * Best-effort: never throws (returns failed: true instead) so a transient
  * DB error on one pair can never take down the rest of a monitoring run.
  */
@@ -523,7 +539,8 @@ export async function recordMarketPriceObservations(
     });
     if (candidates.length === 0) return { updated: 0, skipped: 0, failed: false };
 
-    const nowMs = Date.now();
+    const now = new Date();
+    const nowMs = now.getTime();
     const sourceAnalysisId = `market:${input.cycleId}`;
     let updated = 0;
     let skipped = 0;
@@ -544,6 +561,14 @@ export async function recordMarketPriceObservations(
         target2Mid: setup.target2Mid,
       };
       const newState = determineLifecycleState(original, input.price);
+      const newFreshness = evaluateEntryFreshness({
+        original,
+        price: input.price,
+        now,
+        generatedAt: setup.generatedAt,
+        timeframe: setup.timeframe,
+        previous: setup.entryFreshness as EntryFreshnessState | null,
+      });
 
       await prisma.setupLifecycleObservation.upsert({
         where: { setupId_sourceAnalysisId: { setupId: setup.id, sourceAnalysisId } },
@@ -559,7 +584,12 @@ export async function recordMarketPriceObservations(
 
       await prisma.tradeSetupLifecycle.update({
         where: { id: setup.id },
-        data: { state: newState, lastPrice: input.price, lastCheckedAt: new Date() },
+        data: {
+          state: newState,
+          lastPrice: input.price,
+          lastCheckedAt: now,
+          entryFreshness: newFreshness ?? setup.entryFreshness,
+        },
       });
       updated++;
     }

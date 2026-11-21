@@ -97,8 +97,11 @@ export const SNIPER_EXPIRY_MINUTES_BY_TIMEFRAME: Record<string, number> = {
   Weekly: 43200, // 30d
   Monthly: 129600, // 90d
 };
-/** Fallback when the original timeframe isn't one of the known labels above. */
-const DEFAULT_EXPIRY_MINUTES = 1440;
+/** Fallback when the original timeframe isn't one of the known labels above.
+ *  Exported so other timing-expiry consumers (e.g. Sprint 5's Review Entry
+ *  Freshness engine, src/lib/rex/entry-freshness.ts) share this ONE fallback
+ *  rather than defining a second, possibly-diverging copy. */
+export const DEFAULT_EXPIRY_MINUTES = 1440;
 
 function normalizePairKey(raw: string | null | undefined): string | null {
   if (!raw) return null;

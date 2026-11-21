@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { DirectionBadge } from "./direction-badge";
 import { EmptyState } from "./empty-state";
-import { lifecycleMeta, formatLifecyclePrice } from "@/components/rex/lifecycle-display";
+import { lifecycleMeta, entryFreshnessMeta, formatLifecyclePrice } from "@/components/rex/lifecycle-display";
 import type { TradeSetupLifecycleDTO } from "@/lib/rex/setup-lifecycle";
 
 /** Deterministic absolute timestamp (UTC) — same convention as
@@ -45,6 +45,10 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 function TrackedSetupRow({ setup }: { setup: TradeSetupLifecycleDTO }) {
   const meta = lifecycleMeta(setup.state);
   const Icon = meta.icon;
+  // Sprint 5 — Review Entry Freshness. Null until the market-price monitor
+  // has evaluated this setup at least once (never backfilled/guessed).
+  const freshness = entryFreshnessMeta(setup.entryFreshness);
+  const FreshnessIcon = freshness?.icon;
 
   return (
     <AccordionItem value={setup.id}>
@@ -84,6 +88,22 @@ function TrackedSetupRow({ setup }: { setup: TradeSetupLifecycleDTO }) {
             label="Last monitoring check"
             value={setup.lastCheckedAt ? exactTime(setup.lastCheckedAt) : "No follow-up upload yet"}
           />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-muted-foreground">Entry freshness</span>
+            {freshness && FreshnessIcon ? (
+              <span
+                className={cn(
+                  "inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide",
+                  freshness.className
+                )}
+              >
+                <FreshnessIcon className="h-3 w-3" />
+                {freshness.emphasize ?? freshness.label}
+              </span>
+            ) : (
+              <span className="font-mono text-sm font-semibold text-foreground">Not yet evaluated</span>
+            )}
+          </div>
         </div>
 
         <div className="mt-4 border-t border-border/60 pt-3">

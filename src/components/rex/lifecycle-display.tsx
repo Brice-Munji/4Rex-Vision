@@ -16,6 +16,7 @@ import {
   Minus,
 } from "lucide-react";
 import type { LifecycleState } from "@/lib/rex/setup-lifecycle";
+import type { EntryFreshnessState } from "@/lib/rex/entry-freshness";
 
 export const LIFECYCLE_META: Record<
   LifecycleState,
@@ -61,6 +62,53 @@ export const LIFECYCLE_META: Record<
  *  styling for any unrecognized value rather than guessing a confirmed one. */
 export function lifecycleMeta(state: LifecycleState | string) {
   return LIFECYCLE_META[state as LifecycleState] ?? LIFECYCLE_META.UNVERIFIED;
+}
+
+/** Sprint 5 — Review Entry Freshness display metadata. Reuses the SAME
+ *  icon/color language as LIFECYCLE_META above for the states that are a
+ *  direct conceptual match (FRESH~ACTIVE, APPROACHING~APPROACHING_ENTRY,
+ *  ENTRY_REACHED~ENTRY_ZONE_REACHED, ENTRY_MISSED and INVALIDATED are
+ *  identical concepts) so the two badges read consistently side by side;
+ *  STALE (genuinely new this sprint) gets its own neutral/muted treatment. */
+export const ENTRY_FRESHNESS_META: Record<
+  EntryFreshnessState,
+  { icon: LucideIcon; className: string; label: string; emphasize?: string }
+> = {
+  FRESH: { icon: Gauge, className: "border-[#2a2a2a] bg-[#161616] text-[#A3A3A3]", label: "Fresh" },
+  APPROACHING: {
+    icon: Crosshair,
+    className: "border-amber-500/40 bg-amber-500/15 text-amber-400",
+    label: "Approaching entry",
+  },
+  ENTRY_REACHED: {
+    icon: Target,
+    className: "border-emerald-500/40 bg-emerald-500/15 text-emerald-400",
+    label: "Entry reached",
+  },
+  ENTRY_MISSED: {
+    icon: Ban,
+    className: "border-rose-500/40 bg-rose-500/15 text-rose-400",
+    label: "Entry missed",
+    emphasize: "DON'T CHASE",
+  },
+  STALE: {
+    icon: Minus,
+    className: "border-[#2a2a2a] bg-[#161616] text-[#7A7A7A]",
+    label: "Stale — validity window elapsed",
+  },
+  INVALIDATED: {
+    icon: ShieldAlert,
+    className: "border-rose-500/40 bg-rose-500/15 text-rose-400",
+    label: "Invalidated",
+  },
+};
+
+/** Resolve entry-freshness metadata, or null when freshness has never been
+ *  evaluated for this setup yet — the caller decides how to render that
+ *  ("not yet evaluated"), never guessed as one of the six real states. */
+export function entryFreshnessMeta(state: EntryFreshnessState | string | null) {
+  if (!state) return null;
+  return ENTRY_FRESHNESS_META[state as EntryFreshnessState] ?? null;
 }
 
 /** Light display rounding only (never used for any trading decision) — caps
