@@ -4,17 +4,27 @@
  * in ../lifecycle.ts).
  *
  * Unlike every other test file in this project, this ONE requires a real,
- * reachable Postgres database (the same one DATABASE_URL points at for
- * `prisma migrate`) — the whole point of these tests is proving the actual
- * compound (userId, setupId) unique constraint and the actual Prisma queries
- * behave correctly together; a mocked Prisma client would only prove
- * whatever the mock was told to return, not that the fix works.
+ * reachable Postgres database — the whole point of these tests is proving
+ * the actual compound (userId, setupId) unique constraint and the actual
+ * Prisma queries behave correctly together; a mocked Prisma client would
+ * only prove whatever the mock was told to return, not that the fix works.
  *
- * Creates two throwaway User rows (fixed, clearly-tagged emails — deleted
- * before AND after this file runs, so a prior crashed run never leaves junk
- * and this run never leaves junk either) and real TradeSetupLifecycle /
- * SetupLifecycleObservation rows under them. Cleans up everything it
- * created; never touches any pre-existing row.
+ * Sprint 5.1: every function this file calls is already user-scoped
+ * (userId is part of every query), so this file was never able to reach
+ * another user's row, let alone a real one's — unlike
+ * recordMarketPriceObservations() (market-monitor.test.ts,
+ * entry-freshness-integration.test.ts), which is deliberately pair-wide.
+ * The test-db-guard import below is still required, for the same reason
+ * "Inspect ALL lifecycle integration test database connections" is phrased
+ * that way: every file sharing the "@/lib/prisma" singleton with
+ * production code should be structurally incapable of reaching dev/prod,
+ * not just the two files where a concrete incident already happened.
+ *
+ * Creates two throwaway User rows (unique-per-run, clearly-tagged emails —
+ * swept before this file runs and deleted after, so a prior crashed run
+ * never leaves junk and this run never leaves junk either) and real
+ * TradeSetupLifecycle / SetupLifecycleObservation rows under them. Cleans
+ * up everything it created; never touches any pre-existing row.
  *
  * Deliberately NOT part of the default `npm test` chain (every other file in
  * that chain is DB-free and must stay runnable without Postgres available) —
@@ -23,6 +33,7 @@
  * or:
  *   npm run test:lifecycle-ownership
  */
+import { scopedTestEmail } from "./test-db-guard";
 import { prisma } from "@/lib/prisma";
 import {
   createOrGetSetupLifecycle,
@@ -38,8 +49,10 @@ function check(name: string, cond: boolean, detail = "") {
   else failures.push(`${name}${detail ? " — " + detail : ""}`);
 }
 
-const EMAIL_A = "qa.lifecycle.ownership.user-a@4rexvision.test";
-const EMAIL_B = "qa.lifecycle.ownership.user-b@4rexvision.test";
+const EMAIL_PREFIX_A = "qa.lifecycle.ownership.user-a";
+const EMAIL_PREFIX_B = "qa.lifecycle.ownership.user-b";
+const EMAIL_A = scopedTestEmail(EMAIL_PREFIX_A);
+const EMAIL_B = scopedTestEmail(EMAIL_PREFIX_B);
 
 /** A valid, fully-populated create input for one bullish EURUSD setup. All
  *  fields are varied per call via `overrides` so each test can prove WHICH
@@ -66,16 +79,30 @@ function lifecycleInput(userId: string, setupId: string, overrides: Partial<Crea
   };
 }
 
-async function deleteTestUsers(): Promise<void> {
-  // TradeSetupLifecycle has onDelete: Cascade from User, so deleting the
-  // test users also removes every lifecycle/observation row they own —
-  // no separate cleanup query needed, and no risk of leaving orphans.
+// TradeSetupLifecycle has onDelete: Cascade from User, so deleting the
+// test users also removes every lifecycle/observation row they own — no
+// separate cleanup query needed, and no risk of leaving orphans.
+
+/** Pre-run sweep: catches a previous (e.g. crashed) run's leftovers
+ *  regardless of ITS run tag. Safe only because test-db-guard has already
+ *  confirmed this process is connected to the dedicated test database,
+ *  never dev/production — see file header. */
+async function sweepPriorRuns(): Promise<void> {
+  await prisma.user.deleteMany({
+    where: { OR: [{ email: { startsWith: `${EMAIL_PREFIX_A}.` } }, { email: { startsWith: `${EMAIL_PREFIX_B}.` } }] },
+  });
+}
+
+/** Post-run cleanup: exact match on THIS run's own uniquely-tagged emails
+ *  only, so it can never delete a concurrently-running execution of this
+ *  same file's still-in-flight fixtures. */
+async function deleteOwnTestUsers(): Promise<void> {
   await prisma.user.deleteMany({ where: { email: { in: [EMAIL_A, EMAIL_B] } } });
 }
 
 async function main() {
   // Pre-run cleanup: a prior crashed run must never contaminate this one.
-  await deleteTestUsers();
+  await sweepPriorRuns();
 
   const userA = await prisma.user.create({ data: { email: EMAIL_A } });
   const userB = await prisma.user.create({ data: { email: EMAIL_B } });
@@ -232,7 +259,7 @@ async function main() {
       check("6e userB cannot retrieve userA's setup+observations via setupId", bReadsA === null);
     }
   } finally {
-    await deleteTestUsers();
+    await deleteOwnTestUsers();
     await prisma.$disconnect();
   }
 }

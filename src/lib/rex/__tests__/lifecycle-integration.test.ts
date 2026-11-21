@@ -23,7 +23,14 @@
  * real logic, not a reimplementation of it. The HTTP-level concerns
  * (access.isPro -> 403, request body parsing) have no new logic of their
  * own this sprint; they gate entry to code already covered here.
+ *
+ * Sprint 5.1: every function this file calls is already user-scoped, so it
+ * was never able to reach another user's row — see lifecycle-ownership.
+ * test.ts's own Sprint 5.1 note for why the test-db-guard import below is
+ * still required regardless (every file sharing "@/lib/prisma" with
+ * production should be structurally incapable of reaching dev/prod).
  */
+import { scopedTestEmail } from "./test-db-guard";
 import { prisma } from "@/lib/prisma";
 import { buildTradeSetup, type TradeSetupResult } from "../trade-setup";
 import {
@@ -125,10 +132,33 @@ async function simulateTradeSetupRoute(opts: {
   );
 }
 
-const EMAIL_A = "qa.lifecycle.integration.user-a@4rexvision.test";
-const EMAIL_B = "qa.lifecycle.integration.user-b@4rexvision.test";
+const EMAIL_PREFIX_A = "qa.lifecycle.integration.user-a";
+const EMAIL_PREFIX_B = "qa.lifecycle.integration.user-b";
+const EMAIL_A = scopedTestEmail(EMAIL_PREFIX_A);
+const EMAIL_B = scopedTestEmail(EMAIL_PREFIX_B);
+const EMAIL_FREE_PREFIX = "qa.lifecycle.integration.free-user";
+const EMAIL_FREE = scopedTestEmail(EMAIL_FREE_PREFIX);
 
-async function deleteTestUsers(): Promise<void> {
+/** Pre-run sweep: catches a previous (e.g. crashed) run's leftovers
+ *  regardless of ITS run tag. Safe only because test-db-guard has already
+ *  confirmed this process is connected to the dedicated test database,
+ *  never dev/production — see file header. */
+async function sweepPriorRuns(): Promise<void> {
+  await prisma.user.deleteMany({
+    where: {
+      OR: [
+        { email: { startsWith: `${EMAIL_PREFIX_A}.` } },
+        { email: { startsWith: `${EMAIL_PREFIX_B}.` } },
+        { email: { startsWith: `${EMAIL_FREE_PREFIX}.` } },
+      ],
+    },
+  });
+}
+
+/** Post-run cleanup: exact match on THIS run's own uniquely-tagged emails
+ *  only, so it can never delete a concurrently-running execution of this
+ *  same file's still-in-flight fixtures. */
+async function deleteOwnTestUsers(): Promise<void> {
   await prisma.user.deleteMany({ where: { email: { in: [EMAIL_A, EMAIL_B] } } });
 }
 
@@ -145,7 +175,7 @@ async function makeUser(email: string, overrides: Partial<{ plan: string; subscr
 }
 
 async function main() {
-  await deleteTestUsers();
+  await sweepPriorRuns();
   const userA = await makeUser(EMAIL_A); // active Pro
   const userB = await makeUser(EMAIL_B); // active Pro
 
@@ -309,7 +339,7 @@ async function main() {
       // setup (creation requires Pro, enforced by the route's OWN
       // access.isPro check), so calling it anyway finds zero candidates.
       const freeUserRow = await prisma.user.create({
-        data: { email: "qa.lifecycle.integration.free-user@4rexvision.test", plan: "FREE", subscriptionStatus: "INACTIVE" },
+        data: { email: EMAIL_FREE, plan: "FREE", subscriptionStatus: "INACTIVE" },
       });
       try {
         await recordLifecycleObservations({ userId: freeUserRow.id, pair: "EURUSD", sourceAnalysisId: "analysis_free", price: 1.27 });
@@ -334,7 +364,7 @@ async function main() {
       check("8c userA's own record was correctly advanced", aAfter?.observations.length === 1, `got ${aAfter?.observations.length}`);
     }
   } finally {
-    await deleteTestUsers();
+    await deleteOwnTestUsers();
     await prisma.$disconnect();
   }
 }

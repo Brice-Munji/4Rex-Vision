@@ -19,10 +19,23 @@
  * covered without a database in entry-freshness.test.ts (npm run
  * test:entry-freshness) — not re-derived here.
  *
- * Creates two throwaway User rows (fixed, clearly-tagged emails — deleted
- * before AND after this file runs) and real TradeSetupLifecycle rows under
- * them. Cleans up everything it created; never touches any pre-existing row.
+ * Sprint 5.1: this is the exact file whose "GBPUSD" pair fixture collided
+ * with and overwrote a real user's live TradeSetupLifecycle row, because
+ * recordMarketPriceObservations() is deliberately pair-wide (not
+ * user-scoped) and this file ran against the shared dev database. Two
+ * independent layers now prevent that from ever happening again:
+ *   1. test-db-guard (imported FIRST, below) fails closed before this file
+ *      can reach any database other than a dedicated TEST_DATABASE_URL.
+ *   2. Defense in depth even if layer 1 is somehow misconfigured: pair
+ *      fixtures below use a ZZTEST_ prefix that can never collide with a
+ *      real tradable instrument, instead of bare "EURUSD"/"GBPUSD".
+ *
+ * Creates two throwaway User rows (unique-per-run, clearly-tagged emails —
+ * swept before this file runs and deleted after) and real
+ * TradeSetupLifecycle rows under them. Cleans up everything it created;
+ * never touches any pre-existing row.
  */
+import { scopedTestEmail } from "./test-db-guard";
 import { prisma } from "@/lib/prisma";
 import {
   createOrGetSetupLifecycle,
@@ -37,14 +50,20 @@ function check(name: string, cond: boolean, detail = "") {
   else failures.push(`${name}${detail ? " — " + detail : ""}`);
 }
 
-const EMAIL_A = "qa.entry-freshness.user-a@4rexvision.test";
-const EMAIL_B = "qa.entry-freshness.user-b@4rexvision.test";
+/** Can never collide with a real tradable instrument (see file header). */
+const ZZTEST_EURUSD = "ZZTEST_EURUSD";
+const ZZTEST_GBPUSD = "ZZTEST_GBPUSD";
+
+const EMAIL_PREFIX_A = "qa.entry-freshness.user-a";
+const EMAIL_PREFIX_B = "qa.entry-freshness.user-b";
+const EMAIL_A = scopedTestEmail(EMAIL_PREFIX_A);
+const EMAIL_B = scopedTestEmail(EMAIL_PREFIX_B);
 
 function bullishInput(userId: string, setupId: string, overrides: Partial<CreateLifecycleInput> = {}): CreateLifecycleInput {
   return {
     userId,
     setupId,
-    pair: "EURUSD",
+    pair: ZZTEST_EURUSD,
     timeframe: "H1",
     bias: "Bullish",
     entryZone: "1.2700 – 1.2710",
@@ -66,7 +85,7 @@ function bearishInput(userId: string, setupId: string, overrides: Partial<Create
   return {
     userId,
     setupId,
-    pair: "GBPUSD",
+    pair: ZZTEST_GBPUSD,
     timeframe: "H1",
     bias: "Bearish",
     entryZone: "1.2700 – 1.2710",
@@ -84,7 +103,20 @@ function bearishInput(userId: string, setupId: string, overrides: Partial<Create
   };
 }
 
-async function deleteTestUsers(): Promise<void> {
+/** Pre-run sweep: catches a previous (e.g. crashed) run's leftovers
+ *  regardless of ITS run tag. Safe only because test-db-guard has already
+ *  confirmed this process is connected to the dedicated test database,
+ *  never dev/production — see file header. */
+async function sweepPriorRuns(): Promise<void> {
+  await prisma.user.deleteMany({
+    where: { OR: [{ email: { startsWith: `${EMAIL_PREFIX_A}.` } }, { email: { startsWith: `${EMAIL_PREFIX_B}.` } }] },
+  });
+}
+
+/** Post-run cleanup: exact match on THIS run's own uniquely-tagged emails
+ *  only, so it can never delete a concurrently-running execution of this
+ *  same file's still-in-flight fixtures. */
+async function deleteOwnTestUsers(): Promise<void> {
   await prisma.user.deleteMany({ where: { email: { in: [EMAIL_A, EMAIL_B] } } });
 }
 
@@ -103,7 +135,7 @@ async function backdateCheck(id: string, minutesAgo: number): Promise<void> {
 }
 
 async function main() {
-  await deleteTestUsers();
+  await sweepPriorRuns();
   const userA = await prisma.user.create({ data: { email: EMAIL_A } });
   const userB = await prisma.user.create({ data: { email: EMAIL_B } });
 
@@ -128,8 +160,8 @@ async function main() {
       // Price inside the (identical-looking) 1.2700-1.2710 zone for BOTH —
       // same raw price, opposite instruments, must both read ENTRY_REACHED
       // (reaching is direction-agnostic; the directional check comes next).
-      await recordMarketPriceObservations({ pair: "EURUSD", price: 1.2705, cycleId: "ef-cycle-1a" });
-      await recordMarketPriceObservations({ pair: "GBPUSD", price: 1.2705, cycleId: "ef-cycle-1a" });
+      await recordMarketPriceObservations({ pair: ZZTEST_EURUSD, price: 1.2705, cycleId: "ef-cycle-1a" });
+      await recordMarketPriceObservations({ pair: ZZTEST_GBPUSD, price: 1.2705, cycleId: "ef-cycle-1a" });
 
       const bullRow = await rawLifecycle(bullId);
       const bearRow = await rawLifecycle(bearId);
@@ -141,8 +173,8 @@ async function main() {
       // (stickiness) — reaching is permanent, so both stay ENTRY_REACHED.
       await backdateCheck(bullId, 20);
       await backdateCheck(bearId, 20);
-      await recordMarketPriceObservations({ pair: "EURUSD", price: 1.29, cycleId: "ef-cycle-1b" }); // bullish: ran up
-      await recordMarketPriceObservations({ pair: "GBPUSD", price: 1.26, cycleId: "ef-cycle-1b" }); // bearish: ran down
+      await recordMarketPriceObservations({ pair: ZZTEST_EURUSD, price: 1.29, cycleId: "ef-cycle-1b" }); // bullish: ran up
+      await recordMarketPriceObservations({ pair: ZZTEST_GBPUSD, price: 1.26, cycleId: "ef-cycle-1b" }); // bearish: ran down
       const bullRow2 = await rawLifecycle(bullId);
       const bearRow2 = await rawLifecycle(bearId);
       check("1c bullish stays ENTRY_REACHED (sticky)", bullRow2.entryFreshness === "ENTRY_REACHED");
@@ -160,7 +192,7 @@ async function main() {
       userBGbpId = gbp!.id;
 
       // Only run the monitor for GBPUSD.
-      await recordMarketPriceObservations({ pair: "GBPUSD", price: 1.2705, cycleId: "ef-cycle-2" });
+      await recordMarketPriceObservations({ pair: ZZTEST_GBPUSD, price: 1.2705, cycleId: "ef-cycle-2" });
 
       const eurRow = await rawLifecycle(userBEurId);
       const gbpRow = await rawLifecycle(userBGbpId);
@@ -205,7 +237,7 @@ async function main() {
       // its own recheck window, so the precise skipped count depends on
       // how many GBPUSD setups the whole file has created so far; the
       // actual claim under test is "nothing was re-applied", not a count.
-      const repeat = await recordMarketPriceObservations({ pair: "GBPUSD", price: 1.2705, cycleId: "ef-cycle-2" });
+      const repeat = await recordMarketPriceObservations({ pair: ZZTEST_GBPUSD, price: 1.2705, cycleId: "ef-cycle-2" });
       check("4b immediate repeat is gated, not re-applied", repeat.updated === 0 && repeat.skipped >= 1, JSON.stringify(repeat));
       const afterRepeat = await rawLifecycle(beforeId);
       check("4c freshness unchanged by the gated repeat", afterRepeat.entryFreshness === "ENTRY_REACHED");
@@ -214,7 +246,7 @@ async function main() {
       // approach, must not un-reach the entry (stickiness survives the
       // real DB round-trip, not just the pure function in isolation).
       await backdateCheck(beforeId, 20);
-      await recordMarketPriceObservations({ pair: "GBPUSD", price: 1.5, cycleId: "ef-cycle-3" });
+      await recordMarketPriceObservations({ pair: ZZTEST_GBPUSD, price: 1.5, cycleId: "ef-cycle-3" });
       const afterLater = await rawLifecycle(beforeId);
       check("4d a later cycle still can't un-reach the entry (sticky across real DB calls)", afterLater.entryFreshness === "ENTRY_REACHED");
     }
@@ -222,7 +254,7 @@ async function main() {
     // ── 5. Invalidated and stale verdicts persist correctly end-to-end ───
     {
       const invDto = await createOrGetSetupLifecycle(bullishInput(userA.id, "rex_eurusd_ef_invalid"));
-      await recordMarketPriceObservations({ pair: "EURUSD", price: 1.268, cycleId: "ef-cycle-inv" }); // at invalidationMid
+      await recordMarketPriceObservations({ pair: ZZTEST_EURUSD, price: 1.268, cycleId: "ef-cycle-inv" }); // at invalidationMid
       const invRow = await rawLifecycle(invDto!.id);
       check("5a invalidation persists through the real pipeline", invRow.entryFreshness === "INVALIDATED");
 
@@ -234,12 +266,12 @@ async function main() {
         })
       );
       // A "merely far away, not invalidated" price (see entry-freshness.test.ts).
-      await recordMarketPriceObservations({ pair: "EURUSD", price: 1.2683, cycleId: "ef-cycle-stale" });
+      await recordMarketPriceObservations({ pair: ZZTEST_EURUSD, price: 1.2683, cycleId: "ef-cycle-stale" });
       const staleRow = await rawLifecycle(staleDto!.id);
       check("5b staleness persists through the real pipeline", staleRow.entryFreshness === "STALE", String(staleRow.entryFreshness));
     }
   } finally {
-    await deleteTestUsers();
+    await deleteOwnTestUsers();
     await prisma.$disconnect();
   }
 }

@@ -18,11 +18,25 @@
  * src/lib/market/forex-price.ts and are covered by its own pure test file
  * (npm run test:price-feed) — not re-tested here with real network calls.
  *
- * Creates two throwaway User rows (fixed, clearly-tagged emails — deleted
- * before AND after this file runs) and real TradeSetupLifecycle /
- * SetupLifecycleObservation rows under them. Cleans up everything it
- * created; never touches any pre-existing row.
+ * Sprint 5.1: this file (alongside entry-freshness-integration.test.ts) is
+ * one of the two files that call recordMarketPriceObservations(), the
+ * deliberately pair-wide (not user-scoped) function whose production
+ * behavior caused the Sprint 5 incident — a test fixture using a real
+ * instrument name ("GBPUSD") collided with and overwrote a real user's
+ * live row because this file ran against the shared dev database. Two
+ * independent layers now prevent a repeat:
+ *   1. test-db-guard (imported FIRST, below) fails closed before this file
+ *      can reach any database other than a dedicated TEST_DATABASE_URL.
+ *   2. Defense in depth even if layer 1 is somehow misconfigured: pair
+ *      fixtures below use a ZZTEST_ prefix that can never collide with a
+ *      real tradable instrument, instead of bare "EURUSD"/"GBPUSD"/"USDJPY".
+ *
+ * Creates two throwaway User rows (unique-per-run, clearly-tagged emails —
+ * swept before this file runs and deleted after) and real
+ * TradeSetupLifecycle / SetupLifecycleObservation rows under them. Cleans
+ * up everything it created; never touches any pre-existing row.
  */
+import { scopedTestEmail } from "./test-db-guard";
 import { prisma } from "@/lib/prisma";
 import {
   createOrGetSetupLifecycle,
@@ -38,8 +52,16 @@ function check(name: string, cond: boolean, detail = "") {
   else failures.push(`${name}${detail ? " — " + detail : ""}`);
 }
 
-const EMAIL_A = "qa.market-monitor.user-a@4rexvision.test";
-const EMAIL_B = "qa.market-monitor.user-b@4rexvision.test";
+/** Can never collide with a real tradable instrument (see file header). */
+const ZZTEST_EURUSD = "ZZTEST_EURUSD";
+const ZZTEST_GBPUSD = "ZZTEST_GBPUSD";
+const ZZTEST_USDJPY = "ZZTEST_USDJPY";
+const ZZTEST_NOBODY_TRACKS_THIS = "ZZTEST_NOBODY_TRACKS_THIS";
+
+const EMAIL_PREFIX_A = "qa.market-monitor.user-a";
+const EMAIL_PREFIX_B = "qa.market-monitor.user-b";
+const EMAIL_A = scopedTestEmail(EMAIL_PREFIX_A);
+const EMAIL_B = scopedTestEmail(EMAIL_PREFIX_B);
 
 /** Same EURUSD fixture numbers used elsewhere in this test suite
  *  (lifecycle-ownership.test.ts) for consistency: Bullish, entry zone
@@ -48,7 +70,7 @@ function lifecycleInput(userId: string, setupId: string, overrides: Partial<Crea
   return {
     userId,
     setupId,
-    pair: "EURUSD",
+    pair: ZZTEST_EURUSD,
     timeframe: "H1",
     bias: "Bullish",
     entryZone: "1.2700 – 1.2710",
@@ -66,7 +88,20 @@ function lifecycleInput(userId: string, setupId: string, overrides: Partial<Crea
   };
 }
 
-async function deleteTestUsers(): Promise<void> {
+/** Pre-run sweep: catches a previous (e.g. crashed) run's leftovers
+ *  regardless of ITS run tag. Safe only because test-db-guard has already
+ *  confirmed this process is connected to the dedicated test database,
+ *  never dev/production — see file header. */
+async function sweepPriorRuns(): Promise<void> {
+  await prisma.user.deleteMany({
+    where: { OR: [{ email: { startsWith: `${EMAIL_PREFIX_A}.` } }, { email: { startsWith: `${EMAIL_PREFIX_B}.` } }] },
+  });
+}
+
+/** Post-run cleanup: exact match on THIS run's own uniquely-tagged emails
+ *  only, so it can never delete a concurrently-running execution of this
+ *  same file's still-in-flight fixtures. */
+async function deleteOwnTestUsers(): Promise<void> {
   await prisma.user.deleteMany({ where: { email: { in: [EMAIL_A, EMAIL_B] } } });
 }
 
@@ -77,14 +112,14 @@ async function rawLifecycle(id: string) {
 }
 
 async function main() {
-  await deleteTestUsers();
+  await sweepPriorRuns();
   const userA = await prisma.user.create({ data: { email: EMAIL_A } });
   const userB = await prisma.user.create({ data: { email: EMAIL_B } });
 
   try {
     // ── 0. A pair with no tracked setups at all is a cheap, honest no-op ──
     {
-      const result = await recordMarketPriceObservations({ pair: "NOBODY_TRACKS_THIS", price: 1, cycleId: "cycle-0" });
+      const result = await recordMarketPriceObservations({ pair: ZZTEST_NOBODY_TRACKS_THIS, price: 1, cycleId: "cycle-0" });
       check("0a no candidates → updated:0", result.updated === 0);
       check("0b no candidates → skipped:0", result.skipped === 0);
       check("0c no candidates → failed:false (empty is not an error)", result.failed === false);
@@ -101,7 +136,7 @@ async function main() {
       check("1b starts ACTIVE with no observations", dto!.state === "ACTIVE" && dto!.observations.length === 0);
 
       // 1.2860 >= target1Mid(1.2855) and < target2Mid(1.2955) → TP1_HIT.
-      const result = await recordMarketPriceObservations({ pair: "EURUSD", price: 1.286, cycleId: "cycle-1" });
+      const result = await recordMarketPriceObservations({ pair: ZZTEST_EURUSD, price: 1.286, cycleId: "cycle-1" });
       check("1c one setup updated", result.updated === 1 && result.skipped === 0 && !result.failed, JSON.stringify(result));
 
       const row = await rawLifecycle(setupA1Id);
@@ -139,7 +174,7 @@ async function main() {
       const eurDto = await createOrGetSetupLifecycle(lifecycleInput(userB.id, "rex_eurusd_mm_userb"));
       const gbpDto = await createOrGetSetupLifecycle(
         lifecycleInput(userB.id, "rex_gbpusd_mm_userb", {
-          pair: "GBPUSD",
+          pair: ZZTEST_GBPUSD,
           entryZone: "1.2500 – 1.2510",
           invalidationZone: "1.2470 – 1.2480",
           target1: "1.2650 – 1.2660",
@@ -153,7 +188,7 @@ async function main() {
       userBEurId = eurDto!.id;
       userBGbpId = gbpDto!.id;
 
-      const result = await recordMarketPriceObservations({ pair: "EURUSD", price: 1.272, cycleId: "cycle-2" });
+      const result = await recordMarketPriceObservations({ pair: ZZTEST_EURUSD, price: 1.272, cycleId: "cycle-2" });
       // Two non-terminal EURUSD setups now exist across both users: userA's
       // (TP1_HIT — NOT terminal; only TP2_HIT/INVALIDATED are) from step 1,
       // and userB's brand-new one. userA's was just checked moments ago (in
@@ -178,8 +213,8 @@ async function main() {
     {
       // Re-running the EXACT same cycleId against userB's GBPUSD setup must
       // upsert in place, never duplicate — even called twice back-to-back.
-      const r1 = await recordMarketPriceObservations({ pair: "GBPUSD", price: 1.251, cycleId: "cycle-3" });
-      const r2 = await recordMarketPriceObservations({ pair: "GBPUSD", price: 1.251, cycleId: "cycle-3" });
+      const r1 = await recordMarketPriceObservations({ pair: ZZTEST_GBPUSD, price: 1.251, cycleId: "cycle-3" });
+      const r2 = await recordMarketPriceObservations({ pair: ZZTEST_GBPUSD, price: 1.251, cycleId: "cycle-3" });
       check("3a first run of cycle-3 updates the setup", r1.updated === 1, JSON.stringify(r1));
       // r2 is the SAME cycle but lastCheckedAt is now extremely recent (set
       // by r1 a moment ago) — the per-setup recheck gate correctly treats
@@ -196,7 +231,7 @@ async function main() {
         where: { id: userBGbpId },
         data: { lastCheckedAt: new Date(Date.now() - 20 * 60 * 1000) }, // 20 min ago > 15 min gate
       });
-      const r3 = await recordMarketPriceObservations({ pair: "GBPUSD", price: 1.252, cycleId: "cycle-4" });
+      const r3 = await recordMarketPriceObservations({ pair: ZZTEST_GBPUSD, price: 1.252, cycleId: "cycle-4" });
       check("3d a later cycle after the recheck window is processed", r3.updated === 1, JSON.stringify(r3));
 
       const afterLater = await rawLifecycle(userBGbpId);
@@ -211,7 +246,7 @@ async function main() {
       // would (direct update — this test owns persistence, not classification).
       await prisma.tradeSetupLifecycle.update({ where: { id: dto!.id }, data: { state: "INVALIDATED" } });
 
-      const result = await recordMarketPriceObservations({ pair: "EURUSD", price: 1.3, cycleId: "cycle-5" });
+      const result = await recordMarketPriceObservations({ pair: ZZTEST_EURUSD, price: 1.3, cycleId: "cycle-5" });
       const row = await rawLifecycle(dto!.id);
       check("4a an INVALIDATED setup is never among updated candidates", row.lastCheckedAt === null && row.observations.length === 0);
       check("4b state remains INVALIDATED, never reclassified", row.state === "INVALIDATED");
@@ -228,18 +263,18 @@ async function main() {
     //       across users, terminal-only pairs excluded ────────────────────
     {
       const pairs = await getDistinctTrackedPairs();
-      check("5a EURUSD present (non-terminal setups exist)", pairs.includes("EURUSD"));
-      check("5b GBPUSD present (non-terminal setups exist)", pairs.includes("GBPUSD"));
-      check("5c each pair listed exactly once", pairs.filter((p) => p === "EURUSD").length === 1);
+      check("5a EURUSD present (non-terminal setups exist)", pairs.includes(ZZTEST_EURUSD));
+      check("5b GBPUSD present (non-terminal setups exist)", pairs.includes(ZZTEST_GBPUSD));
+      check("5c each pair listed exactly once", pairs.filter((p) => p === ZZTEST_EURUSD).length === 1);
 
       // A pair whose ONLY setups are all terminal must not appear.
-      const onlyTerminalDto = await createOrGetSetupLifecycle(lifecycleInput(userA.id, "rex_usdjpy_mm_terminal_only", { pair: "USDJPY" }));
+      const onlyTerminalDto = await createOrGetSetupLifecycle(lifecycleInput(userA.id, "rex_usdjpy_mm_terminal_only", { pair: ZZTEST_USDJPY }));
       await prisma.tradeSetupLifecycle.update({ where: { id: onlyTerminalDto!.id }, data: { state: "TP2_HIT" } });
       const pairsAfter = await getDistinctTrackedPairs();
-      check("5d a pair whose only setup is terminal is excluded", !pairsAfter.includes("USDJPY"));
+      check("5d a pair whose only setup is terminal is excluded", !pairsAfter.includes(ZZTEST_USDJPY));
     }
   } finally {
-    await deleteTestUsers();
+    await deleteOwnTestUsers();
     await prisma.$disconnect();
   }
 }

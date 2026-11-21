@@ -23,7 +23,14 @@
  * otherwise "not a real authenticated user" id — the same boundary
  * convention lifecycle-ownership.test.ts already established for
  * getSetupLifecycle.
+ *
+ * Sprint 5.1: every function this file calls is already user-scoped, so it
+ * was never able to reach another user's row — see lifecycle-ownership.
+ * test.ts's own Sprint 5.1 note for why the test-db-guard import below is
+ * still required regardless (every file sharing "@/lib/prisma" with
+ * production should be structurally incapable of reaching dev/prod).
  */
+import { scopedTestEmail } from "./test-db-guard";
 import { prisma } from "@/lib/prisma";
 import { createOrGetSetupLifecycle, listTrackedSetups, countTrackedSetups } from "../lifecycle";
 import type { CreateLifecycleInput } from "../lifecycle";
@@ -35,8 +42,10 @@ function check(name: string, cond: boolean, detail = "") {
   else failures.push(`${name}${detail ? " — " + detail : ""}`);
 }
 
-const EMAIL_A = "qa.lifecycle.retrieval.user-a@4rexvision.test";
-const EMAIL_B = "qa.lifecycle.retrieval.user-b@4rexvision.test";
+const EMAIL_PREFIX_A = "qa.lifecycle.retrieval.user-a";
+const EMAIL_PREFIX_B = "qa.lifecycle.retrieval.user-b";
+const EMAIL_A = scopedTestEmail(EMAIL_PREFIX_A);
+const EMAIL_B = scopedTestEmail(EMAIL_PREFIX_B);
 
 function lifecycleInput(userId: string, setupId: string, overrides: Partial<CreateLifecycleInput> = {}): CreateLifecycleInput {
   return {
@@ -60,12 +69,25 @@ function lifecycleInput(userId: string, setupId: string, overrides: Partial<Crea
   };
 }
 
-async function deleteTestUsers(): Promise<void> {
+/** Pre-run sweep: catches a previous (e.g. crashed) run's leftovers
+ *  regardless of ITS run tag. Safe only because test-db-guard has already
+ *  confirmed this process is connected to the dedicated test database,
+ *  never dev/production — see file header. */
+async function sweepPriorRuns(): Promise<void> {
+  await prisma.user.deleteMany({
+    where: { OR: [{ email: { startsWith: `${EMAIL_PREFIX_A}.` } }, { email: { startsWith: `${EMAIL_PREFIX_B}.` } }] },
+  });
+}
+
+/** Post-run cleanup: exact match on THIS run's own uniquely-tagged emails
+ *  only, so it can never delete a concurrently-running execution of this
+ *  same file's still-in-flight fixtures. */
+async function deleteOwnTestUsers(): Promise<void> {
   await prisma.user.deleteMany({ where: { email: { in: [EMAIL_A, EMAIL_B] } } });
 }
 
 async function main() {
-  await deleteTestUsers();
+  await sweepPriorRuns();
   const userA = await prisma.user.create({ data: { email: EMAIL_A } });
   const userB = await prisma.user.create({ data: { email: EMAIL_B } });
 
@@ -153,7 +175,7 @@ async function main() {
       check("5b it resolves with failed: true and an empty list instead", result?.failed === true && result?.setups.length === 0);
     }
   } finally {
-    await deleteTestUsers();
+    await deleteOwnTestUsers();
     await prisma.$disconnect();
   }
 }
