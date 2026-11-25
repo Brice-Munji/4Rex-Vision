@@ -102,8 +102,8 @@ model User {
   emailVerified DateTime?
 
   // Access control
-  role      Role     @default(USER)
-  suspended Boolean  @default(false)
+  role      Role    @default(USER)
+  suspended Boolean @default(false)
 
   // Plan & subscription
   plan               Plan                @default(FREE)
@@ -139,17 +139,19 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts            Account[]
-  sessions            Session[]
-  verificationTokens  VerificationToken[]
-  passwordResetTokens PasswordResetToken[]
-  transactions        Transaction[]
-  analysisEvents      AnalysisUsage[]
-  notifications       Notification[]
-  journalEntries      JournalEntry[]
-  tradeSetupLifecycles TradeSetupLifecycle[]
-  adminActionsMade    AdminAction[]        @relation("AdminActor")
-  adminActionsTarget  AdminAction[]        @relation("AdminTarget")
+  accounts                 Account[]
+  sessions                 Session[]
+  verificationTokens       VerificationToken[]
+  passwordResetTokens      PasswordResetToken[]
+  transactions             Transaction[]
+  analysisEvents           AnalysisUsage[]
+  notifications            Notification[]
+  journalEntries           JournalEntry[]
+  tradeSetupLifecycles     TradeSetupLifecycle[]
+  syntheticAnalysisEvents  SyntheticAnalysisUsage[]
+  syntheticSetupLifecycles SyntheticSetupLifecycle[]
+  adminActionsMade         AdminAction[]             @relation("AdminActor")
+  adminActionsTarget       AdminAction[]             @relation("AdminTarget")
 
   // Admin dashboard filters/sorts users by these fields.
   @@index([plan])
@@ -162,9 +164,9 @@ model User {
 /// analysis) that powers the Analysis Activity + Analytics dashboards: per-user
 /// counts by day, most-analyzed pair, and average confidence.
 model AnalysisUsage {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   pair       String? // e.g. "AUDUSD" — null when not confidently extracted
   timeframe  String? // e.g. "1H"
@@ -198,11 +200,11 @@ model AnalysisUsage {
 
 /// Audit trail of every privileged action taken from the super-admin dashboard.
 model AdminAction {
-  id       String          @id @default(cuid())
+  id       String  @id @default(cuid())
   actorId  String
-  actor    User            @relation("AdminActor", fields: [actorId], references: [id], onDelete: Cascade)
+  actor    User    @relation("AdminActor", fields: [actorId], references: [id], onDelete: Cascade)
   targetId String?
-  target   User?           @relation("AdminTarget", fields: [targetId], references: [id], onDelete: SetNull)
+  target   User?   @relation("AdminTarget", fields: [targetId], references: [id], onDelete: SetNull)
 
   type    AdminActionType
   details String? // human-readable summary, e.g. "Granted Pro · 30 days · reason: VIP"
@@ -218,25 +220,25 @@ model AdminAction {
 /// subscription is only activated after a row reaches SUCCESS (verified
 /// server-side). Powers the subscription history + audit trail.
 model Transaction {
-  id                String        @id @default(cuid())
-  userId            String
-  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  provider          String        // "flutterwave" | "demo" | future providers
-  method            String        // "mtn_momo" | "orange_money" | "flutterwave" | "card"
+  provider          String // "flutterwave" | "demo" | future providers
+  method            String // "mtn_momo" | "orange_money" | "flutterwave" | "card"
   reference         String        @unique // our idempotent tx_ref
-  providerReference String?       // id returned by the provider
+  providerReference String? // id returned by the provider
   status            PaymentStatus @default(PENDING)
 
   // Where the payment was routed (from backend recipient config, never the
   // frontend). Null for rails that settle to a provider merchant account.
-  recipient         String?       // receiving account, e.g. MoMo/Orange number
-  recipientName     String?       // configured account owner at payment time
+  recipient     String? // receiving account, e.g. MoMo/Orange number
+  recipientName String? // configured account owner at payment time
 
-  plan              Plan
-  amount            Int           // minor units (e.g. cents)
-  currency          String        @default("USD")
-  description       String?
+  plan        Plan
+  amount      Int // minor units (e.g. cents)
+  currency    String  @default("USD")
+  description String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -288,9 +290,9 @@ model VerificationToken {
 /// Persistent, per-user notifications powering the bell menu, /notifications
 /// page and near real-time (polled) updates.
 model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   type      NotificationType
   title     String
@@ -299,7 +301,7 @@ model Notification {
   actionUrl String? // where clicking the notification takes the user
   metadata  Json? // metadata_json — arbitrary structured context
 
-  createdAt DateTime         @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([isRead])
@@ -328,7 +330,7 @@ model JournalEntry {
   lotSize    Float?
   riskAmount Float?
 
-  resultType   String  @default("OPEN") // OPEN | WIN | LOSS | BREAKEVEN
+  resultType   String @default("OPEN") // OPEN | WIN | LOSS | BREAKEVEN
   resultR      Float? // R multiple
   resultAmount Float?
 
@@ -522,4 +524,156 @@ model PairSentiment {
   neutral   Int      @default(0) // count of Neutral analyses in the window
   samples   Int      @default(0) // total directional analyses in the window
   updatedAt DateTime @updatedAt
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ── Synthetic Indices (Deriv) — Sprint 1: registry/schema foundation ──
+//
+// Parallel to the Forex models above (AnalysisUsage / TradeSetupLifecycle /
+// SetupLifecycleObservation) but kept as entirely SEPARATE tables with no
+// shared symbol/pair namespace — see src/lib/synthetic/instruments.ts's
+// module header and the Sprint 0 architecture spec §9. This is deliberate,
+// not duplication-for-its-own-sake: Forex's pair-wide market-price monitor
+// matches on a bare `pair` string with no asset-class discriminator, which
+// is the exact mechanism behind an earlier cross-contamination incident on
+// the Forex side. Giving Synthetic its own tables and its own worklist
+// makes that class of bug impossible here by construction, not discipline.
+//
+// Field-type convention: every domain field below with a closed value set
+// (category/state/source) is a plain `String`, matching this schema's
+// existing, zero-exception convention (see AnalysisUsage.direction,
+// TradeSetupLifecycle.state, SetupLifecycleObservation.source) rather than
+// a real Prisma enum. This was an explicit open question in the Sprint 0
+// spec (§12.4) since a greenfield model is the one place a different
+// choice wouldn't cost a migration — resolved here in favor of consistency
+// with the established convention rather than introducing a second one.
+// TypeScript-level safety for these values is already provided by the
+// `SyntheticCategory` union type in src/lib/synthetic/instruments.ts.
+// ═══════════════════════════════════════════════════════════════════════
+
+/// One row per completed synthetic-indices chart analysis. Mirrors
+/// AnalysisUsage exactly in shape and intent (additive telemetry, never
+/// gates analysis) but kept as a SEPARATE table specifically so Super-
+/// Admin's existing "Top Currency Pairs" aggregate (and any other
+/// Forex-pair-shaped reporting) never silently receives synthetic-
+/// instrument rows.
+model SyntheticAnalysisUsage {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  instrument String? // registry symbol, e.g. "VOLATILITY_75" — null when not confidently extracted
+  category   String? // "VOLATILITY" | "BOOM_CRASH" | "STEP" | "JUMP" | "RANGE_BREAK"
+  timeframe  String?
+  confidence Int? // 0–100
+  provider   String? // vision provider used, e.g. "gemini"
+
+  // Diagnostic instrumentation — same intent as AnalysisUsage's.
+  requestId String?
+  imageHash String? @db.VarChar(64)
+
+  // History record (powers a future Synthetic Analysis History view).
+  direction String? // "Bullish" | "Bearish" | "Neutral"
+  headline  String?
+  summary   String? @db.Text
+  imageUrl  String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([instrument])
+  @@index([userId, createdAt])
+  @@index([imageHash])
+}
+
+/// Trade Setup Lifecycle for synthetic-indices setups. Field-for-field
+/// parallel to TradeSetupLifecycle (same ownership-scoped-uniqueness
+/// pattern, same immutable-original-levels guarantee — see that model's
+/// doc comment above for the full rationale, which applies unchanged
+/// here). Kept as a SEPARATE table/worklist specifically so a future
+/// synthetic market-price monitor can never share a symbol namespace with
+/// the Forex one — see this section's header comment.
+model SyntheticSetupLifecycle {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Same loose-correlator convention as TradeSetupLifecycle.setupId — see
+  /// that field's doc comment. Uniqueness is scoped to (userId, setupId)
+  /// below, never setupId alone.
+  setupId String
+
+  instrument String // registry symbol, e.g. "VOLATILITY_75" — NEVER a Forex pair string
+  category   String // "VOLATILITY" | "BOOM_CRASH" | "STEP" | "JUMP" | "RANGE_BREAK"
+  timeframe  String?
+  bias       String // "Bullish" | "Bearish" — ORIGINAL, never changed
+
+  // ── Original trading levels — immutable after creation ───────────────────
+  entryZone        String
+  invalidationZone String
+  target1          String
+  target2          String
+  entryMid         Float
+  invalidationMid  Float
+  target1Mid       Float
+  target2Mid       Float
+  riskReward       String
+
+  generatedAt       DateTime // when buildSyntheticTradeSetup() produced this setup
+  priceAtGeneration Float? // currentPrice at generation, only when reliably available
+
+  // ── Lifecycle state — the only fields monitoring ever updates ─────────────
+  state          String    @default("ACTIVE")
+  lastPrice      Float?
+  lastCheckedAt  DateTime?
+  entryFreshness String?
+
+  observations SyntheticLifecycleObservation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, setupId])
+  @@index([userId])
+  @@index([userId, instrument])
+  @@index([state])
+}
+
+/// Parallel to SetupLifecycleObservation — identical append-only, deduped
+/// observation log, scoped to the synthetic lifecycle table above only.
+model SyntheticLifecycleObservation {
+  id      String                  @id @default(cuid())
+  setupId String
+  setup   SyntheticSetupLifecycle @relation(fields: [setupId], references: [id], onDelete: Cascade)
+
+  /// Same convention as SetupLifecycleObservation.sourceAnalysisId.
+  sourceAnalysisId String
+
+  price Float? // null when price wasn't reliably extracted this time (→ UNVERIFIED)
+  state String // the lifecycle state determined AT this observation
+
+  source String @default("chart_analysis") // "chart_analysis" | "market_data"
+
+  observedAt DateTime @default(now())
+
+  @@unique([setupId, sourceAnalysisId])
+  @@index([setupId, observedAt])
+}
+
+/// Static reference metadata for each registered synthetic instrument —
+/// mirrors (does not replace) the SYNTHETIC_INSTRUMENTS registry in
+/// src/lib/synthetic/instruments.ts, which remains the source of truth.
+/// This table exists purely so Super-Admin reporting and any future per-
+/// instrument analytics can join against a real table instead of a
+/// TypeScript constant; it is kept in sync by application code, never
+/// hand-edited. `verified` defaults to `false` and stays `false` for
+/// every Sprint 1 row — see the registry module's header comment for why
+/// direct Deriv platform/API verification was not possible this sprint.
+model SyntheticInstrumentMeta {
+  symbol      String   @id // matches the registry's own canonical key, e.g. "VOLATILITY_75"
+  displayName String
+  category    String // "VOLATILITY" | "BOOM_CRASH" | "STEP" | "JUMP" | "RANGE_BREAK"
+  verified    Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
 }
